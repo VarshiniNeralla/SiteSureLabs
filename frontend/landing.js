@@ -93,9 +93,9 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleScrollHint();
   }
 
-  // Step card scroll-reveal
-  const revealCards = document.querySelectorAll(".step-card--reveal");
-  if (revealCards.length && "IntersectionObserver" in window) {
+  // How it works stepper scroll-reveal
+  const revealSteps = document.querySelectorAll(".m-stepper__step--reveal");
+  if (revealSteps.length && "IntersectionObserver" in window) {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
@@ -107,8 +107,8 @@ document.addEventListener("DOMContentLoaded", () => {
       },
       { threshold: 0.15 }
     );
-    revealCards.forEach((card) => observer.observe(card));
+    revealSteps.forEach((step) => observer.observe(step));
   } else {
-    revealCards.forEach((card) => card.classList.add("is-visible"));
+    revealSteps.forEach((step) => step.classList.add("is-visible"));
   }
 });

@@ -1,0 +1,264 @@
+HTML (from index.html)
+----------------------
+<section id="how-it-works" class="landing-section" aria-labelledby="how-heading">
+  <div class="container">
+    <div class="landing-section-header">
+      <h2 id="how-heading">How It Works</h2>
+      <p class="landing-section-lead">Three steps from upload to insight.</p>
+    </div>
+    <div class="m-stepper">
+      <div class="m-stepper__track" aria-hidden="true"></div>
+
+      <div class="m-stepper__step m-stepper__step--reveal" style="--reveal-i:0">
+        <div class="m-stepper__circle">1</div>
+        <div class="m-stepper__icon">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="6" y="8" width="28" height="24" rx="3" stroke="#334155" stroke-width="1.4"/>
+            <rect x="6" y="8" width="28" height="6" rx="3" fill="#eff6ff" stroke="#93c5fd" stroke-width="0.8"/>
+            <circle cx="10" cy="11" r="1" fill="#f87171"/>
+            <circle cx="14" cy="11" r="1" fill="#fbbf24"/>
+            <circle cx="18" cy="11" r="1" fill="#34d399"/>
+            <path d="M20 27V18" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M15 22l5-5 5 5" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="10" y="28" width="20" height="2" rx="1" fill="#e2e8f0"/>
+          </svg>
+        </div>
+        <h3 class="m-stepper__title">Upload Image</h3>
+        <p class="m-stepper__desc">Drop in a room or site capture from your phone or desktop.</p>
+      </div>
+
+      <div class="m-stepper__step m-stepper__step--reveal" style="--reveal-i:1">
+        <div class="m-stepper__circle">2</div>
+        <div class="m-stepper__icon">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="20" cy="20" r="14" stroke="#e2e8f0" stroke-width="1.2"/>
+            <circle cx="20" cy="20" r="14" stroke="#1a73e8" stroke-width="2" stroke-dasharray="22 66" stroke-linecap="round" class="ai-spin"/>
+            <circle cx="20" cy="20" r="9" stroke="#1a73e8" stroke-width="1.2" stroke-dasharray="3 2.5" opacity="0.5"/>
+            <circle cx="20" cy="20" r="4.5" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1"/>
+            <circle cx="20" cy="20" r="2" fill="#1a73e8"/>
+            <path d="M8 20h3M29 20h3" stroke="#94a3b8" stroke-width="1" stroke-linecap="round"/>
+            <path d="M20 8v3M20 29v3" stroke="#94a3b8" stroke-width="1" stroke-linecap="round"/>
+            <path d="M10 11l2 2M28 29l2 2M28 11l-2 2M10 29l-2 2" stroke="#dadce0" stroke-width="0.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3 class="m-stepper__title">AI Analysis</h3>
+        <p class="m-stepper__desc">Our model segments and evaluates the scene for defects and risks.</p>
+      </div>
+
+      <div class="m-stepper__step m-stepper__step--reveal" style="--reveal-i:2">
+        <div class="m-stepper__circle">3</div>
+        <div class="m-stepper__icon">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="5" y="6" width="30" height="28" rx="3" stroke="#334155" stroke-width="1.4"/>
+            <path d="M5 13h30" stroke="#e2e8f0" stroke-width="1"/>
+            <rect x="9" y="16" width="11" height="8" rx="1.5" fill="#eff6ff" stroke="#93c5fd" stroke-width="0.8"/>
+            <path d="M11 18.5h7M11 21h5" stroke="#2563eb" stroke-width="0.8" stroke-linecap="round" opacity="0.6"/>
+            <rect x="22" y="16" width="5" height="8" rx="0.8" fill="#dcfce7"/>
+            <rect x="22" y="19" width="5" height="5" rx="0.8" fill="#22c55e" opacity="0.5"/>
+            <rect x="29" y="18" width="4" height="6" rx="0.8" fill="#fef9c3"/>
+            <rect x="29" y="20" width="4" height="4" rx="0.8" fill="#eab308" opacity="0.45"/>
+            <path d="M9 28h22" stroke="#e2e8f0" stroke-width="0.8" stroke-linecap="round"/>
+            <path d="M9 30.5h14" stroke="#e2e8f0" stroke-width="0.8" stroke-linecap="round"/>
+            <circle cx="32" cy="30" r="4" fill="#dcfce7" stroke="#22c55e" stroke-width="1"/>
+            <path d="M30 30l1.5 1.5 3-3.5" stroke="#22c55e" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3 class="m-stepper__title">View Results</h3>
+        <p class="m-stepper__desc">Review overlays, severity, and next steps in the dashboard.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+CSS (from style.css)
+--------------------
+.container,
+.nav-container {
+  width: min(1100px, 92%);
+  margin: 0 auto;
+}
+
+.landing-page .landing-section {
+  padding: 44px 0;
+  background: transparent;
+}
+
+.landing-section {
+  padding: 36px 0;
+  background: #ffffff;
+}
+
+.landing-section-header {
+  text-align: center;
+  margin-bottom: 24px;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.landing-page .landing-section-header h2 {
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  font-size: clamp(1.45rem, 3vw, 1.75rem);
+  letter-spacing: -0.03em;
+}
+
+.landing-section-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.landing-section-lead {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  color: #6b7280;
+}
+
+.ai-spin {
+  animation: aiSpin 8s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.m-stepper {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  position: relative;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.m-stepper__track {
+  position: absolute;
+  top: 20px;
+  left: calc(100% / 6);
+  right: calc(100% / 6);
+  height: 2px;
+  background: #dadce0;
+  z-index: 0;
+}
+
+.m-stepper__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  padding: 0 clamp(0.75rem, 2vw, 1.5rem);
+}
+
+.m-stepper__circle {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #1a73e8;
+  color: #ffffff;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.m-stepper__step:hover .m-stepper__circle {
+  transform: scale(1.08);
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.35);
+}
+
+.m-stepper__icon {
+  width: 48px;
+  height: 48px;
+  margin: 1rem 0 0.85rem;
+}
+
+.m-stepper__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.m-stepper__title {
+  margin: 0 0 0.35rem;
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #202124;
+}
+
+.m-stepper__desc {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #5f6368;
+  max-width: 240px;
+}
+
+.m-stepper__step--reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  transition-delay: calc(var(--reveal-i, 0) * 0.1s);
+}
+
+.m-stepper__step--reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 600px) {
+  .m-stepper {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    text-align: left;
+    padding-left: 40px;
+  }
+
+  .m-stepper__track {
+    top: 0;
+    bottom: 0;
+    left: 19px;
+    right: auto;
+    width: 2px;
+    height: auto;
+  }
+
+  .m-stepper__step {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0;
+  }
+
+  .m-stepper__circle {
+    position: absolute;
+    left: -40px;
+  }
+
+  .m-stepper__icon {
+    margin: 0 0 0.5rem;
+    width: 40px;
+    height: 40px;
+  }
+
+  .m-stepper__step > div:last-of-type,
+  .m-stepper__step > h3,
+  .m-stepper__step > p {
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-stepper__step--reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .ai-spin {
+    animation: none;
+    will-change: auto;
+  }
+}

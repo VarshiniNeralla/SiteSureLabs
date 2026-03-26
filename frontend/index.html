@@ -20,7 +20,6 @@
       <div class="nav-actions">
         <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="primary-nav"></button>
         <ul class="nav-links" id="primary-nav">
-          <!-- <li><a href="#hero">Home</a></li> -->
           <li><a href="#how-it-works">Walkthrough</a></li>
           <li><a href="#outcomes">Deliverables</a></li>
           <li class="nav-dropdown">
@@ -30,11 +29,7 @@
               <li role="none"><a href="/dashboard/live/" role="menuitem">Live Inspection</a></li>
             </ul>
           </li>
-          <!-- <li><a href="#about">About</a></li> -->
           <li><a href="#contact">Contact</a></li>
-          
-          
-         
         </ul>
       </div>
     </div>
@@ -106,7 +101,6 @@
           <div class="hero-content hero-content--landing">
             <h1 class="hero-title"><span class="hero-title__line">AI-Powered</span> <span class="hero-title__line hero-title__line--accent"><span class="gradient-text">Construction Inspection</span></span></h1>
             <p class="hero-tagline">Detect Construction Defects Before They Become Costly...</p>
-            <!-- <p class="hero-subtitle">Upload site images to detect defects and structural risks instantly.</p> -->
             <div class="hero-primary-cta">
               <button type="button" class="primary-btn landing-cta" id="nav-cta">Get Started</button>
             </div>
@@ -126,11 +120,13 @@
           <h2 id="how-heading">How It Works</h2>
           <p class="landing-section-lead">Three steps from upload to insight.</p>
         </div>
-        <div class="steps-flow">
-          <article class="step-card step-card--reveal" style="--reveal-i:0">
-            <span class="step-card__num" aria-hidden="true">01</span>
-            <div class="step-card__icon-wrap">
-              <svg class="step-card__icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <div class="m-stepper">
+          <div class="m-stepper__track" aria-hidden="true"></div>
+
+          <div class="m-stepper__step m-stepper__step--reveal" style="--reveal-i:0">
+            <div class="m-stepper__circle">1</div>
+            <div class="m-stepper__icon">
+              <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <rect x="6" y="8" width="28" height="24" rx="3" stroke="#334155" stroke-width="1.4"/>
                 <rect x="6" y="8" width="28" height="6" rx="3" fill="#eff6ff" stroke="#93c5fd" stroke-width="0.8"/>
                 <circle cx="10" cy="11" r="1" fill="#f87171"/>
@@ -141,46 +137,32 @@
                 <rect x="10" y="28" width="20" height="2" rx="1" fill="#e2e8f0"/>
               </svg>
             </div>
-            <h3 class="step-card__title">Upload Image</h3>
-            <p class="step-card__desc">Drop in a room or site capture from your phone or desktop.</p>
-          </article>
-
-          <div class="step-connector" aria-hidden="true">
-            <svg class="step-connector__svg" viewBox="0 0 48 24" fill="none">
-              <path d="M0 12h40" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 3" class="step-connector__line"/>
-              <path d="M36 6l6 6-6 6" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+            <h3 class="m-stepper__title">Upload Image</h3>
+            <p class="m-stepper__desc">Drop in a room or site capture from your phone or desktop.</p>
           </div>
 
-          <article class="step-card step-card--featured step-card--reveal" style="--reveal-i:1">
-            <span class="step-card__num" aria-hidden="true">02</span>
-            <div class="step-card__icon-wrap">
-              <svg class="step-card__icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <div class="m-stepper__step m-stepper__step--reveal" style="--reveal-i:1">
+            <div class="m-stepper__circle">2</div>
+            <div class="m-stepper__icon">
+              <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <circle cx="20" cy="20" r="14" stroke="#e2e8f0" stroke-width="1.2"/>
-                <circle cx="20" cy="20" r="14" stroke="#ed1c24" stroke-width="2" stroke-dasharray="22 66" stroke-linecap="round" class="ai-spin"/>
-                <circle cx="20" cy="20" r="9" stroke="#2563eb" stroke-width="1.2" stroke-dasharray="3 2.5" opacity="0.5"/>
-                <circle cx="20" cy="20" r="4.5" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
-                <circle cx="20" cy="20" r="2" fill="#2563eb"/>
+                <circle cx="20" cy="20" r="14" stroke="#1a73e8" stroke-width="2" stroke-dasharray="22 66" stroke-linecap="round" class="ai-spin"/>
+                <circle cx="20" cy="20" r="9" stroke="#1a73e8" stroke-width="1.2" stroke-dasharray="3 2.5" opacity="0.5"/>
+                <circle cx="20" cy="20" r="4.5" fill="#e8f0fe" stroke="#1a73e8" stroke-width="1"/>
+                <circle cx="20" cy="20" r="2" fill="#1a73e8"/>
                 <path d="M8 20h3M29 20h3" stroke="#94a3b8" stroke-width="1" stroke-linecap="round"/>
                 <path d="M20 8v3M20 29v3" stroke="#94a3b8" stroke-width="1" stroke-linecap="round"/>
-                <path d="M10 11l2 2M28 29l2 2M28 11l-2 2M10 29l-2 2" stroke="#cbd5e1" stroke-width="0.8" stroke-linecap="round"/>
+                <path d="M10 11l2 2M28 29l2 2M28 11l-2 2M10 29l-2 2" stroke="#dadce0" stroke-width="0.8" stroke-linecap="round"/>
               </svg>
             </div>
-            <h3 class="step-card__title">AI Analysis</h3>
-            <p class="step-card__desc">Our model segments and evaluates the scene for defects and risks.</p>
-          </article>
-
-          <div class="step-connector" aria-hidden="true">
-            <svg class="step-connector__svg" viewBox="0 0 48 24" fill="none">
-              <path d="M0 12h40" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 3" class="step-connector__line"/>
-              <path d="M36 6l6 6-6 6" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+            <h3 class="m-stepper__title">AI Analysis</h3>
+            <p class="m-stepper__desc">Our model segments and evaluates the scene for defects and risks.</p>
           </div>
 
-          <article class="step-card step-card--reveal" style="--reveal-i:2">
-            <span class="step-card__num" aria-hidden="true">03</span>
-            <div class="step-card__icon-wrap">
-              <svg class="step-card__icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <div class="m-stepper__step m-stepper__step--reveal" style="--reveal-i:2">
+            <div class="m-stepper__circle">3</div>
+            <div class="m-stepper__icon">
+              <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <rect x="5" y="6" width="30" height="28" rx="3" stroke="#334155" stroke-width="1.4"/>
                 <path d="M5 13h30" stroke="#e2e8f0" stroke-width="1"/>
                 <rect x="9" y="16" width="11" height="8" rx="1.5" fill="#eff6ff" stroke="#93c5fd" stroke-width="0.8"/>
@@ -195,9 +177,9 @@
                 <path d="M30 30l1.5 1.5 3-3.5" stroke="#22c55e" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
-            <h3 class="step-card__title">View Results</h3>
-            <p class="step-card__desc">Review overlays, severity, and next steps in the dashboard.</p>
-          </article>
+            <h3 class="m-stepper__title">View Results</h3>
+            <p class="m-stepper__desc">Review overlays, severity, and next steps in the dashboard.</p>
+          </div>
         </div>
       </div>
     </section>
