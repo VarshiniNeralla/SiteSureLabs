@@ -1,3 +1,2 @@
 My Home Logo red color code for consistency:
-ED1C24
-
+vED1C24
