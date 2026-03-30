@@ -1,5 +1,7 @@
 {
-  "buildCommand": "node ./node_modules/vite/bin/vite.js build",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/dashboard/image-analysis", "destination": "/dashboard/image-analysis/index.html" },
     { "source": "/dashboard/image-analysis/", "destination": "/dashboard/image-analysis/index.html" },
