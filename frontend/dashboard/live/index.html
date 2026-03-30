@@ -1,77 +1,88 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="landing-html">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live Inspection - Defectra</title>
+  <title>Live Inspection - SiteSureLabs</title>
+  <meta name="description" content="Connect your camera for real-time construction site inspection with SiteSureLabs.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../style.css">
 </head>
-<body>
-  <nav class="glass-nav">
+<body class="landing-page dashboard-page">
+  <nav id="navbar" class="glass-nav" aria-label="Primary">
     <div class="nav-container">
-      <div class="logo-container">
-        <img src="../../MyHomeLogo/MyHomeLogo.png" alt="MyHomeLogo" class="logo-img">
-        <span class="logo-text">Defectra</span>
+      <a href="/" class="logo-container logo-container--nav">
+        <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="40" height="40" class="logo-img" decoding="async">
+        <span class="logo-text">SiteSureLabs</span>
+      </a>
+      <div class="nav-actions">
+        <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="primary-nav"></button>
+        <ul class="nav-links" id="primary-nav">
+          <!-- <li><a href="/">Home</a></li> -->
+          <li><a href="/dashboard/image-analysis/">Image Analysis</a></li>
+          <li><a href="/dashboard/live/" aria-current="page">Live Inspection</a></li>
+        </ul>
       </div>
-      <ul class="nav-links">
-        <li><a href="/">Home</a></li>
-        <li><a href="/dashboard/image-analysis/">Image Analysis</a></li>
-        <li><a href="/dashboard/live/">Live Inspection</a></li>
-      </ul>
     </div>
   </nav>
 
-  <section class="feature-section">
-    <div class="container">
-      <div class="section-header">
-        <h2>Live Site Inspection</h2>
-        <p>Connect your mobile camera for real-time site monitoring.</p>
-      </div>
+  <main class="landing-main dashboard-main">
+    <section class="landing-section dashboard-live" id="live-inspection" aria-labelledby="live-heading">
+      <div class="container">
+        <header class="landing-section-header dashboard-live__header">
+          <p class="dashboard-page__eyebrow">Dashboard</p>
+          <h2 id="live-heading">Live site inspection</h2>
+          <p class="landing-section-lead">Use your device camera for real-time monitoring. Grant permission when prompted—video stays in your browser unless you add streaming later.</p>
+        </header>
 
-      <div class="live-stream-container glass-panel">
-        <div class="stream-toolbar">
-          <div class="status-indicator">
-            <span class="dot" id="stream-status-dot"></span>
-            <span id="stream-status-text">Not Connected</span>
+        <article class="dashboard-live-panel glass-panel live-stream-container">
+          <div class="dashboard-live-toolbar stream-toolbar">
+            <div class="dashboard-live-status status-indicator">
+              <span class="dot" id="stream-status-dot" aria-hidden="true"></span>
+              <span class="dashboard-live-status__text" id="stream-status-text">Not connected</span>
+            </div>
+            <div class="dashboard-live-actions stream-actions">
+              <button type="button" class="primary-btn dashboard-live-start-btn" id="start-stream-btn">
+                <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="2" y="5" width="14" height="12" rx="1.5" stroke-width="1.8"/>
+                  <path d="M16 9l5-2.5v11L16 15" stroke-width="1.8" stroke-linejoin="round"/>
+                  <circle cx="9" cy="11" r="3" stroke-width="1.2" stroke-dasharray="2 1.5" class="detect-ring" style="animation-duration:4s"/>
+                  <circle cx="9" cy="11" r="1" fill="currentColor" opacity="0.4" class="ai-core-pulse"/>
+                </svg>
+                Start live inspection
+              </button>
+              <button type="button" class="danger-btn dashboard-live-stop-btn hidden" id="stop-stream-btn">Stop inspection</button>
+            </div>
           </div>
-          <div class="stream-actions">
-            <button class="primary-btn" id="start-stream-btn">
-              <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <rect x="2" y="5" width="14" height="12" rx="1.5" stroke-width="1.8"/>
-                <path d="M16 9l5-2.5v11L16 15" stroke-width="1.8" stroke-linejoin="round"/>
-                <!-- Scanning crosshair -->
-                <circle cx="9" cy="11" r="3" stroke-width="1.2" stroke-dasharray="2 1.5" class="detect-ring" style="animation-duration:4s"/>
-                <circle cx="9" cy="11" r="1" fill="currentColor" opacity="0.4" class="ai-core-pulse"/>
-              </svg>
-              Start Live Inspection
-            </button>
-            <button class="danger-btn hidden" id="stop-stream-btn">Stop Inspection</button>
-          </div>
-        </div>
 
-        <div class="video-wrapper">
-          <div class="placeholder-view" id="video-placeholder">
-            <p>Camera feed not connected.</p>
+          <div class="dashboard-live-video video-wrapper">
+            <div class="placeholder-view dashboard-live-placeholder" id="video-placeholder">
+              <div class="dashboard-live-placeholder__icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="10" y="16" width="44" height="36" rx="4" stroke="#94a3b8" stroke-width="1.5"/>
+                  <circle cx="32" cy="34" r="10" stroke="#cbd5e1" stroke-width="1.2"/>
+                  <circle cx="32" cy="34" r="4" fill="#e2e8f0"/>
+                  <path d="M6 22l8-6v36l-8-6V22z" stroke="#64748b" stroke-width="1.4" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <p class="dashboard-live-placeholder__title">Camera feed not connected</p>
+              <p class="dashboard-live-placeholder__hint">Tap start to enable your camera for this session.</p>
+            </div>
+            <video id="live-video" autoplay playsinline muted class="hidden"></video>
           </div>
-          <video id="live-video" autoplay playsinline muted class="hidden"></video>
-        </div>
+        </article>
       </div>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <footer class="app-footer">
-    <div class="container footer-content">
-      <div class="footer-logo">
-        <img src="../../MyHomeLogo/MyHomeLogo.png" alt="Logo">
-        <span>Defectra</span>
-      </div>
-      <p class="copyright">&copy; 2026 Defectra Construction Intelligence. All rights reserved.</p>
+  <footer class="site-footer site-footer--dashboard" aria-label="Site footer">
+    <div class="container site-footer__bottom-inner">
+      <p class="site-footer__copy">&copy; 2026 SiteSureLabs Construction Intelligence. All rights reserved.</p>
     </div>
   </footer>
 
-  <script src="../../live.js"></script>
+  <script type="module" src="/live.js"></script>
 </body>
 </html>

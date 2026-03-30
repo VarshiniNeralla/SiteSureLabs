@@ -93,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleScrollHint();
   }
 
-  const setupReveal = (selector) => {
+  const setupReveal = (selector, threshold = 0.15) => {
     const items = document.querySelectorAll(selector);
     if (!items.length) return;
     if (!("IntersectionObserver" in window)) {
@@ -110,13 +110,14 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         });
       },
-      { threshold: 0.15 }
+      { threshold, rootMargin: "0px 0px -8% 0px" }
     );
 
     items.forEach((item) => observer.observe(item));
   };
 
   // Section reveal animations
-  setupReveal(".m-stepper__step--reveal");
-  setupReveal(".benefit-card--reveal");
+  setupReveal(".m-stepper__step--reveal", 0.15);
+  setupReveal(".benefit-card--reveal", 0.12);
+  setupReveal(".reveal-on-scroll", 0.1);
 });

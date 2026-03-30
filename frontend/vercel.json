@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    { "source": "/dashboard/image-analysis", "destination": "/dashboard/image-analysis/index.html" },
+    { "source": "/dashboard/live", "destination": "/dashboard/live/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [{ "key": "X-Content-Type-Options", "value": "nosniff" }]
+    }
+  ]
+}

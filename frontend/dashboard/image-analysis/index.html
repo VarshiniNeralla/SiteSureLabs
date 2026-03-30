@@ -1,100 +1,103 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="landing-html">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image Analysis - Defectra</title>
+  <title>Image Analysis - SiteSureLabs</title>
+  <meta name="description" content="Upload construction images for AI-powered defect detection and segmentation.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../style.css">
 </head>
-<body>
-  <nav class="glass-nav">
+<body class="landing-page dashboard-page">
+  <nav id="navbar" class="glass-nav" aria-label="Primary">
     <div class="nav-container">
-      <div class="logo-container">
-        <img src="../../MyHomeLogo/MyHomeLogo.png" alt="MyHomeLogo" class="logo-img">
-        <span class="logo-text">Defectra</span>
+      <a href="/" class="logo-container logo-container--nav">
+        <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="40" height="40" class="logo-img" decoding="async">
+        <span class="logo-text">SiteSureLabs</span>
+      </a>
+      <div class="nav-actions">
+        <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="primary-nav"></button>
+        <ul class="nav-links" id="primary-nav">
+          <!-- <li><a href="/">Home</a></li> -->
+          <li><a href="/dashboard/image-analysis/" aria-current="page">Image Analysis</a></li>
+          <li><a href="/dashboard/live/">Live Inspection</a></li>
+        </ul>
       </div>
-      <ul class="nav-links">
-        <li><a href="/">Home</a></li>
-        <li><a href="/dashboard/image-analysis/">Image Analysis</a></li>
-        <li><a href="/dashboard/live/">Live Inspection</a></li>
-      </ul>
     </div>
   </nav>
 
-  <section class="feature-section">
-    <div class="container">
-      <div class="section-header">
-        <h2>Image-Based Defect Detection</h2>
-        <p>Upload room captures for deep structural analysis.</p>
-      </div>
+  <main class="landing-main dashboard-main">
+    <section class="landing-section dashboard-analysis" id="image-analysis" aria-labelledby="analysis-heading">
+      <div class="container">
+        <header class="landing-section-header dashboard-analysis__header">
+          <p class="dashboard-page__eyebrow">Dashboard</p>
+          <h2 id="analysis-heading">Image-Based Defect Detection</h2>
+          <p class="landing-section-lead">Upload site or room captures for AI-assisted analysis. Review the original next to a segmentation-style preview.</p>
+        </header>
 
-      <div class="analysis-grid">
-        <div class="upload-card glass-panel" id="upload-zone">
-          <div class="upload-inner">
-            <svg class="upload-icon" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-              <rect x="8" y="12" width="32" height="26" rx="3" stroke="#2563eb" stroke-width="1.8"/>
-              <rect x="14" y="18" width="20" height="14" rx="1.5" stroke="#93c5fd" stroke-width="1.2" stroke-dasharray="3 2"/>
-              <!-- Construction image placeholder -->
-              <path d="M16 28l5-4 4 3 6-6 5 5" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="19" cy="22" r="2" stroke="#2563eb" stroke-width="1.2"/>
-              <!-- Upload arrow -->
-              <path d="M24 42v-8" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" class="upload-arrow"/>
-              <path d="M20 37l4-4 4 4" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="upload-arrow"/>
-            </svg>
-            <h3>Drag & Drop your image here</h3>
-            <p>or click to browse from your device</p>
-            <input type="file" id="image-input" accept="image/*" hidden>
-            <button class="primary-btn mt-2" id="analyze-image-btn">Analyze Image</button>
-          </div>
-        </div>
-
-        <div class="preview-card glass-panel hidden" id="preview-container">
-          <div class="preview-header">
-            <h3>Analysis Results</h3>
-            <button class="close-btn" id="reset-upload">×</button>
-          </div>
-          <div class="image-comparison">
-            <div class="img-wrapper original">
-              <span class="img-label">Original</span>
-              <img id="original-preview" src="" alt="Original Image">
-            </div>
-            <div class="img-wrapper segmented">
-              <span class="img-label segmented-label">Segmented</span>
-              <div id="segmentation-loader" class="loader-container">
-                <div class="spinner"></div>
-                <p>Analyzing geometry...</p>
+        <div class="dashboard-analysis__grid">
+          <article class="dashboard-upload glass-panel" id="upload-zone" tabindex="0" aria-label="Upload image">
+            <div class="dashboard-upload__inner">
+              <div class="dashboard-upload__icon-wrap" aria-hidden="true">
+                <svg class="dashboard-upload__icon" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="8" y="12" width="32" height="26" rx="3" stroke="currentColor" stroke-width="1.8"/>
+                  <rect x="14" y="18" width="20" height="14" rx="1.5" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2" opacity="0.5"/>
+                  <path d="M16 28l5-4 4 3 6-6 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="19" cy="22" r="2" stroke="currentColor" stroke-width="1.2"/>
+                  <path d="M24 42v-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" class="upload-arrow"/>
+                  <path d="M20 37l4-4 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="upload-arrow"/>
+                </svg>
               </div>
-              <img id="segmented-preview" src="" alt="Segmented Image" class="hidden">
+              <h3 class="dashboard-upload__title">Drop an image here</h3>
+              <p class="dashboard-upload__hint">or click below to browse from your device</p>
+              <input type="file" id="image-input" accept="image/*" hidden>
+              <button type="button" class="primary-btn dashboard-analyze-btn" id="analyze-image-btn">Choose image</button>
             </div>
-          </div>
-          <div class="analysis-stats hidden" id="analysis-stats">
-            <div class="stat-box">
-              <span class="stat-value text-green">3</span>
-              <span class="stat-name">Regions Detected</span>
+          </article>
+
+          <article class="dashboard-preview glass-panel hidden" id="preview-container" aria-live="polite">
+            <div class="dashboard-preview__toolbar">
+              <h3 class="dashboard-preview__title">Analysis results</h3>
+              <button type="button" class="dashboard-preview__close close-btn" id="reset-upload" aria-label="Close and upload another image">×</button>
             </div>
-            <div class="stat-box">
-              <span class="stat-value text-blue">98%</span>
-              <span class="stat-name">Confidence</span>
+            <div class="dashboard-preview__compare image-comparison">
+              <div class="img-wrapper dashboard-img-wrapper original">
+                <span class="img-label">Original</span>
+                <img id="original-preview" src="" alt="Original upload">
+              </div>
+              <div class="img-wrapper dashboard-img-wrapper segmented">
+                <span class="img-label segmented-label">Segmented</span>
+                <div id="segmentation-loader" class="loader-container">
+                  <div class="spinner dashboard-spinner" aria-hidden="true"></div>
+                  <p>Analyzing image…</p>
+                </div>
+                <img id="segmented-preview" src="" alt="Segmented preview" class="hidden">
+              </div>
             </div>
-          </div>
+            <div class="analysis-stats dashboard-stats hidden" id="analysis-stats">
+              <div class="stat-box">
+                <span class="stat-value text-green">0</span>
+                <span class="stat-name">Regions detected</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-value text-blue">0%</span>
+                <span class="stat-name">Confidence</span>
+              </div>
+            </div>
+          </article>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <footer class="app-footer">
-    <div class="container footer-content">
-      <div class="footer-logo">
-        <img src="../../MyHomeLogo/MyHomeLogo.png" alt="Logo">
-        <span>Defectra</span>
-      </div>
-      <p class="copyright">&copy; 2026 Defectra Construction Intelligence. All rights reserved.</p>
+  <footer class="site-footer site-footer--dashboard" aria-label="Site footer">
+    <div class="container site-footer__bottom-inner">
+      <p class="site-footer__copy">&copy; 2026 SiteSureLabs Construction Intelligence. All rights reserved.</p>
     </div>
   </footer>
 
-  <script src="../../image-analysis.js"></script>
+  <script type="module" src="/image-analysis.js"></script>
 </body>
 </html>
