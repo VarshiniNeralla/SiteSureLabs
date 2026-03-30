@@ -11,49 +11,85 @@
   <link rel="stylesheet" href="../../style.css">
 </head>
 <body class="landing-page dashboard-page">
-  <nav id="navbar" class="glass-nav" aria-label="Primary">
+  <nav id="navbar" class="glass-nav glass-nav--dashboard" aria-label="Primary">
     <div class="nav-container">
       <a href="/" class="logo-container logo-container--nav">
         <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="40" height="40" class="logo-img" decoding="async">
         <span class="logo-text">SiteSureLabs</span>
       </a>
       <div class="nav-actions">
-        <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="primary-nav"></button>
-        <ul class="nav-links" id="primary-nav">
-          <!-- <li><a href="/">Home</a></li> -->
-          <li><a href="/dashboard/image-analysis/">Image Analysis</a></li>
-          <li><a href="/dashboard/live/" aria-current="page">Live Inspection</a></li>
-        </ul>
+        <a href="/" class="nav-back-home">
+          <span class="nav-back-home__icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </span>
+          Back to home
+        </a>
       </div>
     </div>
   </nav>
 
-  <main class="landing-main dashboard-main">
-    <section class="landing-section dashboard-live" id="live-inspection" aria-labelledby="live-heading">
+  <div class="dashboard-mode-bar">
+    <div class="container dashboard-mode-bar__inner">
+      <div class="dashboard-mode-toggle" role="tablist" aria-label="Choose workspace">
+        <a
+          href="/dashboard/image-analysis/"
+          class="dashboard-mode-toggle__tab"
+          role="tab"
+          aria-selected="false"
+        >Image Analysis</a>
+        <a
+          href="/dashboard/live/"
+          class="dashboard-mode-toggle__tab is-active"
+          role="tab"
+          aria-selected="true"
+          aria-current="page"
+        >Live Inspection</a>
+      </div>
+    </div>
+  </div>
+
+  <main class="landing-main dashboard-main dashboard-main--live">
+    <div class="dashboard-page-decor" aria-hidden="true">
+      <span class="dashboard-page-decor__orb dashboard-page-decor__orb--a"></span>
+      <span class="dashboard-page-decor__orb dashboard-page-decor__orb--b"></span>
+      <span class="dashboard-page-decor__orb dashboard-page-decor__orb--c"></span>
+    </div>
+    <section class="landing-section dashboard-live dashboard-live--v2" id="live-inspection" aria-labelledby="live-heading">
       <div class="container">
         <header class="landing-section-header dashboard-live__header">
-          <p class="dashboard-page__eyebrow">Dashboard</p>
+          <!-- <div class="dashboard-workspace-chips">
+            <span class="dashboard-workspace-chip">
+              <svg class="dashboard-workspace-chip__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
+              Live feed
+            </span>
+            <span class="dashboard-workspace-chip">
+              <svg class="dashboard-workspace-chip__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                <path d="M12 18h.01"/>
+              </svg>
+              Your camera
+            </span>
+            <span class="dashboard-workspace-chip">
+              <svg class="dashboard-workspace-chip__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              Stays in browser
+            </span>
+          </div> -->
+          <p class="dashboard-page__eyebrow">Live workspace</p>
           <h2 id="live-heading">Live site inspection</h2>
-          <p class="landing-section-lead">Use your device camera for real-time monitoring. Grant permission when prompted—video stays in your browser unless you add streaming later.</p>
+          <p class="landing-section-lead dashboard-live__lead">
+            Turn on your camera to watch the site in real time. Allow access when your browser asks. Video stays on this device until you add streaming later.
+          </p>
         </header>
 
-        <article class="dashboard-live-panel glass-panel live-stream-container">
+        <article class="dashboard-live-panel glass-panel live-stream-container" id="live-panel">
           <div class="dashboard-live-toolbar stream-toolbar">
             <div class="dashboard-live-status status-indicator">
               <span class="dot" id="stream-status-dot" aria-hidden="true"></span>
               <span class="dashboard-live-status__text" id="stream-status-text">Not connected</span>
-            </div>
-            <div class="dashboard-live-actions stream-actions">
-              <button type="button" class="primary-btn dashboard-live-start-btn" id="start-stream-btn">
-                <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="2" y="5" width="14" height="12" rx="1.5" stroke-width="1.8"/>
-                  <path d="M16 9l5-2.5v11L16 15" stroke-width="1.8" stroke-linejoin="round"/>
-                  <circle cx="9" cy="11" r="3" stroke-width="1.2" stroke-dasharray="2 1.5" class="detect-ring" style="animation-duration:4s"/>
-                  <circle cx="9" cy="11" r="1" fill="currentColor" opacity="0.4" class="ai-core-pulse"/>
-                </svg>
-                Start live inspection
-              </button>
-              <button type="button" class="danger-btn dashboard-live-stop-btn hidden" id="stop-stream-btn">Stop inspection</button>
             </div>
           </div>
 
@@ -61,16 +97,28 @@
             <div class="placeholder-view dashboard-live-placeholder" id="video-placeholder">
               <div class="dashboard-live-placeholder__icon" aria-hidden="true">
                 <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="10" y="16" width="44" height="36" rx="4" stroke="#94a3b8" stroke-width="1.5"/>
-                  <circle cx="32" cy="34" r="10" stroke="#cbd5e1" stroke-width="1.2"/>
-                  <circle cx="32" cy="34" r="4" fill="#e2e8f0"/>
-                  <path d="M6 22l8-6v36l-8-6V22z" stroke="#64748b" stroke-width="1.4" stroke-linejoin="round"/>
+                  <rect x="10" y="16" width="44" height="36" rx="4" stroke="#60a5fa" stroke-width="1.5"/>
+                  <circle cx="32" cy="34" r="10" stroke="#93c5fd" stroke-width="1.2"/>
+                  <circle cx="32" cy="34" r="4" fill="#bfdbfe"/>
+                  <path d="M6 22l8-6v36l-8-6V22z" stroke="#38bdf8" stroke-width="1.4" stroke-linejoin="round"/>
                 </svg>
               </div>
               <p class="dashboard-live-placeholder__title">Camera feed not connected</p>
               <p class="dashboard-live-placeholder__hint">Tap start to enable your camera for this session.</p>
             </div>
             <video id="live-video" autoplay playsinline muted class="hidden"></video>
+          </div>
+          <div class="dashboard-live-cta-row">
+            <button type="button" class="primary-btn dashboard-live-start-btn" id="start-stream-btn">
+              <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="2" y="5" width="14" height="12" rx="1.5" stroke-width="1.8"/>
+                <path d="M16 9l5-2.5v11L16 15" stroke-width="1.8" stroke-linejoin="round"/>
+                <circle cx="9" cy="11" r="3" stroke-width="1.2" stroke-dasharray="2 1.5" class="detect-ring" style="animation-duration:4s"/>
+                <circle cx="9" cy="11" r="1" fill="currentColor" opacity="0.4" class="ai-core-pulse"/>
+              </svg>
+              Start live inspection
+            </button>
+            <button type="button" class="danger-btn dashboard-live-stop-btn hidden" id="stop-stream-btn">Stop inspection</button>
           </div>
         </article>
       </div>

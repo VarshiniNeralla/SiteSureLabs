@@ -5,41 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const placeholder = document.getElementById("video-placeholder");
   const statusDot = document.getElementById("stream-status-dot");
   const statusText = document.getElementById("stream-status-text");
-
-  const mqNavMobile = window.matchMedia("(max-width: 760px)");
-  const navToggle = document.getElementById("nav-toggle");
-  const navLinks = document.getElementById("primary-nav");
-
-  const setNavOpen = (open) => {
-    if (!navToggle || !navLinks) return;
-    navToggle.setAttribute("aria-expanded", open ? "true" : "false");
-    navLinks.classList.toggle("is-open", open);
-  };
-
-  navToggle?.addEventListener("click", () => {
-    const next = navToggle.getAttribute("aria-expanded") !== "true";
-    setNavOpen(next);
-  });
-
-  navLinks?.querySelectorAll("a").forEach((a) => {
-    a.addEventListener("click", () => {
-      if (mqNavMobile.matches) setNavOpen(false);
-    });
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") setNavOpen(false);
-  });
-
-  document.addEventListener("click", (e) => {
-    if (!mqNavMobile.matches || !navLinks?.classList.contains("is-open")) return;
-    const nav = document.getElementById("navbar");
-    if (nav && !nav.contains(e.target)) setNavOpen(false);
-  });
-
-  mqNavMobile.addEventListener("change", () => {
-    if (!mqNavMobile.matches) setNavOpen(false);
-  });
+  const livePanel = document.getElementById("live-panel");
 
   let stream = null;
 
@@ -57,6 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
       startBtn.classList.add("hidden");
       stopBtn.classList.remove("hidden");
       statusDot?.classList.add("online");
+      livePanel?.classList.add("is-live");
       if (statusText) statusText.textContent = "Connected";
     } catch (err) {
       console.error("Error accessing camera: ", err);
@@ -76,6 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
     stopBtn.classList.add("hidden");
     startBtn.classList.remove("hidden");
     statusDot?.classList.remove("online");
+    livePanel?.classList.remove("is-live");
     if (statusText) statusText.textContent = "Not connected";
   });
 });

@@ -20,15 +20,10 @@
       <div class="nav-actions">
         <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="primary-nav"></button>
         <ul class="nav-links" id="primary-nav">
+          <li><a href="#features">Features</a></li>
           <li><a href="#how-it-works">Walkthrough</a></li>
           <li><a href="#outcomes">Deliverables</a></li>
-          <li class="nav-dropdown">
-            <button type="button" class="nav-dropdown__trigger" id="nav-products-trigger" aria-expanded="false" aria-haspopup="true" aria-controls="nav-products-menu">Features</button>
-            <ul class="nav-dropdown__menu" id="nav-products-menu" role="menu" aria-labelledby="nav-products-trigger">
-              <li role="none"><a href="/dashboard/image-analysis/" role="menuitem">Image Analysis</a></li>
-              <li role="none"><a href="/dashboard/live/" role="menuitem">Live Inspection</a></li>
-            </ul>
-          </li>
+          <li><a href="#faq">FAQ</a></li>
           <li><a href="#contact">Contact</a></li>
         </ul>
       </div>
@@ -114,7 +109,62 @@
       </div>
     </section>
 
-    <section id="how-it-works" class="landing-section" aria-labelledby="how-heading">
+    <section id="features" class="landing-section" aria-labelledby="features-heading">
+      <div class="container">
+        <div class="landing-section-header reveal-on-scroll" style="--reveal-i:0">
+          <h2 id="features-heading">Platform features</h2>
+          <p class="landing-section-lead">Image Analysis for still captures and Live Inspection for real-time video—pick the workflow that fits your site.</p>
+        </div>
+        <div class="platform-feature-grid">
+          <article class="platform-feature-card benefit-card benefit-card--reveal reveal-on-scroll" style="--reveal-i:0">
+            <div class="platform-feature-card__icon platform-feature-card__icon--analysis" aria-hidden="true">
+              <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="6" y="10" width="36" height="28" rx="3" stroke="#334155" stroke-width="1.4"/>
+                <rect x="6" y="10" width="36" height="8" rx="3" fill="#eff6ff" stroke="#93c5fd" stroke-width="0.8"/>
+                <circle cx="10.5" cy="14" r="1.2" fill="#f87171"/>
+                <circle cx="15" cy="14" r="1.2" fill="#fbbf24"/>
+                <circle cx="19.5" cy="14" r="1.2" fill="#34d399"/>
+                <rect x="10" y="22" width="28" height="14" rx="2" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+                <path d="M14 32l6-8 4 5 4-6 6 9" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="30" cy="24" r="5" stroke="#dc2626" stroke-width="1.2" stroke-dasharray="2 2" opacity="0.75"/>
+              </svg>
+            </div>
+            <h3 class="platform-feature-card__title">Image Analysis</h3>
+            <p class="platform-feature-card__lede">Upload photos and review AI-highlighted regions on still captures.</p>
+            <ul class="platform-feature-card__list">
+              <li>Drag-and-drop or browse uploads</li>
+              <li>Overlays for defects and regions of interest</li>
+              <li>Ideal for documentation and async review</li>
+            </ul>
+            <a href="/dashboard/image-analysis/" class="platform-feature-card__cta primary-btn">Open Image Analysis</a>
+          </article>
+          <article class="platform-feature-card platform-feature-card--live benefit-card benefit-card--reveal reveal-on-scroll" style="--reveal-i:1">
+            <div class="platform-feature-card__icon platform-feature-card__icon--live" aria-hidden="true">
+              <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="8" y="12" width="32" height="24" rx="3" stroke="#334155" stroke-width="1.4"/>
+                <circle cx="24" cy="24" r="7" stroke="#22c55e" stroke-width="1.8" stroke-dasharray="4 3"/>
+                <circle cx="24" cy="24" r="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
+                <path d="M8 18h32" stroke="#e2e8f0" stroke-width="1"/>
+                <circle cx="14" cy="15" r="2" fill="#ef4444"/>
+                <rect x="19" y="13" width="10" height="5" rx="1" fill="#fecaca" stroke="#ef4444" stroke-width="0.6"/>
+                <path d="M21 15.5h6M21 17h4" stroke="#991b1b" stroke-width="0.6" stroke-linecap="round"/>
+                <path d="M36 30l4 3v-12l-4 3v6z" fill="#2563eb" opacity="0.9"/>
+              </svg>
+            </div>
+            <h3 class="platform-feature-card__title">Live Inspection</h3>
+            <p class="platform-feature-card__lede">Stream from a camera and watch analysis update as the scene moves.</p>
+            <ul class="platform-feature-card__list">
+              <li>Start and stop the live pipeline from the dashboard</li>
+              <li>Connection state shown in the toolbar</li>
+              <li>Built for walkthroughs and on-site checks</li>
+            </ul>
+            <a href="/dashboard/live/" class="platform-feature-card__cta secondary-btn">Open Live Inspection</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="how-it-works" class="landing-section landing-section--alt" aria-labelledby="how-heading">
       <div class="container">
         <div class="landing-section-header reveal-on-scroll" style="--reveal-i:0">
           <h2 id="how-heading">How It Works</h2>
@@ -184,7 +234,7 @@
       </div>
     </section>
 
-    <section id="outcomes" class="landing-section landing-section--alt" aria-labelledby="benefits-heading">
+    <section id="outcomes" class="landing-section" aria-labelledby="benefits-heading">
       <div class="container">
         <div class="landing-section-header reveal-on-scroll" style="--reveal-i:0">
           <h2 id="benefits-heading">What You Get Instantly</h2>
@@ -262,27 +312,72 @@
       </div>
     </section>
 
-    <section class="landing-section" aria-labelledby="preview-heading">
+    <section id="faq" class="landing-section landing-section--alt" aria-labelledby="faq-heading">
       <div class="container">
         <div class="landing-section-header reveal-on-scroll" style="--reveal-i:0">
-          <h2 id="preview-heading">See the difference</h2>
-          <p class="landing-section-lead">Original capture next to AI-highlighted regions—before you connect your own images.</p>
+          <h2 id="faq-heading">Frequently Asked Questions</h2>
+          <p class="landing-section-lead">Everything you need to know about SiteSureLabs and AI-powered construction inspection.</p>
         </div>
-        <div class="preview-showcase glass-panel reveal-on-scroll" style="--reveal-i:1">
-          <div class="preview-showcase__pair">
-            <figure class="preview-showcase__frame">
-              <figcaption class="preview-showcase__label">Original</figcaption>
-              <div class="preview-showcase__placeholder" role="img" aria-label="Placeholder for original site photo"></div>
-            </figure>
-            <figure class="preview-showcase__frame">
-              <figcaption class="preview-showcase__label preview-showcase__label--accent">AI result</figcaption>
-              <div class="preview-showcase__placeholder preview-showcase__placeholder--segmented" role="img" aria-label="Placeholder for segmented analysis result"></div>
-            </figure>
-          </div>
+        <div class="faq-list">
+          <details class="faq-item reveal-on-scroll" style="--reveal-i:0">
+            <summary class="faq-question">
+              <span>What types of defects can SiteSureLabs detect?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="faq-answer">
+              <p>SiteSureLabs can detect a wide range of construction defects including cracks, moisture damage, misalignment, surface irregularities, and structural anomalies. Our AI model is continuously trained on real-world construction data to improve accuracy.</p>
+            </div>
+          </details>
+          <details class="faq-item reveal-on-scroll" style="--reveal-i:1">
+            <summary class="faq-question">
+              <span>How accurate is the AI analysis?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="faq-answer">
+              <p>Our AI achieves high accuracy by leveraging deep learning models trained on thousands of annotated construction images. Results include confidence scores and severity ratings so your team can prioritize effectively.</p>
+            </div>
+          </details>
+          <details class="faq-item reveal-on-scroll" style="--reveal-i:2">
+            <summary class="faq-question">
+              <span>Can I use SiteSureLabs with a live camera feed?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="faq-answer">
+              <p>Yes! Our Live Inspection feature lets you stream directly from a camera and see defect analysis in real time. It's ideal for on-site walkthroughs and progress checks.</p>
+            </div>
+          </details>
+          <details class="faq-item reveal-on-scroll" style="--reveal-i:3">
+            <summary class="faq-question">
+              <span>What image formats are supported?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="faq-answer">
+              <p>SiteSureLabs supports all common image formats including JPEG, PNG, and WebP. Simply drag and drop your site photos into the Image Analysis dashboard to get started.</p>
+            </div>
+          </details>
+          <details class="faq-item reveal-on-scroll" style="--reveal-i:4">
+            <summary class="faq-question">
+              <span>Is my data secure?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="faq-answer">
+              <p>Absolutely. All uploads are processed securely and are not shared with third parties. Your construction data stays private and is used only for generating your inspection results.</p>
+            </div>
+          </details>
+          <details class="faq-item reveal-on-scroll" style="--reveal-i:5">
+            <summary class="faq-question">
+              <span>Can I export inspection reports?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="faq-answer">
+              <p>Yes. After analysis, you can export structured reports with defect locations, severity levels, and AI-generated summaries — perfect for documentation, compliance, and team sharing.</p>
+            </div>
+          </details>
         </div>
       </div>
     </section>
-<!-- 
+
+<!--
     <section class="landing-bottom-cta" aria-labelledby="bottom-cta-heading">
       <div class="container landing-bottom-cta__inner">
         <h2 id="bottom-cta-heading">Ready to analyze your site?</h2>

@@ -1,16 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const goDashboard = () => {
-    window.location.href = "/dashboard/image-analysis/";
+  const scrollToFeatures = () => {
+    const el = document.getElementById("features");
+    if (el) el.scrollIntoView({ behavior: "smooth" });
   };
   document.querySelectorAll(".landing-cta").forEach((btn) => {
-    btn.addEventListener("click", goDashboard);
+    btn.addEventListener("click", scrollToFeatures);
   });
 
   const mqNavMobile = window.matchMedia("(max-width: 760px)");
   const navToggle = document.getElementById("nav-toggle");
   const navLinks = document.getElementById("primary-nav");
-  const productsTrigger = document.getElementById("nav-products-trigger");
-  const productsDropdown = productsTrigger?.closest(".nav-dropdown");
 
   const setNavOpen = (open) => {
     if (!navToggle || !navLinks) return;
@@ -18,62 +17,36 @@ document.addEventListener("DOMContentLoaded", () => {
     navLinks.classList.toggle("is-open", open);
   };
 
-  const setProductsOpen = (open) => {
-    if (!productsTrigger || !productsDropdown) return;
-    productsTrigger.setAttribute("aria-expanded", open ? "true" : "false");
-    productsDropdown.classList.toggle("is-open", open);
-  };
-
   navToggle?.addEventListener("click", () => {
     const next = navToggle.getAttribute("aria-expanded") !== "true";
     setNavOpen(next);
-    if (!next) setProductsOpen(false);
-  });
-
-  productsTrigger?.addEventListener("click", (e) => {
-    if (!mqNavMobile.matches) return;
-    e.preventDefault();
-    const open = !productsDropdown.classList.contains("is-open");
-    setProductsOpen(open);
   });
 
   navLinks?.querySelectorAll("a").forEach((a) => {
     a.addEventListener("click", () => {
-      if (mqNavMobile.matches) {
-        setNavOpen(false);
-        setProductsOpen(false);
-      }
+      if (mqNavMobile.matches) setNavOpen(false);
     });
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      setNavOpen(false);
-      setProductsOpen(false);
-    }
+    if (e.key === "Escape") setNavOpen(false);
   });
 
   document.addEventListener("click", (e) => {
     if (!mqNavMobile.matches || !navLinks?.classList.contains("is-open")) return;
     const nav = document.getElementById("navbar");
-    if (nav && !nav.contains(e.target)) {
-      setNavOpen(false);
-      setProductsOpen(false);
-    }
+    if (nav && !nav.contains(e.target)) setNavOpen(false);
   });
 
   mqNavMobile.addEventListener("change", () => {
-    if (!mqNavMobile.matches) {
-      setNavOpen(false);
-      setProductsOpen(false);
-    }
+    if (!mqNavMobile.matches) setNavOpen(false);
   });
 
   // Hero scroll indicator
   const scrollHint = document.getElementById("hero-scroll-hint");
   if (scrollHint) {
     scrollHint.addEventListener("click", () => {
-      const next = document.getElementById("how-it-works");
+      const next = document.getElementById("features");
       if (next) next.scrollIntoView({ behavior: "smooth" });
     });
 
@@ -120,4 +93,117 @@ document.addEventListener("DOMContentLoaded", () => {
   setupReveal(".m-stepper__step--reveal", 0.15);
   setupReveal(".benefit-card--reveal", 0.12);
   setupReveal(".reveal-on-scroll", 0.1);
+
+  // ── FAQ Accordion ──
+  const faqItems = document.querySelectorAll(".faq-item");
+
+  const closeFaq = (item) => {
+    const answer = item.querySelector(".faq-answer");
+    if (!answer) return Promise.resolve();
+
+    return new Promise((resolve) => {
+      item.classList.remove("is-open");
+      answer.style.height = answer.scrollHeight + "px";
+      // Force reflow so the browser registers the starting height
+      answer.offsetHeight;
+      answer.style.height = "0";
+      answer.style.opacity = "0";
+
+      const onEnd = () => {
+        answer.removeEventListener("transitionend", onEnd);
+        item.removeAttribute("open");
+        resolve();
+      };
+      answer.addEventListener("transitionend", onEnd);
+    });
+  };
+
+  const openFaq = (item) => {
+    const answer = item.querySelector(".faq-answer");
+    if (!answer) return;
+
+    item.setAttribute("open", "");
+    item.classList.add("is-open");
+
+    const targetHeight = answer.scrollHeight;
+    answer.style.height = "0";
+    answer.style.opacity = "0";
+    // Force reflow
+    answer.offsetHeight;
+    answer.style.height = targetHeight + "px";
+    answer.style.opacity = "1";
+
+    const onEnd = () => {
+      answer.removeEventListener("transitionend", onEnd);
+      answer.style.height = "auto";
+    };
+    answer.addEventListener("transitionend", onEnd);
+  };
+
+  faqItems.forEach((item) => {
+    const summary = item.querySelector("summary");
+    if (!summary) return;
+
+    summary.addEventListener("click", (e) => {
+      e.preventDefault();
+
+      const isOpen = item.classList.contains("is-open");
+
+      // Close all other open items
+      const closePromises = [];
+      faqItems.forEach((other) => {
+        if (other !== item && other.classList.contains("is-open")) {
+          closePromises.push(closeFaq(other));
+        }
+      });
+
+      if (isOpen) {
+        // Close the clicked item
+        closeFaq(item);
+      } else {
+        // Open the clicked item
+        openFaq(item);
+      }
+    });
+  });
+
+  // ── Section Spotlight ──
+  const allSections = document.querySelectorAll(
+    ".hero-section, .landing-section, .site-footer"
+  );
+  let spotlightTimer = null;
+
+  const clearSpotlight = () => {
+    clearTimeout(spotlightTimer);
+    document.body.classList.remove("has-spotlight");
+    allSections.forEach((s) => s.classList.remove("is-spotlighted"));
+  };
+
+  const applySpotlight = (targetId) => {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    clearSpotlight();
+
+    // Activate immediately
+    document.body.classList.add("has-spotlight");
+    target.classList.add("is-spotlighted");
+
+    // Auto-clear after 1s
+    spotlightTimer = setTimeout(clearSpotlight, 1000);
+  };
+
+  navLinks?.querySelectorAll("a[href^='#']").forEach((link) => {
+    link.addEventListener("click", () => {
+      const id = link.getAttribute("href").slice(1);
+      if (id) applySpotlight(id);
+    });
+  });
+
+  // Dismiss on click anywhere outside nav
+  document.addEventListener("click", (e) => {
+    if (!document.body.classList.contains("has-spotlight")) return;
+    if (e.target.closest("#navbar")) return;
+    clearSpotlight();
+  });
 });
