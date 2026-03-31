@@ -179,6 +179,27 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       peer.on("call", (call) => {
+        /* Patch SDP on the receiver to allow high bitrate */
+        const pc = call.peerConnection;
+        if (pc) {
+          const origSetLocal = pc.setLocalDescription.bind(pc);
+          pc.setLocalDescription = (desc) => {
+            if (desc && desc.sdp) {
+              desc.sdp = desc.sdp.replace(/b=AS:[^\r\n]+\r?\n/g, "");
+              desc.sdp = desc.sdp.replace(/(m=video [^\r\n]+)/g, "$1\r\nb=AS:15000");
+            }
+            return origSetLocal(desc);
+          };
+          const origSetRemote = pc.setRemoteDescription.bind(pc);
+          pc.setRemoteDescription = (desc) => {
+            if (desc && desc.sdp) {
+              desc.sdp = desc.sdp.replace(/b=AS:[^\r\n]+\r?\n/g, "");
+              desc.sdp = desc.sdp.replace(/(m=video [^\r\n]+)/g, "$1\r\nb=AS:15000");
+            }
+            return origSetRemote(desc);
+          };
+        }
+
         call.answer();
         activeConnection = call;
 

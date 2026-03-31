@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let peer = null;
   let stream = null;
   let activeCall = null;
+  let qualityInterval = null;
 
   const params = new URLSearchParams(window.location.search);
   const hostPeerId = params.get("session");
@@ -54,6 +55,104 @@ document.addEventListener("DOMContentLoaded", () => {
       document.head.appendChild(s);
     });
   }
+
+  /* ── Quality helpers ── */
+
+  /** Prefer H264 codec in SDP for hardware-accelerated, higher quality encoding */
+  function preferH264(sdp) {
+    const lines = sdp.split("\r\n");
+    const mVideoIdx = lines.findIndex((l) => l.startsWith("m=video"));
+    if (mVideoIdx === -1) return sdp;
+
+    /* Collect payload types for H264 */
+    const h264Pts = [];
+    const otherPts = [];
+    for (const line of lines) {
+      const match = line.match(/^a=rtpmap:(\d+)\s+(H264|VP8|VP9|AV1)\//i);
+      if (match) {
+        if (match[2].toUpperCase() === "H264") h264Pts.push(match[1]);
+        else otherPts.push(match[1]);
+      }
+    }
+
+    if (h264Pts.length === 0) return sdp;
+
+    /* Reorder the m=video line: H264 payload types first */
+    const mLine = lines[mVideoIdx];
+    const parts = mLine.split(" ");
+    /* parts: m=video PORT PROTO PT1 PT2 ... */
+    const header = parts.slice(0, 3);
+    const pts = parts.slice(3);
+    const reordered = [
+      ...h264Pts,
+      ...pts.filter((pt) => !h264Pts.includes(pt))
+    ];
+    lines[mVideoIdx] = [...header, ...reordered].join(" ");
+    return lines.join("\r\n");
+  }
+
+  /** Set bitrate caps in SDP */
+  function setSdpBitrate(sdp, kbps) {
+    let out = sdp.replace(/b=AS:[^\r\n]+\r?\n/g, "");
+    out = out.replace(/(m=video [^\r\n]+)/g, `$1\r\nb=AS:${kbps}`);
+    return out;
+  }
+
+  /** Enhance SDP: prefer H264 + set high bitrate */
+  function enhanceSdp(sdp) {
+    return setSdpBitrate(preferH264(sdp), 15000);
+  }
+
+  /** Override setLocalDescription on a PeerConnection to inject enhanced SDP */
+  function patchSdp(pc) {
+    const origSetLocal = pc.setLocalDescription.bind(pc);
+    pc.setLocalDescription = (desc) => {
+      if (desc && desc.sdp) desc.sdp = enhanceSdp(desc.sdp);
+      return origSetLocal(desc);
+    };
+    const origSetRemote = pc.setRemoteDescription.bind(pc);
+    pc.setRemoteDescription = (desc) => {
+      if (desc && desc.sdp) desc.sdp = setSdpBitrate(desc.sdp, 15000);
+      return origSetRemote(desc);
+    };
+  }
+
+  /** Force sender encoding parameters for maximum quality */
+  function applyEncodingParams(pc) {
+    const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+    if (!sender) return;
+    const p = sender.getParameters();
+    if (!p.encodings || p.encodings.length === 0) p.encodings = [{}];
+    p.encodings[0].maxBitrate = 15_000_000;
+    p.encodings[0].maxFramerate = 30;
+    p.encodings[0].scaleResolutionDownBy = 1.0;
+    if (p.degradationPreference !== undefined) {
+      p.degradationPreference = "maintain-resolution";
+    }
+    sender.setParameters(p).catch(() => {});
+  }
+
+  /**
+   * Continuously enforce quality every 3 seconds.
+   * WebRTC's bandwidth estimator constantly tries to lower quality.
+   * We fight back by periodically re-applying our params.
+   */
+  function startQualityEnforcer(call) {
+    stopQualityEnforcer();
+    const enforce = () => {
+      const pc = call?.peerConnection;
+      if (!pc) return;
+      applyEncodingParams(pc);
+    };
+    enforce();
+    qualityInterval = setInterval(enforce, 3000);
+  }
+
+  function stopQualityEnforcer() {
+    if (qualityInterval) { clearInterval(qualityInterval); qualityInterval = null; }
+  }
+
+  /* ── Connection ── */
 
   async function connectToHost() {
     showState("connecting");
@@ -101,48 +200,38 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /** Boost video bitrate on an active peer connection */
-  function boostBitrate(peerConnection) {
-    const senders = peerConnection.getSenders();
-    const videoSender = senders.find((s) => s.track && s.track.kind === "video");
-    if (!videoSender) return;
-
-    const params = videoSender.getParameters();
-    if (!params.encodings || params.encodings.length === 0) {
-      params.encodings = [{}];
-    }
-    params.encodings[0].maxBitrate = 4_000_000;       /* 4 Mbps */
-    params.encodings[0].maxFramerate = 30;
-    params.degradationPreference = "maintain-resolution";
-    videoSender.setParameters(params).catch(() => {});
-  }
-
   async function startStreaming() {
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 }
+          width: { ideal: 3840, min: 1920 },
+          height: { ideal: 2160, min: 1080 },
+          frameRate: { ideal: 30, min: 24 }
         },
         audio: false
       });
 
-      /* Hint the track to prioritize detail over motion */
+      /* Mark tracks for detail priority */
       stream.getVideoTracks().forEach((t) => {
         if ("contentHint" in t) t.contentHint = "detail";
       });
+
+      /* Log actual resolution obtained */
+      const settings = stream.getVideoTracks()[0]?.getSettings();
+      console.log(`Camera resolution: ${settings?.width}x${settings?.height} @ ${settings?.frameRate}fps`);
 
       video.srcObject = stream;
       showState("streaming");
 
       activeCall = peer.call(hostPeerId, stream);
 
-      /* Boost bitrate once the underlying RTCPeerConnection is available */
-      setTimeout(() => {
-        if (activeCall?.peerConnection) boostBitrate(activeCall.peerConnection);
-      }, 1500);
+      /* Patch SDP on the peer connection */
+      const pc = activeCall.peerConnection;
+      if (pc) patchSdp(pc);
+
+      /* Start continuously enforcing quality params */
+      startQualityEnforcer(activeCall);
 
       activeCall.on("close", () => {
         stopStreaming();
@@ -156,10 +245,29 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     } catch (err) {
       console.error("Camera access error:", err);
-      if (err.name === "NotAllowedError") {
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
         showState("error", "Camera permission was denied. Please allow camera access in your browser settings and try again.");
       } else if (err.name === "NotFoundError") {
         showState("error", "No camera found on this device.");
+      } else if (err.name === "OverconstrainedError") {
+        /* Fallback: retry with looser constraints */
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+            audio: false
+          });
+          stream.getVideoTracks().forEach((t) => { if ("contentHint" in t) t.contentHint = "detail"; });
+          video.srcObject = stream;
+          showState("streaming");
+          activeCall = peer.call(hostPeerId, stream);
+          const pc = activeCall.peerConnection;
+          if (pc) patchSdp(pc);
+          startQualityEnforcer(activeCall);
+          activeCall.on("close", () => { stopStreaming(); showState("error", "Session ended by host."); });
+          activeCall.on("error", () => { stopStreaming(); showState("error", "Streaming error."); });
+        } catch (e2) {
+          showState("error", "Could not access camera. Please check your device permissions.");
+        }
       } else {
         showState("error", "Could not access camera. Please check your device permissions.");
       }
@@ -167,6 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function stopStreaming() {
+    stopQualityEnforcer();
     if (stream) {
       stream.getTracks().forEach((t) => t.stop());
       stream = null;
