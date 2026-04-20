@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assistant-widget.css">
 </head>
 <body class="landing-page">
   <nav id="navbar" class="glass-nav" aria-label="Primary">
@@ -22,7 +23,16 @@
         <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="primary-nav"></button>
         <ul class="nav-links" id="primary-nav">
           <li><a href="#hero">Home</a></li>
-          <li><a href="#features">Features</a></li>
+          <li class="nav-dropdown">
+            <button type="button" class="nav-dropdown__trigger" id="nav-features-trigger" aria-expanded="false" aria-haspopup="true" aria-controls="nav-features-menu">
+              Features
+            </button>
+            <ul id="nav-features-menu" class="nav-dropdown__menu" role="menu" aria-labelledby="nav-features-trigger">
+              <li role="none"><a href="/dashboard/ai-analysis/" role="menuitem">AI Analysis</a></li>
+              <li role="none"><a href="/dashboard/image-analysis/" role="menuitem">Image Analysis</a></li>
+              <li role="none"><a href="/dashboard/live/" role="menuitem">Live Inspection</a></li>
+            </ul>
+          </li>
           <li><a href="#how-it-works">Walkthrough</a></li>
           <li><a href="#outcomes">Deliverables</a></li>
           <li><a href="#faq">FAQ</a></li>
@@ -144,7 +154,7 @@
               <span class="fdemo__arrow" aria-hidden="true">&rarr;</span>
               <div class="fdemo__step"><span class="fdemo__step-num">3</span><span>Engineer brief</span></div>
             </div>
-            <a href="/dashboard/ai-analysis/" class="fdemo__cta" data-tooltip="Open AI Analysis">Try AI Analysis</a>
+            <a href="/dashboard/ai-analysis/" class="fdemo__cta fdemo__cta--violet" data-tooltip="Open AI Analysis">Try AI Analysis</a>
           </div>
 
           <!-- ═══ FEATURE 2: Image Analysis ═══ -->

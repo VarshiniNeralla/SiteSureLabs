@@ -29,6 +29,9 @@ class Settings:
     vllm_temperature: float
     vllm_max_tokens: int
     http_timeout_s: float
+    max_image_upload_mb: int
+    inspection_chat_temperature: float
+    landing_assistant_temperature: float
 
     def chat_completions_url(self) -> str:
         base = self.vllm_base_url.rstrip("/")
@@ -44,8 +47,18 @@ class Settings:
             vllm_model=os.getenv("VLLM_MODEL", "gemma4-31b"),
             vllm_api_key=os.getenv("VLLM_API_KEY", ""),
             vllm_temperature=float(os.getenv("VLLM_TEMPERATURE", "0.3")),
-            vllm_max_tokens=int(os.getenv("VLLM_MAX_TOKENS", "10000")),
+            vllm_max_tokens=int(os.getenv("VLLM_MAX_TOKENS", "20000")),
             http_timeout_s=float(os.getenv("VLLM_HTTP_TIMEOUT_S", "300")),
+            max_image_upload_mb=max(
+                1,
+                min(512, int(os.getenv("INSPECTION_MAX_IMAGE_MB", "20"))),
+            ),
+            inspection_chat_temperature=float(
+                os.getenv("INSPECTION_CHAT_TEMPERATURE", "0.35"),
+            ),
+            landing_assistant_temperature=float(
+                os.getenv("LANDING_ASSISTANT_TEMPERATURE", "0.42"),
+            ),
         )
 
 

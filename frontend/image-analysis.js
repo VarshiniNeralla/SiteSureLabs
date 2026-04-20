@@ -1,3 +1,5 @@
+import { isHeicLike, normalizeImageFileForUpload } from "./heic-utils.js";
+
 document.addEventListener("DOMContentLoaded", () => {
   const stageUpload = document.getElementById("stage-upload");
   const stageReady = document.getElementById("stage-ready");
@@ -160,31 +162,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  const loadFile = (file) => {
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const url = ev.target?.result;
-      if (typeof url === "string") showReady(url);
-    };
-    reader.readAsDataURL(file);
+  const loadFile = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/") && !isHeicLike(file)) return;
+    try {
+      const normalized = await normalizeImageFileForUpload(file);
+      if (!normalized) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const url = ev.target?.result;
+        if (typeof url === "string") showReady(url);
+      };
+      reader.readAsDataURL(normalized);
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : String(e));
+    }
   };
 
   uploadZone?.addEventListener("drop", (e) => {
     dragDepth = 0;
     setDragOver(false);
     const [file] = e.dataTransfer.files || [];
-    loadFile(file);
+    void loadFile(file);
   });
 
   imageInput?.addEventListener("change", (e) => {
     const [file] = e.target.files || [];
-    loadFile(file);
+    void loadFile(file);
   });
 
   cameraInput?.addEventListener("change", (e) => {
     const [file] = e.target.files || [];
-    loadFile(file);
+    void loadFile(file);
   });
 
   runAnalysisBtn?.addEventListener("click", () => {

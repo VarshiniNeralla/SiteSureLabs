@@ -1,27 +1,19 @@
 /**
- * AI Analysis: upload → streamed PMO report (vLLM via Defectra API).
- * Dev: Vite proxies /api, or set VITE_API_BASE_URL.
+ * AI Analysis — ChatGPT-style thread + fixed composer (/api/chat).
+ * Assistant replies stream from POST /api/chat/message/stream (SSE).
  */
 
 import { marked } from "marked";
+import { jsPDF } from "jspdf";
+
+import { isHeicLike, normalizeImageFileForUpload } from "./heic-utils.js";
 
 marked.setOptions({ breaks: true, gfm: true });
 
-/** Markdown while tokens arrive: close a trailing unpaired `**` so bold renders instead of literal asterisks. */
-function parseMarkdownStreaming(raw) {
-  const s = raw ?? "";
-  if (s.length === 0) return "";
-  let fix = s;
-  const delims = s.match(/\*\*/g);
-  if (delims && delims.length % 2 === 1) {
-    fix = `${s}**`;
-  }
-  try {
-    return marked.parse(fix);
-  } catch {
-    return "";
-  }
-}
+const _scrollPxRaw = import.meta.env.VITE_CHAT_SCROLL_NEAR_BOTTOM_PX;
+const _scrollPxParsed = Number.parseInt(String(_scrollPxRaw ?? ""), 10);
+const SCROLL_NEAR_BOTTOM_PX =
+  Number.isFinite(_scrollPxParsed) && _scrollPxParsed > 0 ? _scrollPxParsed : 100;
 
 function apiBase() {
   const base = import.meta.env.VITE_API_BASE_URL;
@@ -31,8 +23,14 @@ function apiBase() {
   return "";
 }
 
-function analyzeStreamUrl() {
-  return `${apiBase()}/api/ai-analysis/analyze-stream`;
+function chatSessionUrl() {
+  return `${apiBase()}/api/chat/session`;
+}
+function chatMessageStreamUrl() {
+  return `${apiBase()}/api/chat/message/stream`;
+}
+function chatDeleteUrl(id) {
+  return `${apiBase()}/api/chat/session/${encodeURIComponent(id)}`;
 }
 
 function isLikelyNetworkFailure(err) {
@@ -42,573 +40,1171 @@ function isLikelyNetworkFailure(err) {
       m.includes("fetch") ||
       m.includes("failed to fetch") ||
       m.includes("load failed") ||
-      m.includes("networkerror") ||
-      m.includes("network request failed")
+      m.includes("networkerror")
     );
   }
   return err instanceof DOMException && err.name === "AbortError";
 }
 
-function parseSseDataLine(line) {
-  const t = line.trim();
-  if (!t.startsWith("data:")) return null;
-  const payload = t.slice(5).trimStart();
-  if (payload === "[DONE]") return { done: true };
+async function parseErrorDetail(res) {
   try {
-    return { json: JSON.parse(payload) };
+    const j = await res.json();
+    if (typeof j.detail === "string") return j.detail;
+    if (Array.isArray(j.detail)) {
+      return j.detail.map((x) => x.msg || JSON.stringify(x)).join("; ");
+    }
+    return JSON.stringify(j.detail ?? j);
   } catch {
-    return null;
+    return await res.text();
   }
 }
 
-const AI_SNAPSHOT_IDB = "defectra-ai-analysis";
-const AI_SNAPSHOT_STORE = "snapshots";
-const AI_SNAPSHOT_KEY = "current";
-const AI_SNAPSHOT_IDB_VER = 1;
+function el(html) {
+  const t = document.createElement("template");
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
 
-function openAiSnapshotDb() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(AI_SNAPSHOT_IDB, AI_SNAPSHOT_IDB_VER);
-    req.onerror = () => reject(req.error);
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(AI_SNAPSHOT_STORE)) {
-        db.createObjectStore(AI_SNAPSHOT_STORE);
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Only allow stored data URLs we render as <img src> (mitigates tampered localStorage). */
+function isSafeStoredImageDataUrl(s) {
+  return (
+    typeof s === "string" &&
+    s.length > 32 &&
+    /^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(s)
+  );
+}
+
+/** Resize to fit in localStorage; keeps JPEG for smaller payloads. */
+function compressImageDataUrl(dataUrl, maxSide = 1280, quality = 0.82) {
+  return new Promise((resolve) => {
+    if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:image")) {
+      resolve("");
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (!w || !h) {
+          resolve("");
+          return;
+        }
+        const scale = Math.min(1, maxSide / Math.max(w, h));
+        const cw = Math.round(w * scale);
+        const ch = Math.round(h * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = cw;
+        canvas.height = ch;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve("");
+          return;
+        }
+        ctx.drawImage(img, 0, 0, cw, ch);
+        const out = canvas.toDataURL("image/jpeg", quality);
+        resolve(out && out.length > 0 ? out : dataUrl);
+      } catch {
+        resolve(dataUrl);
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    img.onerror = () => resolve("");
+    img.src = dataUrl;
   });
 }
 
-async function saveAiSnapshot(payload) {
-  try {
-    const db = await openAiSnapshotDb();
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(AI_SNAPSHOT_STORE, "readwrite");
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-      tx.objectStore(AI_SNAPSHOT_STORE).put(payload, AI_SNAPSHOT_KEY);
-    });
-    db.close();
-  } catch (e) {
-    console.warn("saveAiSnapshot", e);
-  }
-}
-
-async function loadAiSnapshot() {
-  try {
-    const db = await openAiSnapshotDb();
-    const data = await new Promise((resolve, reject) => {
-      const tx = db.transaction(AI_SNAPSHOT_STORE, "readonly");
-      const rq = tx.objectStore(AI_SNAPSHOT_STORE).get(AI_SNAPSHOT_KEY);
-      rq.onsuccess = () => resolve(rq.result ?? null);
-      rq.onerror = () => reject(rq.error);
-    });
-    db.close();
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-async function clearAiSnapshot() {
-  try {
-    const db = await openAiSnapshotDb();
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(AI_SNAPSHOT_STORE, "readwrite");
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-      tx.objectStore(AI_SNAPSHOT_STORE).delete(AI_SNAPSHOT_KEY);
-    });
-    db.close();
-  } catch (e) {
-    console.warn("clearAiSnapshot", e);
-  }
-}
-
 document.addEventListener("DOMContentLoaded", () => {
-  const aiSection = document.getElementById("ai-analysis");
-  const mainDash = document.querySelector("main.dashboard-main--ai-analysis");
-  const liveDock = document.getElementById("ai-analysis-live-dock");
-  const stageUpload = document.getElementById("stage-upload");
-  const stageReady = document.getElementById("stage-ready");
-  const stageLive = document.getElementById("stage-live");
-  const stageResults = document.getElementById("stage-results");
-  const uploadZone = document.getElementById("upload-zone");
-  const imageInput = document.getElementById("image-input");
-  const readyPreview = document.getElementById("ready-preview");
-  const processingOverlay = document.getElementById("processing-overlay");
-  const analysisError = document.getElementById("analysis-error");
+  const shell = document.getElementById("cht-shell");
+  const dockEl = shell?.querySelector(".cht-dock");
+  const topbarActionsEl = shell?.querySelector(".cht-topbar__actions");
+  const emptyState = document.getElementById("gem-empty-state");
+  const messagesEl = document.getElementById("gem-messages");
   const workspaceError = document.getElementById("workspace-error");
-  const runAnalysisBtn = document.getElementById("run-analysis-btn");
-  const cancelReadyBtn = document.getElementById("cancel-ready-btn");
-  const analyseMoreBtn = document.getElementById("analyse-more-btn");
-  const liveStagePreview = document.getElementById("live-stage-preview");
-  const liveStreamReport = document.getElementById("live-stream-report");
-  const liveDoneBtn = document.getElementById("live-done-btn");
+  const sendBtn = document.getElementById("gem-send-btn");
+  const attachBtn = document.getElementById("gem-attach-btn");
+  const fileInput = document.getElementById("gem-file-input");
+  const inputEl = document.getElementById("gem-input");
+  const uploadCard = document.getElementById("gem-upload-card");
+  const pendingWrap = document.getElementById("gem-pending");
+  const pendingImg = document.getElementById("gem-pending-img");
+  const pendingRemove = document.getElementById("gem-pending-remove");
+  const downloadBtn = document.getElementById("gem-download-btn");
+  const guidedState = document.getElementById("gem-guided-state");
+  const guidedImage = document.getElementById("gem-guided-img");
+  const guidedStatus = document.getElementById("gem-guided-status");
+  const guidedTitle = document.getElementById("gem-guided-title");
+  const guidedLoading = document.getElementById("gem-guided-loading");
+  const guidedFindings = document.getElementById("gem-guided-findings");
+  const guidedChipHost = document.getElementById("gem-guided-chips");
 
-  let currentFile = null;
-  let currentDataUrl = "";
-  let isStreaming = false;
-  let dockSyncRaf = 0;
-  let dockLayoutWatch = null;
-  let streamReportRaf = null;
+  let sessionId = "";
+  let hasAnalysis = false;
+  let pendingFile = null;
+  let pendingDataUrl = "";
+  let transcript = [];
+  let busy = false;
+  let activeController = null;
+  let stopRequested = false;
+  let guidedTimer = null;
+  let guidedStageComplete = false;
 
-  const clearLiveDockLayout = () => {
-    if (!liveDock) return;
-    liveDock.classList.remove("ai-live-dock--js-layout");
-    liveDock.style.removeProperty("top");
-    liveDock.style.removeProperty("height");
-    liveDock.style.removeProperty("right");
-    liveDock.style.removeProperty("width");
-    liveDock.style.removeProperty("bottom");
-    liveDock.style.removeProperty("max-height");
-    mainDash?.style.removeProperty("padding-right");
-  };
-
-  const syncLiveDockToShell = () => {
-    if (!liveDock || liveDock.classList.contains("hidden")) return;
-    if (!window.matchMedia("(min-width: 901px)").matches) {
-      clearLiveDockLayout();
-      return;
-    }
-    const shell = document.querySelector(".dashboard-analysis-shell");
-    if (!shell) return;
-    const r = shell.getBoundingClientRect();
-    const gutter = Math.max(12, Math.round(r.left));
-    const gap = 18;
-    const maxBySpace = window.innerWidth - r.right - gap - gutter;
-    const preferred = Math.round(Math.min(960, Math.max(360, window.innerWidth * 0.46)));
-    const w = Math.max(280, Math.min(preferred, maxBySpace));
-
-    liveDock.style.top = `${Math.round(r.top)}px`;
-    liveDock.style.height = `${Math.round(r.height)}px`;
-    liveDock.style.right = `${gutter}px`;
-    liveDock.style.bottom = "auto";
-    liveDock.style.width = `${w}px`;
-    liveDock.style.maxHeight = "none";
-    liveDock.classList.add("ai-live-dock--js-layout");
-
-    const pad = w + gap + gutter;
-    mainDash?.style.setProperty("padding-right", `${Math.round(pad)}px`);
-  };
-
-  const scheduleDockSync = () => {
-    if (!liveDock || liveDock.classList.contains("hidden")) return;
-    cancelAnimationFrame(dockSyncRaf);
-    dockSyncRaf = requestAnimationFrame(() => {
-      dockSyncRaf = 0;
-      syncLiveDockToShell();
-    });
-  };
-
-  const stopDockLayoutWatch = () => {
-    if (dockLayoutWatch) {
-      dockLayoutWatch.ro?.disconnect();
-      dockLayoutWatch.abort();
-      dockLayoutWatch = null;
-    }
-    cancelAnimationFrame(dockSyncRaf);
-    dockSyncRaf = 0;
-  };
-
-  const startDockLayoutWatch = () => {
-    stopDockLayoutWatch();
-    if (!window.matchMedia("(min-width: 901px)").matches) return;
-    const shell = document.querySelector(".dashboard-analysis-shell");
-    if (!shell || !liveDock) return;
-
-    const ac = new AbortController();
-    const { signal } = ac;
-    window.addEventListener("scroll", scheduleDockSync, { passive: true, signal });
-    window.addEventListener("resize", scheduleDockSync, { signal });
-
-    let ro;
-    if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(() => scheduleDockSync());
-      ro.observe(shell);
-    }
-    dockLayoutWatch = { abort: () => ac.abort(), ro };
-
-    scheduleDockSync();
-  };
-
-  const hideLiveDock = () => {
-    stopDockLayoutWatch();
-    clearLiveDockLayout();
-    liveDock?.classList.add("hidden");
-    liveDock?.setAttribute("hidden", "");
-    liveDock?.setAttribute("aria-hidden", "true");
-    aiSection?.classList.remove("dashboard-analysis--live-dock-open");
-  };
-
-  const showLiveDock = () => {
-    liveDock?.classList.remove("hidden");
-    liveDock?.removeAttribute("hidden");
-    liveDock?.setAttribute("aria-hidden", "false");
-    aiSection?.classList.add("dashboard-analysis--live-dock-open");
-  };
-
-  const showUpload = () => {
-    void clearAiSnapshot();
-    currentFile = null;
-    currentDataUrl = "";
-    isStreaming = false;
-    if (imageInput) imageInput.value = "";
-    hideError();
-    processingOverlay?.classList.add("hidden");
-    processingOverlay?.setAttribute("hidden", "");
-    stageUpload?.classList.remove("hidden");
-    stageUpload?.removeAttribute("hidden");
-    stageReady?.classList.add("hidden");
-    stageReady?.setAttribute("hidden", "");
-    stageLive?.classList.add("hidden");
-    stageLive?.setAttribute("hidden", "");
-    stageResults?.classList.add("hidden");
-    stageResults?.setAttribute("hidden", "");
-    hideLiveDock();
-    if (runAnalysisBtn) runAnalysisBtn.disabled = false;
-    if (liveStreamReport) {
-      liveStreamReport.textContent = "";
-      liveStreamReport.innerHTML = "";
-      liveStreamReport.classList.remove("ai-live-stream-report--plain");
-      liveStreamReport.setAttribute("aria-busy", "false");
-    }
-  };
-
-  const showReady = (file, dataUrl) => {
-    currentFile = file;
-    currentDataUrl = dataUrl;
-    if (readyPreview) {
-      readyPreview.src = dataUrl;
-      readyPreview.alt = "Selected image preview";
-    }
-    processingOverlay?.classList.add("hidden");
-    processingOverlay?.setAttribute("hidden", "");
-    stageUpload?.classList.add("hidden");
-    stageUpload?.setAttribute("hidden", "");
-    stageReady?.classList.remove("hidden");
-    stageReady?.removeAttribute("hidden");
-    stageLive?.classList.add("hidden");
-    stageLive?.setAttribute("hidden", "");
-    stageResults?.classList.add("hidden");
-    stageResults?.setAttribute("hidden", "");
-    hideLiveDock();
-    void saveAiSnapshot({
-      markdown: "",
-      dataUrl,
-      fileName: file?.name || "photo.jpg",
-      fileType: file?.type || "image/jpeg",
-    });
-  };
-
-  const hideError = () => {
-    for (const el of [analysisError, workspaceError]) {
-      if (!el) continue;
-      el.textContent = "";
-      el.classList.add("hidden");
-      el.setAttribute("hidden", "");
-    }
-  };
-
-  const showWorkspaceError = (msg) => {
+  const showError = (msg) => {
     if (!workspaceError) return;
     workspaceError.textContent = msg;
     workspaceError.classList.remove("hidden");
     workspaceError.removeAttribute("hidden");
   };
-
-  const showLiveStage = () => {
-    if (liveStagePreview && currentDataUrl) {
-      liveStagePreview.src = currentDataUrl;
-      liveStagePreview.alt = "Site photo under PMO review";
-      liveStagePreview.onload = () => scheduleDockSync();
-    }
-    if (liveStreamReport) {
-      liveStreamReport.textContent = "";
-      liveStreamReport.innerHTML = "";
-      liveStreamReport.classList.remove("ai-live-stream-report--plain");
-      liveStreamReport.setAttribute("aria-busy", "true");
-    }
-    stageUpload?.classList.add("hidden");
-    stageUpload?.setAttribute("hidden", "");
-    stageReady?.classList.add("hidden");
-    stageReady?.setAttribute("hidden", "");
-    stageLive?.classList.remove("hidden");
-    stageLive?.removeAttribute("hidden");
-    stageResults?.classList.add("hidden");
-    stageResults?.setAttribute("hidden", "");
-    showLiveDock();
-    startDockLayoutWatch();
-    requestAnimationFrame(() => scheduleDockSync());
-    window.setTimeout(() => scheduleDockSync(), 220);
+  const hideError = () => {
+    if (!workspaceError) return;
+    workspaceError.textContent = "";
+    workspaceError.classList.add("hidden");
+    workspaceError.setAttribute("hidden", "");
   };
 
-  const parseErrorDetail = async (res) => {
-    try {
-      const j = await res.json();
-      if (typeof j.detail === "string") return j.detail;
-      if (Array.isArray(j.detail)) {
-        return j.detail.map((x) => x.msg || JSON.stringify(x)).join("; ");
-      }
-      return JSON.stringify(j.detail ?? j);
-    } catch {
-      return await res.text();
+  const SEND_ICON = `
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 19V5M5 12l7-7 7 7"/>
+    </svg>`;
+
+  const STOP_ICON = `
+    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+      <rect x="0" y="0" width="12" height="12" rx="2" fill="currentColor"/>
+    </svg>`;
+
+  const refreshSendButton = () => {
+    if (!sendBtn) return;
+    sendBtn.disabled = false;
+    if (busy) {
+      sendBtn.classList.add("is-stop");
+      sendBtn.setAttribute("aria-label", "Stop generating");
+      sendBtn.title = "Stop";
+      sendBtn.innerHTML = STOP_ICON;
+      return;
     }
+    sendBtn.classList.remove("is-stop");
+    sendBtn.setAttribute("aria-label", "Send");
+    sendBtn.title = "Send";
+    sendBtn.innerHTML = SEND_ICON;
   };
 
-  const finalizeStreamReport = (accumulated) => {
-    if (streamReportRaf != null) {
-      cancelAnimationFrame(streamReportRaf);
-      streamReportRaf = null;
-    }
-    if (!liveStreamReport) return;
-    liveStreamReport.classList.remove("ai-live-stream-report--plain");
-    liveStreamReport.innerHTML = accumulated
-      ? marked.parse(accumulated)
-      : "<p>(No text returned.)</p>";
-    liveStreamReport.setAttribute("aria-busy", "false");
+  /**
+   * Sticky-bottom auto-scroll (vanilla DOM — no React “state”; plain refs/flags).
+   *
+   * Two signals:
+   * - `isNearBottom` — geometry: within SCROLL_NEAR_BOTTOM_PX of the bottom.
+   * - `userHasScrolledUp` — intent: any user-driven scroll with scrollTop decreasing (wheel/trackpad up).
+   *
+   * Auto-follow while streaming only if near bottom AND user has not scrolled up since last “pinned”
+   * (`captureStickyBottom` = `!userHasScrolledUp && isNearBottom` before DOM grows).
+   * Programmatic scroll sets `programmaticScroll` so we do not treat our own scroll as “user scrolled down”.
+   * Resuming: when the user scrolls back into the bottom band, `userHasScrolledUp` clears.
+   */
+  const scrollWrap = document.getElementById("gem-messages-wrap");
+
+  const getScrollWrap = () => scrollWrap || document.getElementById("gem-messages-wrap");
+
+  const distanceFromBottom = (wrap) => {
+    if (!wrap) return Number.POSITIVE_INFINITY;
+    return wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight;
   };
 
-  const runAnalysis = async () => {
-    if (!currentFile || isStreaming) return;
-    hideError();
-    showLiveStage();
-    isStreaming = true;
-    if (runAnalysisBtn) runAnalysisBtn.disabled = true;
-    const form = new FormData();
-    form.append("file", currentFile, currentFile.name);
+  const isNearBottom = (wrap, threshold = SCROLL_NEAR_BOTTOM_PX) =>
+    !!wrap && distanceFromBottom(wrap) <= threshold;
 
-    let accumulated = "";
+  let isUserNearBottom = true;
+  /** Any upward user scroll disables follow-until-bottom; cleared when user re-enters bottom band. */
+  let userHasScrolledUp = false;
+  /** Last scrollTop for direction detection (user events only). */
+  let lastScrollTop = 0;
+  /** True while we set scrollTop programmatically (avoid mis-classifying as user scroll-down). */
+  let programmaticScroll = false;
 
-    try {
-      const res = await fetch(analyzeStreamUrl(), {
-        method: "POST",
-        body: form,
+  if (scrollWrap) {
+    lastScrollTop = scrollWrap.scrollTop;
+    scrollWrap.addEventListener(
+      "scroll",
+      () => {
+        const wrap = scrollWrap;
+        if (!wrap) return;
+        if (programmaticScroll) {
+          lastScrollTop = wrap.scrollTop;
+          programmaticScroll = false;
+          isUserNearBottom = isNearBottom(wrap);
+          if (isNearBottom(wrap)) {
+            userHasScrolledUp = false;
+          }
+          return;
+        }
+        const st = wrap.scrollTop;
+        if (st < lastScrollTop - 0.5) {
+          userHasScrolledUp = true;
+        }
+        lastScrollTop = st;
+        isUserNearBottom = isNearBottom(wrap);
+        if (isNearBottom(wrap)) {
+          userHasScrolledUp = false;
+        }
+      },
+      { passive: true },
+    );
+    isUserNearBottom = isNearBottom(scrollWrap);
+  }
+
+  const captureStickyBottom = () => {
+    const wrap = getScrollWrap();
+    if (!wrap || userHasScrolledUp) return false;
+    return isNearBottom(wrap);
+  };
+
+  const applyStickyScrollAfter = (wasNearBottom) => {
+    if (!wasNearBottom) return;
+    const wrap = getScrollWrap();
+    if (!wrap) return;
+    programmaticScroll = true;
+    requestAnimationFrame(() => {
+      wrap.scrollTop = wrap.scrollHeight;
+      lastScrollTop = wrap.scrollTop;
+      isUserNearBottom = true;
+      queueMicrotask(() => {
+        if (programmaticScroll) programmaticScroll = false;
       });
+    });
+  };
 
-      if (!res.ok) {
-        const detail = await parseErrorDetail(res);
-        isStreaming = false;
-        if (runAnalysisBtn) runAnalysisBtn.disabled = false;
-        stageLive?.classList.add("hidden");
-        stageLive?.setAttribute("hidden", "");
-        hideLiveDock();
-        stageReady?.classList.remove("hidden");
-        stageReady?.removeAttribute("hidden");
-        showWorkspaceError(
-          detail ||
-            `Request failed (${res.status}). Ensure the Defectra API is on port 8000 and VLLM_BASE_URL is set.`,
-        );
-        return;
+  /** force=true: new chat / session restore — resets follow intent and jumps. */
+  const scrollDown = (force = false) => {
+    const wrap = getScrollWrap();
+    if (!wrap) return;
+    if (!force) {
+      if (userHasScrolledUp || !isNearBottom(wrap)) return;
+    } else {
+      userHasScrolledUp = false;
+    }
+    programmaticScroll = true;
+    requestAnimationFrame(() => {
+      wrap.scrollTop = wrap.scrollHeight;
+      lastScrollTop = wrap.scrollTop;
+      isUserNearBottom = true;
+      queueMicrotask(() => {
+        if (programmaticScroll) programmaticScroll = false;
+      });
+    });
+  };
+
+  /** Keep textarea compact at start, then grow to 5 lines max. */
+  const COMPOSER_LINES_MIN = 1;
+  const COMPOSER_LINES_MAX = 5;
+  const syncComposerHeight = () => {
+    if (!inputEl) return;
+    const cs = getComputedStyle(inputEl);
+    let linePx = parseFloat(cs.lineHeight);
+    if (Number.isNaN(linePx) || linePx <= 0) {
+      const fs = parseFloat(cs.fontSize) || 16;
+      linePx = fs * 1.5;
+    }
+    const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    const minPx = linePx * COMPOSER_LINES_MIN + padY;
+    const maxPx = linePx * COMPOSER_LINES_MAX + padY;
+    inputEl.style.height = "auto";
+    const sh = inputEl.scrollHeight;
+    inputEl.style.height = `${Math.min(maxPx, Math.max(minPx, sh))}px`;
+  };
+
+  const clearGuidedTimer = () => {
+    if (guidedTimer) {
+      clearTimeout(guidedTimer);
+      guidedTimer = null;
+    }
+  };
+
+  const setGuidedLoadingUi = () => {
+    guidedStageComplete = false;
+    guidedStatus && (guidedStatus.innerHTML = "Analyzing image<span class=\"cht-guided__dots\" aria-hidden=\"true\"><span></span><span></span><span></span></span>");
+    if (guidedTitle) guidedTitle.textContent = "Analyzing image...";
+    if (guidedLoading) {
+      guidedLoading.textContent = "Building preliminary inspection context from the uploaded photo.";
+      guidedLoading.classList.remove("hidden");
+      guidedLoading.removeAttribute("hidden");
+    }
+    if (guidedFindings) {
+      guidedFindings.classList.add("hidden");
+      guidedFindings.setAttribute("hidden", "");
+    }
+  };
+
+  const setGuidedCompleteUi = () => {
+    guidedStageComplete = true;
+    if (guidedStatus) guidedStatus.textContent = "AI ready for inspection";
+    if (guidedTitle) guidedTitle.textContent = "Preliminary Findings";
+    if (guidedLoading) {
+      guidedLoading.classList.add("hidden");
+      guidedLoading.setAttribute("hidden", "");
+    }
+    if (guidedFindings) {
+      guidedFindings.classList.remove("hidden");
+      guidedFindings.removeAttribute("hidden");
+    }
+  };
+
+  const beginGuidedAnalysisPreview = () => {
+    clearGuidedTimer();
+    setGuidedLoadingUi();
+    guidedTimer = setTimeout(() => {
+      setGuidedCompleteUi();
+      guidedTimer = null;
+    }, 1400);
+  };
+
+  /** Past upload gate: thread messages exist or user has attached an image (composer visible). */
+  function syncShellLayout() {
+    const hasMessages = messagesEl && messagesEl.children.length > 0;
+    const hasPendingImage = Boolean(pendingFile || pendingDataUrl);
+    const pastGate = hasMessages || hasPendingImage;
+    const showGuided = hasPendingImage && !hasMessages;
+    const awaiting = !pastGate;
+    shell?.classList.toggle("cht-shell--chatted", pastGate);
+    shell?.classList.toggle("cht-shell--awaiting-upload", awaiting);
+    if (emptyState) {
+      emptyState.classList.toggle("hidden", pastGate);
+      if (pastGate) emptyState.setAttribute("hidden", "");
+      else emptyState.removeAttribute("hidden");
+    }
+    if (dockEl) {
+      if (awaiting) dockEl.setAttribute("inert", "");
+      else dockEl.removeAttribute("inert");
+    }
+    if (topbarActionsEl) {
+      if (awaiting) topbarActionsEl.setAttribute("inert", "");
+      else topbarActionsEl.removeAttribute("inert");
+    }
+
+    if (guidedState) {
+      guidedState.classList.toggle("hidden", !showGuided);
+      guidedState.classList.toggle("is-visible", showGuided);
+      if (showGuided) guidedState.removeAttribute("hidden");
+      else guidedState.setAttribute("hidden", "");
+    }
+
+    if (showGuided && guidedImage && pendingDataUrl) {
+      guidedImage.src = pendingDataUrl;
+      if (!guidedStageComplete) beginGuidedAnalysisPreview();
+    } else {
+      clearGuidedTimer();
+      if (!hasPendingImage) {
+        setGuidedLoadingUi();
+        guidedImage && (guidedImage.src = "");
       }
+    }
+  }
 
-      if (!res.body) {
-        throw new Error("No response body from server.");
+  const appendMessage = (role, innerHtml) => {
+    const letter = role === "user" ? "Y" : "AI";
+    const label = role === "user" ? "You" : "AI";
+    const row = el(`
+      <div class="insp-msg insp-msg--${role}">
+        <div class="insp-msg__head">
+          <span class="insp-msg__avatar insp-msg__avatar--${role === "user" ? "you" : "ai"}">${letter}</span>
+          <span class="insp-msg__name">${label}</span>
+        </div>
+        <div class="insp-msg__content">
+          <div class="insp-msg__body">${innerHtml}</div>
+        </div>
+      </div>`);
+    const wasNearBottom = captureStickyBottom();
+    messagesEl?.appendChild(row);
+    applyStickyScrollAfter(wasNearBottom);
+  };
+
+  const appendStreamingAssistantShell = () => {
+    const row = el(`
+      <div class="insp-msg insp-msg--assistant insp-msg--streaming" data-streaming="1">
+        <div class="insp-msg__head">
+          <span class="insp-msg__avatar insp-msg__avatar--ai">AI</span>
+          <span class="insp-msg__name">AI</span>
+        </div>
+        <div class="insp-msg__content">
+          <div class="insp-msg__body">
+            <div class="insp-msg__md insp-msg__md--stream insp-msg__md--pending" aria-live="polite" aria-busy="true">
+              <span class="insp-msg__stream-wait">
+                <span class="analysis-spinner cht-spinner" aria-hidden="true"></span>
+                <span>Thinking…</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>`);
+    const wasNearBottom = captureStickyBottom();
+    messagesEl?.appendChild(row);
+    applyStickyScrollAfter(wasNearBottom);
+    const mdEl = row.querySelector(".insp-msg__md");
+    return { row, mdEl };
+  };
+
+  const removeStreamingShell = () => {
+    messagesEl?.querySelector("[data-streaming]")?.remove();
+  };
+
+  const fallbackCopy = (text) => {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;top:-9999px;left:-9999px;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch { /* ignore */ }
+    document.body.removeChild(ta);
+  };
+
+  const appendActionBar = (streamRow, getText) => {
+    const bar = el(`
+      <div class="insp-msg__actions" role="group" aria-label="Message actions">
+        <button type="button" class="insp-msg__action" data-action="copy" aria-label="Copy response" title="Copy">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button type="button" class="insp-msg__action" data-action="like" aria-label="Good response" title="Good response">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+        </button>
+        <button type="button" class="insp-msg__action" data-action="dislike" aria-label="Bad response" title="Bad response">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+        </button>
+      </div>`);
+
+    bar.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const action = btn.dataset.action;
+
+      if (action === "copy") {
+        const text = getText();
+        const markCopied = () => {
+          btn.classList.add("is-active");
+          btn.setAttribute("aria-label", "Copied!");
+          btn.title = "Copied!";
+          btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
+          setTimeout(() => {
+            btn.classList.remove("is-active");
+            btn.setAttribute("aria-label", "Copy response");
+            btn.title = "Copy";
+            btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+          }, 2000);
+        };
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(text).then(markCopied).catch(() => {
+            fallbackCopy(text);
+            markCopied();
+          });
+        } else {
+          fallbackCopy(text);
+          markCopied();
+        }
+      } else if (action === "like") {
+        const active = btn.classList.toggle("is-active");
+        bar.querySelector("[data-action='dislike']")?.classList.remove("is-active");
+        btn.setAttribute("aria-label", active ? "Liked" : "Good response");
+      } else if (action === "dislike") {
+        const active = btn.classList.toggle("is-active");
+        bar.querySelector("[data-action='like']")?.classList.remove("is-active");
+        btn.setAttribute("aria-label", active ? "Disliked" : "Bad response");
       }
+    });
 
-      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
-      let buffer = "";
-      let streamEnded = false;
+    streamRow?.querySelector(".insp-msg__content")?.appendChild(bar);
+  };
 
-      const scheduleStreamReportRender = () => {
-        if (streamReportRaf != null) return;
-        streamReportRaf = requestAnimationFrame(() => {
-          streamReportRaf = null;
-          if (!liveStreamReport) return;
-          liveStreamReport.classList.remove("ai-live-stream-report--plain");
-          liveStreamReport.innerHTML = parseMarkdownStreaming(accumulated);
-          const wrap = liveStreamReport.closest(".ai-live-stream-scroll");
-          if (wrap) wrap.scrollTop = wrap.scrollHeight;
-        });
-      };
+  const lightbox = document.getElementById("cht-lightbox");
+  const lightboxImg = document.getElementById("cht-lightbox-img");
+  const lightboxClose = document.getElementById("cht-lightbox-close");
 
-      const consumeLine = (line) => {
-        const parsed = parseSseDataLine(line);
-        if (!parsed) return false;
-        if (parsed.done) return true;
-        if (parsed.json?.error) {
-          throw new Error(parsed.json.error);
+  const openLightbox = (src) => {
+    if (!lightbox || !lightboxImg) return;
+    lightboxImg.src = src;
+    lightbox.classList.remove("hidden");
+    lightbox.removeAttribute("hidden");
+    lightboxClose?.focus();
+  };
+  const closeLightbox = () => {
+    if (!lightbox) return;
+    lightbox.classList.add("hidden");
+    lightbox.setAttribute("hidden", "");
+    lightboxImg && (lightboxImg.src = "");
+  };
+  lightboxClose?.addEventListener("click", closeLightbox);
+  lightbox?.addEventListener("click", (e) => {
+    if (e.target === lightbox) closeLightbox();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && lightbox && !lightbox.hasAttribute("hidden")) closeLightbox();
+  });
+
+  const buildUserHtml = (text, dataUrl) => {
+    const t = escapeHtml(text || "").replace(/\n/g, "<br>");
+    const safe = dataUrl && isSafeStoredImageDataUrl(dataUrl) ? dataUrl : "";
+    const img = safe
+      ? `<img class="insp-msg__img insp-msg__img--clickable" src="${safe}" alt="Uploaded site photo" width="280" height="200" data-preview-src="${safe}">`
+      : "";
+    return `${img}${img && t ? "<br>" : ""}${t || (img ? "" : "<i>(photo)</i>")}`;
+  };
+
+  const siteJson = () => "{}";
+
+  const setPending = (file) => {
+    pendingFile = file;
+    if (!file) {
+      pendingDataUrl = "";
+      guidedStageComplete = false;
+      pendingWrap?.classList.add("hidden");
+      pendingWrap?.setAttribute("hidden", "");
+      if (fileInput) fileInput.value = "";
+      syncShellLayout();
+      return;
+    }
+    const r = new FileReader();
+    r.onload = (ev) => {
+      const u = ev.target?.result;
+      if (typeof u === "string") {
+        pendingDataUrl = u;
+        guidedStageComplete = false;
+        if (pendingImg) {
+          pendingImg.src = u;
+          pendingImg.alt = "Attached preview";
         }
-        if (typeof parsed.json?.d === "string") {
-          accumulated += parsed.json.d;
-          scheduleStreamReportRender();
-        }
-        return false;
-      };
+        pendingWrap?.classList.remove("hidden");
+        pendingWrap?.removeAttribute("hidden");
+      }
+      syncShellLayout();
+    };
+    r.readAsDataURL(file);
+  };
 
-      readLoop: while (!streamEnded) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += value;
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (consumeLine(line)) {
-            streamEnded = true;
-            break readLoop;
+  const refreshToolbar = () => {
+    if (downloadBtn) downloadBtn.disabled = !transcript.length;
+    if (attachBtn) {
+      attachBtn.disabled = false;
+      attachBtn.title = "Attach site photo (replaces current analysis when you send)";
+    }
+  };
+
+  const recordTx = (role, text, extra = {}) => {
+    transcript.push({ role, text, ...extra });
+    refreshToolbar();
+  };
+
+  const createSession = async () => {
+    const res = await fetch(chatSessionUrl(), { method: "POST" });
+    if (!res.ok) throw new Error(await parseErrorDetail(res));
+    const j = await res.json();
+    if (!j.session_id) throw new Error("No session from server.");
+    sessionId = j.session_id;
+  };
+
+  const bootstrap = async () => {
+    hideError();
+    try {
+      await createSession();
+    } catch (e) {
+      showError(
+        isLikelyNetworkFailure(e)
+          ? "Could not reach the API. Start the FastAPI backend (port 8000) and keep Vite dev running."
+          : String(e.message || e),
+      );
+    }
+  };
+
+  const resetChat = async () => {
+    persistCurrentSession();
+    hideError();
+    busy = false;
+    if (sessionId) {
+      try {
+        await fetch(chatDeleteUrl(sessionId), { method: "DELETE" });
+      } catch {
+        /* ignore */
+      }
+    }
+    sessionId = "";
+    hasAnalysis = false;
+    pendingFile = null;
+    pendingDataUrl = "";
+    transcript = [];
+    if (messagesEl) messagesEl.innerHTML = "";
+    setPending(null);
+    if (inputEl) inputEl.value = "";
+    syncComposerHeight();
+    await bootstrap();
+    refreshToolbar();
+    scrollDown(true);
+    renderSidebar();
+  };
+
+  /**
+   * @returns {Promise<{ ok: boolean, accumulated?: string, usedVision?: boolean }>}
+   */
+  const consumeChatSse = async (res, mdEl, streamRow) => {
+    if (!res.ok) {
+      const detail = await parseErrorDetail(res);
+      return { ok: false, error: detail };
+    }
+    if (!res.body) {
+      return { ok: false, error: "No response body." };
+    }
+
+    let acc = "";
+    let rafId = 0;
+    const render = () => {
+      rafId = 0;
+      if (!mdEl) return;
+      const wasNearBottom = captureStickyBottom();
+      const src = acc.trim() ? acc : " ";
+      mdEl.innerHTML = `<div class="insp-msg__md-inner">${marked.parse(src)}</div>`;
+      applyStickyScrollAfter(wasNearBottom);
+    };
+    const scheduleRender = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(render);
+    };
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buffer = "";
+    let usedVision = false;
+
+    const applyFirstChunkUi = () => {
+      if (!mdEl) return;
+      mdEl.classList.remove("insp-msg__md--pending");
+      mdEl.removeAttribute("aria-busy");
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += dec.decode(value, { stream: true });
+      let sep;
+      while ((sep = buffer.indexOf("\n\n")) >= 0) {
+        const block = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        for (const line of block.split("\n")) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const payload = trimmed.slice(5).trim();
+          if (payload === "[DONE]") {
+            if (rafId) {
+              cancelAnimationFrame(rafId);
+              rafId = 0;
+            }
+            render();
+            streamRow?.classList.remove("insp-msg--streaming");
+            streamRow?.removeAttribute("data-streaming");
+            const stickyForActions = captureStickyBottom();
+            appendActionBar(streamRow, () => acc);
+            applyStickyScrollAfter(stickyForActions);
+            return { ok: true, accumulated: acc, usedVision };
+          }
+          let obj;
+          try {
+            obj = JSON.parse(payload);
+          } catch {
+            continue;
+          }
+          if (!obj || typeof obj !== "object") continue;
+          if (obj.type === "chunk" && typeof obj.text === "string") {
+            applyFirstChunkUi();
+            acc += obj.text;
+            scheduleRender();
+          } else if (obj.type === "done") {
+            usedVision = !!obj.used_vision;
+          } else if (obj.type === "error") {
+            if (rafId) {
+              cancelAnimationFrame(rafId);
+              rafId = 0;
+            }
+            streamRow?.classList.remove("insp-msg--streaming");
+            streamRow?.removeAttribute("data-streaming");
+            return { ok: false, error: String(obj.detail || "Stream error"), accumulated: acc };
           }
         }
       }
-      if (buffer.trim()) {
-        for (const line of buffer.split("\n")) {
-          if (consumeLine(line)) break;
-        }
+    }
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+    render();
+    streamRow?.classList.remove("insp-msg--streaming");
+    streamRow?.removeAttribute("data-streaming");
+    const stickyForActions = captureStickyBottom();
+    appendActionBar(streamRow, () => acc);
+    applyStickyScrollAfter(stickyForActions);
+    return { ok: true, accumulated: acc, usedVision };
+  };
+
+  const send = async () => {
+    if (busy) {
+      if (activeController) {
+        stopRequested = true;
+        activeController.abort();
       }
-
-      finalizeStreamReport(accumulated);
-      void saveAiSnapshot({
-        markdown: accumulated,
-        dataUrl: currentDataUrl,
-        fileName: currentFile?.name || "photo.jpg",
-        fileType: currentFile?.type || "image/jpeg",
-      });
-      scheduleDockSync();
-      hideError();
-    } catch (e) {
-      if (streamReportRaf != null) {
-        cancelAnimationFrame(streamReportRaf);
-        streamReportRaf = null;
-      }
-      const msg = isLikelyNetworkFailure(e)
-        ? "Could not reach the Defectra API. Run uvicorn in backend on port 8000 and keep npm run dev running (Vite proxies /api). If FastAPI runs in WSL/Docker while Vite is on Windows, set VITE_API_PROXY_TARGET in frontend/.env.development — see frontend/.env.example. Optional same-machine bypass: VITE_API_BASE_URL=http://127.0.0.1:8000."
-        : String(e.message || e);
-      stageLive?.classList.add("hidden");
-      stageLive?.setAttribute("hidden", "");
-      hideLiveDock();
-      stageReady?.classList.remove("hidden");
-      stageReady?.removeAttribute("hidden");
-      showWorkspaceError(msg);
-    } finally {
-      isStreaming = false;
-      if (runAnalysisBtn) runAnalysisBtn.disabled = false;
+      return;
     }
-  };
-
-  uploadZone?.addEventListener("click", () => {
-    imageInput?.click();
-  });
-
-  uploadZone?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      imageInput?.click();
+    if (!sessionId) return;
+    const text = (inputEl?.value || "").trim();
+    if (!hasAnalysis && !pendingFile && !text) {
+      showError("Attach a site photo (and optional notes), then send.");
+      return;
     }
-  });
-
-  let dragDepth = 0;
-  const setDragOver = (on) => {
-    uploadZone?.classList.toggle("is-dragover", on);
-  };
-
-  ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
-    uploadZone?.addEventListener(eventName, (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    });
-  });
-
-  uploadZone?.addEventListener("dragenter", () => {
-    dragDepth += 1;
-    setDragOver(true);
-  });
-
-  uploadZone?.addEventListener("dragleave", () => {
-    dragDepth -= 1;
-    if (dragDepth <= 0) {
-      dragDepth = 0;
-      setDragOver(false);
-    }
-  });
-
-  const loadFile = (file) => {
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const url = ev.target?.result;
-      if (typeof url === "string") showReady(file, url);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  uploadZone?.addEventListener("drop", (e) => {
-    dragDepth = 0;
-    setDragOver(false);
-    const [file] = e.dataTransfer.files || [];
-    loadFile(file);
-  });
-
-  imageInput?.addEventListener("change", (e) => {
-    const [file] = e.target.files || [];
-    loadFile(file);
-  });
-
-  runAnalysisBtn?.addEventListener("click", () => {
-    runAnalysis();
-  });
-
-  readyPreview?.addEventListener("click", () => {
-    if (currentFile && !isStreaming) runAnalysis();
-  });
-
-  cancelReadyBtn?.addEventListener("click", () => {
-    showUpload();
-  });
-
-  analyseMoreBtn?.addEventListener("click", () => {
-    showUpload();
-  });
-
-  liveDoneBtn?.addEventListener("click", () => {
-    showUpload();
-  });
-
-  (async function restoreFromSnapshot() {
-    const navEntry = performance.getEntriesByType?.("navigation")?.[0];
-    if (navEntry?.type === "reload") {
-      await clearAiSnapshot();
+    if (hasAnalysis && !pendingFile && !text) {
+      showError("Type a follow-up question, or attach a new site photo to re-analyze.");
       return;
     }
 
-    const snap = await loadAiSnapshot();
-    if (!snap?.dataUrl || typeof snap.dataUrl !== "string") return;
+    hideError();
+    busy = true;
+    stopRequested = false;
+    activeController = new AbortController();
+    refreshSendButton();
 
-    currentDataUrl = snap.dataUrl;
+    // Snapshot file before clearing UI
+    const fileToSend = pendingFile;
+    const dataUrlSnapshot = pendingDataUrl;
+
+    appendMessage("user", buildUserHtml(text, fileToSend ? dataUrlSnapshot : ""));
+    recordTx("user", text, { image: fileToSend ? dataUrlSnapshot : null });
+
+    if (inputEl) inputEl.value = "";
+    syncComposerHeight();
+    setPending(null);
+
+    const form = new FormData();
+    form.append("session_id", sessionId);
+    form.append("message", text);
+    if (fileToSend) {
+      form.append("site_context", siteJson());
+      form.append("image", fileToSend, fileToSend.name);
+    }
+
+    const { row: streamRow, mdEl } = appendStreamingAssistantShell();
+
     try {
-      const res = await fetch(snap.dataUrl);
-      const blob = await res.blob();
-      currentFile = new File(
-        [blob],
-        typeof snap.fileName === "string" && snap.fileName ? snap.fileName : "photo.jpg",
-        { type: typeof snap.fileType === "string" && snap.fileType ? snap.fileType : blob.type || "image/jpeg" },
-      );
-    } catch {
-      currentFile = null;
+      const res = await fetch(chatMessageStreamUrl(), {
+        method: "POST",
+        body: form,
+        signal: activeController.signal,
+      });
+      const outcome = await consumeChatSse(res, mdEl, streamRow);
+
+      if (!outcome.ok) {
+        const detail = outcome.error || "Request failed";
+        showError(detail);
+        if (streamRow?.isConnected) {
+          streamRow.classList.remove("insp-msg--streaming");
+          streamRow.removeAttribute("data-streaming");
+          if (mdEl) {
+            mdEl.classList.remove("insp-msg__md--pending");
+            mdEl.innerHTML = `<div class="insp-msg__md-inner"><p><strong>Something went wrong.</strong> ${escapeHtml(detail)}</p></div>`;
+          }
+        } else {
+          appendMessage(
+            "assistant",
+            `<div class="insp-msg__md"><p><strong>Something went wrong.</strong> ${escapeHtml(detail)}</p></div>`,
+          );
+        }
+        return;
+      }
+
+      const md = outcome.accumulated || "";
+      recordTx("assistant", md);
+      if (outcome.usedVision) {
+        hasAnalysis = true;
+      }
+      const lastUserTx = [...transcript].reverse().find((t) => t.role === "user");
+      if (lastUserTx?.image && typeof lastUserTx.image === "string") {
+        const compressed = await compressImageDataUrl(lastUserTx.image);
+        if (compressed) lastUserTx.image = compressed;
+      }
+      refreshToolbar();
+      persistCurrentSession();
+      renderSidebar();
+    } catch (e) {
+      const abortedByUser =
+        stopRequested || (e instanceof DOMException && e.name === "AbortError");
+      if (abortedByUser) {
+        hideError();
+        if (streamRow?.isConnected) {
+          streamRow.classList.remove("insp-msg--streaming");
+          streamRow.removeAttribute("data-streaming");
+          if (mdEl && !mdEl.textContent?.trim()) {
+            mdEl.classList.remove("insp-msg__md--pending");
+            mdEl.innerHTML = "<div class=\"insp-msg__md-inner\"><p><em>Stopped.</em></p></div>";
+          }
+        }
+        return;
+      }
+      removeStreamingShell();
+      const msg = isLikelyNetworkFailure(e) ? "Network error — check API and proxy." : String(e.message || e);
+      showError(msg);
+      appendMessage("assistant", `<div class="insp-msg__md"><p>${escapeHtml(msg)}</p></div>`);
+    } finally {
+      busy = false;
+      activeController = null;
+      stopRequested = false;
+      refreshSendButton();
+      syncShellLayout();
+      scrollDown();
+    }
+  };
+
+  const downloadMd = () => {
+    if (!transcript.length) return;
+
+    const toPlain = (md) =>
+      String(md || "")
+        .replace(/```[\s\S]*?```/g, "\n[code block]\n")
+        .replace(/`([^`]+)`/g, "$1")
+        .replace(/^#{1,6}\s*/gm, "")
+        .replace(/^\s*[-*+]\s+/gm, "- ")
+        .replace(/^\s*\d+\.\s+/gm, "- ")
+        .replace(/\*\*([^*]+)\*\*/g, "$1")
+        .replace(/\*([^*]+)\*/g, "$1")
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 40;
+    const contentW = pageW - margin * 2;
+    let y = margin;
+
+    const ensureSpace = (need) => {
+      if (y + need <= pageH - margin) return;
+      doc.addPage();
+      y = margin;
+    };
+
+    // Premium header band
+    doc.setFillColor(16, 66, 152);
+    doc.rect(0, 0, pageW, 86, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("SiteSureLabs - AI Analysis Chat Export", margin, 36);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text(`Generated ${new Date().toLocaleString()}`, margin, 56);
+    doc.text(`Session ${sessionId ? sessionId.slice(0, 8) : "local"}`, margin, 72);
+    y = 104;
+    doc.setTextColor(31, 41, 55);
+
+    for (const t of transcript) {
+      const roleLabel = t.role === "user" ? "You" : "AI Assistant";
+      const baseText = toPlain(t.text) || (t.image ? "Photo attached." : "");
+      const lines = doc.splitTextToSize(baseText, contentW - 24);
+      const lineH = 15;
+      let imageH = 0;
+      let imageMime = "";
+      if (t.role === "user" && t.image && isSafeStoredImageDataUrl(t.image)) {
+        imageMime = t.image.startsWith("data:image/png") ? "PNG" : "JPEG";
+        imageH = 150;
+      }
+      const textH = Math.max(lineH, lines.length * lineH);
+      const boxH = 20 + imageH + (imageH ? 10 : 0) + textH + 14;
+      ensureSpace(boxH + 22);
+
+      const boxX = margin;
+      const boxY = y;
+      doc.setFillColor(t.role === "user" ? 233 : 244, t.role === "user" ? 243 : 246, t.role === "user" ? 255 : 249);
+      doc.setDrawColor(223, 228, 236);
+      doc.roundedRect(boxX, boxY, contentW, boxH, 10, 10, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(t.role === "user" ? 17 : 30, t.role === "user" ? 78 : 64, t.role === "user" ? 150 : 122);
+      doc.text(roleLabel, boxX + 12, boxY + 16);
+
+      let bodyY = boxY + 34;
+      if (imageH && imageMime) {
+        try {
+          doc.addImage(t.image, imageMime, boxX + 12, bodyY, contentW - 24, imageH);
+          bodyY += imageH + 10;
+        } catch {
+          // Keep PDF export resilient even if an embedded image fails.
+        }
+      }
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(31, 41, 55);
+      doc.text(lines, boxX + 12, bodyY + 11);
+      y += boxH + 14;
     }
 
-    const markdown = typeof snap.markdown === "string" ? snap.markdown : "";
-    if (markdown.trim().length > 0) {
-      if (liveStagePreview) {
-        liveStagePreview.src = snap.dataUrl;
-        liveStagePreview.alt = "Site photo under PMO review";
+    doc.save(`inspection-chat-${(sessionId || Date.now().toString()).slice(0, 8)}.pdf`);
+  };
+
+  // ── Sidebar / session persistence ──────────────────────────────────────────
+
+  const SESSIONS_KEY = "defectra_ai_sessions_v1";
+  const MAX_SESSIONS = 50;
+
+  const sidebarEl = document.getElementById("cht-sidebar");
+  const sidebarSessionsEl = document.getElementById("cht-sidebar-sessions");
+  const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
+  const sidebarNewBtn = document.getElementById("sidebar-new-btn");
+  const sidebarBackdrop = document.getElementById("cht-sidebar-backdrop");
+
+  const loadStoredSessions = () => {
+    try { return JSON.parse(localStorage.getItem(SESSIONS_KEY) || "[]"); } catch { return []; }
+  };
+
+  const saveStoredSessions = (sessions) => {
+    const slice = sessions.slice(0, MAX_SESSIONS);
+    try {
+      localStorage.setItem(SESSIONS_KEY, JSON.stringify(slice));
+    } catch {
+      try {
+        const stripped = slice.map((s) => ({
+          ...s,
+          msgs: (s.msgs || []).map((m) =>
+            m.role === "user" ? { role: m.role, text: m.text || "", image: null, hasImage: !!(m.image || m.hasImage) } : m,
+          ),
+        }));
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify(stripped));
+      } catch {
+        /* quota */
       }
-      finalizeStreamReport(markdown);
-      stageUpload?.classList.add("hidden");
-      stageUpload?.setAttribute("hidden", "");
-      stageReady?.classList.add("hidden");
-      stageReady?.setAttribute("hidden", "");
-      stageLive?.classList.remove("hidden");
-      stageLive?.removeAttribute("hidden");
-      stageResults?.classList.add("hidden");
-      stageResults?.setAttribute("hidden", "");
-      showLiveDock();
-      startDockLayoutWatch();
-      requestAnimationFrame(() => scheduleDockSync());
-      window.setTimeout(() => scheduleDockSync(), 220);
-      isStreaming = false;
-      if (runAnalysisBtn) runAnalysisBtn.disabled = false;
-    } else if (currentFile) {
-      showReady(currentFile, snap.dataUrl);
     }
-  })();
+  };
+
+  const persistCurrentSession = () => {
+    if (!sessionId || !transcript.length) return;
+    const firstUser = transcript.find((t) => t.role === "user");
+    const title = (firstUser?.text || "").trim().slice(0, 80) || "New chat";
+    const msgs = transcript.map((t) => ({
+      role: t.role,
+      text: t.text || "",
+      image:
+        t.role === "user" && t.image && isSafeStoredImageDataUrl(t.image) ? t.image : null,
+    }));
+    const sessions = loadStoredSessions();
+    const idx = sessions.findIndex((s) => s.id === sessionId);
+    const entry = { id: sessionId, title, createdAt: Date.now(), msgs };
+    if (idx >= 0) sessions[idx] = entry;
+    else sessions.unshift(entry);
+    saveStoredSessions(sessions);
+  };
+
+  const renderRestoredMessages = (msgs) => {
+    if (!messagesEl) return;
+    for (const m of msgs) {
+      const letter = m.role === "user" ? "Y" : "AI";
+      const label = m.role === "user" ? "You" : "AI";
+      let innerHtml;
+      if (m.role === "user") {
+        const stored = m.image && isSafeStoredImageDataUrl(m.image) ? m.image : "";
+        if (stored) {
+          innerHtml = buildUserHtml(m.text || "", stored);
+        } else {
+          const escaped = escapeHtml(m.text || "").replace(/\n/g, "<br>");
+          const imgNote = m.hasImage ? `<p class="insp-msg__img-note">[Photo attached — re-upload if needed]</p>` : "";
+          innerHtml = `${imgNote}${escaped}`;
+        }
+      } else {
+        innerHtml = `<div class="insp-msg__md"><div class="insp-msg__md-inner">${marked.parse(m.text || "")}</div></div>`;
+      }
+      const row = el(`
+        <div class="insp-msg insp-msg--${m.role === "user" ? "user" : "assistant"}">
+          <div class="insp-msg__head">
+            <span class="insp-msg__avatar insp-msg__avatar--${m.role === "user" ? "you" : "ai"}">${letter}</span>
+            <span class="insp-msg__name">${label}</span>
+          </div>
+          <div class="insp-msg__content">
+            <div class="insp-msg__body">${innerHtml}</div>
+          </div>
+        </div>`);
+      messagesEl.appendChild(row);
+    }
+  };
+
+  const openSidebar = () => {
+    sidebarEl?.classList.add("is-open");
+    sidebarBackdrop?.classList.remove("hidden");
+    sidebarToggleBtn?.setAttribute("aria-expanded", "true");
+  };
+
+  const closeSidebar = () => {
+    sidebarEl?.classList.remove("is-open");
+    sidebarBackdrop?.classList.add("hidden");
+    sidebarToggleBtn?.setAttribute("aria-expanded", "false");
+  };
+
+  const groupByDate = (sessions) => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - 6);
+    const groups = { today: [], week: [], older: [] };
+    for (const s of sessions) {
+      if (s.createdAt >= todayStart.getTime()) groups.today.push(s);
+      else if (s.createdAt >= weekStart.getTime()) groups.week.push(s);
+      else groups.older.push(s);
+    }
+    return groups;
+  };
+
+  const renderSidebar = () => {
+    if (!sidebarSessionsEl) return;
+    const sessions = loadStoredSessions();
+    if (!sessions.length) {
+      sidebarSessionsEl.innerHTML = `<p class="cht-sidebar__empty">No previous chats</p>`;
+      return;
+    }
+    const groups = groupByDate(sessions);
+    const parts = [];
+    const renderGroup = (label, items) => {
+      if (!items.length) return;
+      parts.push(`<div class="cht-sidebar__group"><div class="cht-sidebar__group-label">${label}</div>`);
+      for (const s of items) {
+        const active = s.id === sessionId ? " is-active" : "";
+        const DEL_ICON = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+        parts.push(`
+          <div class="cht-sidebar__item${active}" data-sid="${escapeHtml(s.id)}" role="button" tabindex="0">
+            <span class="cht-sidebar__item-text">${escapeHtml(s.title)}</span>
+            <button type="button" class="cht-sidebar__item-del" data-del="${escapeHtml(s.id)}" aria-label="Delete chat" title="Delete">${DEL_ICON}</button>
+          </div>`);
+      }
+      parts.push(`</div>`);
+    };
+    renderGroup("Today", groups.today);
+    renderGroup("Previous 7 days", groups.week);
+    renderGroup("Older", groups.older);
+    sidebarSessionsEl.innerHTML = parts.join("");
+
+    sidebarSessionsEl.querySelectorAll(".cht-sidebar__item").forEach((item) => {
+      item.addEventListener("click", (e) => {
+        if (e.target.closest(".cht-sidebar__item-del")) return;
+        const id = item.dataset.sid;
+        if (id === sessionId) { closeSidebar(); return; }
+        const entry = loadStoredSessions().find((s) => s.id === id);
+        if (!entry) return;
+        persistCurrentSession();
+        sessionId = entry.id;
+        hasAnalysis = entry.msgs.some((m) => !!(m.image || m.hasImage));
+        transcript = entry.msgs.map((m) => ({
+          role: m.role,
+          text: m.text || "",
+          image: m.image && isSafeStoredImageDataUrl(m.image) ? m.image : null,
+        }));
+        if (messagesEl) messagesEl.innerHTML = "";
+        renderRestoredMessages(entry.msgs);
+        syncShellLayout();
+        scrollDown(true);
+        closeSidebar();
+        renderSidebar();
+        refreshToolbar();
+      });
+      item.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); item.click(); }
+      });
+    });
+
+    sidebarSessionsEl.querySelectorAll(".cht-sidebar__item-del").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.del;
+        let sessions = loadStoredSessions();
+        sessions = sessions.filter((s) => s.id !== id);
+        saveStoredSessions(sessions);
+        if (id === sessionId) void resetChat();
+        else renderSidebar();
+      });
+    });
+  };
+
+  sidebarToggleBtn?.addEventListener("click", () => {
+    if (sidebarEl?.classList.contains("is-open")) closeSidebar();
+    else openSidebar();
+  });
+  sidebarBackdrop?.addEventListener("click", closeSidebar);
+  sidebarNewBtn?.addEventListener("click", () => {
+    closeSidebar();
+    void resetChat();
+  });
+  window.addEventListener("beforeunload", () => persistCurrentSession());
+
+  attachBtn?.addEventListener("click", () => {
+    if (fileInput) fileInput.value = "";
+    fileInput?.click();
+  });
+  uploadCard?.addEventListener("click", () => {
+    if (fileInput) fileInput.value = "";
+    fileInput?.click();
+  });
+  fileInput?.addEventListener("change", async (e) => {
+    const [f] = e.target.files || [];
+    if (!f) return;
+    const allowed = f.type.startsWith("image/") || isHeicLike(f);
+    if (!allowed) {
+      showError("Please choose an image (PNG, JPEG, WebP, HEIC, …).");
+      if (fileInput) fileInput.value = "";
+      return;
+    }
+    try {
+      const normalized = await normalizeImageFileForUpload(f);
+      if (!normalized) {
+        showError("Could not process this file.");
+        if (fileInput) fileInput.value = "";
+        return;
+      }
+      setPending(normalized);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : String(err));
+      if (fileInput) fileInput.value = "";
+    }
+  });
+  pendingRemove?.addEventListener("click", () => setPending(null));
+  pendingImg?.addEventListener("click", () => {
+    if (pendingImg.src && pendingImg.src !== location.href) openLightbox(pendingImg.src);
+  });
+  guidedChipHost?.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-guided-prompt]");
+    if (!chip || !inputEl) return;
+    const prompt = chip.getAttribute("data-guided-prompt");
+    if (!prompt) return;
+    inputEl.value = prompt;
+    syncComposerHeight();
+    inputEl.focus();
+  });
+  sendBtn?.addEventListener("click", () => void send());
+  inputEl?.addEventListener("input", () => syncComposerHeight());
+  inputEl?.addEventListener("focus", () => syncComposerHeight());
+  inputEl?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void send();
+    }
+  });
+  downloadBtn?.addEventListener("click", () => downloadMd());
+
+  messagesEl?.addEventListener("click", (e) => {
+    const img = e.target.closest(".insp-msg__img--clickable");
+    if (img) {
+      const src = img.getAttribute("data-preview-src") || img.src;
+      if (src) openLightbox(src);
+    }
+  });
+
+  syncShellLayout();
+  void bootstrap().then(() => renderSidebar());
+  refreshToolbar();
+  refreshSendButton();
+  requestAnimationFrame(() => syncComposerHeight());
 });
+
+

@@ -1,1 +1,0 @@
-"""Defectra API package."""

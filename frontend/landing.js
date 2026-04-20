@@ -1,3 +1,5 @@
+import { mountLandingAssistant } from "./assistant-widget.js";
+
 document.addEventListener("DOMContentLoaded", () => {
   const scrollToFeatures = () => {
     const el = document.getElementById("features");
@@ -11,10 +13,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const navToggle = document.getElementById("nav-toggle");
   const navLinks = document.getElementById("primary-nav");
 
+  const featuresDropdown = navLinks?.querySelector(".nav-dropdown");
+  const featuresTrigger = featuresDropdown?.querySelector(".nav-dropdown__trigger");
+
+  const setFeaturesDropdownOpen = (open) => {
+    if (!featuresDropdown || !featuresTrigger) return;
+    featuresDropdown.classList.toggle("is-open", open);
+    featuresTrigger.setAttribute("aria-expanded", open ? "true" : "false");
+  };
+
   const setNavOpen = (open) => {
     if (!navToggle || !navLinks) return;
     navToggle.setAttribute("aria-expanded", open ? "true" : "false");
     navLinks.classList.toggle("is-open", open);
+    if (!open) setFeaturesDropdownOpen(false);
   };
 
   navToggle?.addEventListener("click", () => {
@@ -29,7 +41,23 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") setNavOpen(false);
+    if (e.key === "Escape") {
+      setFeaturesDropdownOpen(false);
+      setNavOpen(false);
+    }
+  });
+
+  featuresTrigger?.addEventListener("click", (e) => {
+    if (!mqNavMobile.matches) return;
+    e.preventDefault();
+    const next = !featuresDropdown?.classList.contains("is-open");
+    setFeaturesDropdownOpen(next);
+  });
+
+  featuresDropdown?.querySelectorAll(".nav-dropdown__menu a").forEach((a) => {
+    a.addEventListener("click", () => {
+      if (mqNavMobile.matches) setFeaturesDropdownOpen(false);
+    });
   });
 
   document.addEventListener("click", (e) => {
@@ -318,4 +346,5 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  mountLandingAssistant();
 });

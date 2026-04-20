@@ -243,3 +243,122 @@ async def stream_inspection_report_deltas(
             raise RuntimeError(
                 f"Could not reach vLLM at {url}. Is the server running and reachable? ({e})"
             ) from e
+
+
+async def stream_text_chat_completion_deltas(
+    *,
+    messages: list[dict[str, Any]],
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+) -> AsyncIterator[str]:
+    """Yield assistant text fragments from vLLM OpenAI-compatible SSE (text-only chat)."""
+    settings = get_settings()
+    url = settings.chat_completions_url()
+    cap = max_tokens if max_tokens is not None else settings.vllm_max_tokens
+    body: dict[str, Any] = {
+        "model": settings.vllm_model,
+        "messages": messages,
+        "temperature": (
+            settings.vllm_temperature if temperature is None else temperature
+        ),
+        "max_tokens": cap,
+        "stream": True,
+    }
+
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if settings.vllm_api_key.strip():
+        headers["Authorization"] = f"Bearer {settings.vllm_api_key.strip()}"
+
+    async with httpx.AsyncClient(timeout=settings.http_timeout_s) as client:
+        try:
+            async with client.stream("POST", url, json=body, headers=headers) as resp:
+                if resp.status_code >= 400:
+                    err_bytes = await resp.aread()
+                    try:
+                        err_json = json.loads(err_bytes.decode("utf-8"))
+                        detail = err_json.get("error", err_json)
+                        if isinstance(detail, dict) and "message" in detail:
+                            detail = detail["message"]
+                    except Exception:
+                        detail = err_bytes.decode("utf-8", errors="replace")[:2000]
+                    raise RuntimeError(
+                        f"vLLM error ({resp.status_code}): {detail}"
+                    )
+
+                async for line in resp.aiter_lines():
+                    raw = line.strip()
+                    if not raw or raw.startswith(":"):
+                        continue
+                    if not raw.startswith("data:"):
+                        continue
+                    payload = raw[5:].lstrip()
+                    if payload == "[DONE]":
+                        break
+                    try:
+                        obj: Any = json.loads(payload)
+                    except json.JSONDecodeError:
+                        continue
+                    if not isinstance(obj, dict):
+                        continue
+                    err = obj.get("error")
+                    if isinstance(err, dict):
+                        msg = err.get("message", json.dumps(err))
+                        raise RuntimeError(f"vLLM stream error: {msg}")
+                    piece = _delta_content_from_sse_payload(obj)
+                    if piece:
+                        yield piece
+        except httpx.RequestError as e:
+            logger.exception("vLLM text stream request failed")
+            raise RuntimeError(
+                f"Could not reach vLLM at {url}. Is the server running and reachable? ({e})"
+            ) from e
+
+
+async def generate_text_chat_completion(
+    *,
+    messages: list[dict[str, Any]],
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+) -> str:
+    """Text-only OpenAI-style chat (follow-up questions; no image re-send)."""
+    settings = get_settings()
+    url = settings.chat_completions_url()
+    cap = max_tokens if max_tokens is not None else settings.vllm_max_tokens
+    body: dict[str, Any] = {
+        "model": settings.vllm_model,
+        "messages": messages,
+        "temperature": (
+            settings.vllm_temperature if temperature is None else temperature
+        ),
+        "max_tokens": cap,
+        "stream": False,
+    }
+
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if settings.vllm_api_key.strip():
+        headers["Authorization"] = f"Bearer {settings.vllm_api_key.strip()}"
+
+    async with httpx.AsyncClient(timeout=settings.http_timeout_s) as client:
+        try:
+            resp = await client.post(url, json=body, headers=headers)
+        except httpx.RequestError as e:
+            logger.exception("vLLM text chat request failed")
+            raise RuntimeError(
+                f"Could not reach vLLM at {url}. Is the server running and reachable? ({e})"
+            ) from e
+
+        if resp.status_code >= 400:
+            raise RuntimeError(_format_http_error(resp))
+
+        try:
+            data = resp.json()
+        except json.JSONDecodeError as e:
+            raw = (resp.text or "")[:2000]
+            raise RuntimeError(
+                "The model server returned a response that was not valid JSON. "
+                f"First bytes: {raw[:500]!r}"
+            ) from e
+
+        if not isinstance(data, dict):
+            raise RuntimeError("The model returned JSON that was not an object.")
+        return _extract_assistant_text(data)

@@ -388,7 +388,7 @@ a {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  min-width: 220px;
+  min-width: 232px;
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
@@ -405,12 +405,19 @@ a {
   z-index: 60;
 }
 
+.nav-dropdown__menu li {
+  margin: 0;
+  list-style: none;
+}
+
 .nav-dropdown__menu a {
   display: block;
   padding: 10px 12px;
   border-radius: 8px;
   color: #374151;
   font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
@@ -2036,6 +2043,19 @@ a {
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1);
 }
 
+/* AI Analysis — matches “PMO report” label in card illustration (#6d28d9) */
+.fdemo__cta--violet {
+  border-color: #6d28d9;
+  color: #6d28d9;
+}
+
+.fdemo__cta--violet:hover {
+  background: rgba(109, 40, 217, 0.08);
+  border-color: #5b21b6;
+  color: #5b21b6;
+  box-shadow: 0 4px 12px rgba(109, 40, 217, 0.15);
+}
+
 /* Responsive */
 @media (max-width: 720px) { .fdemo { grid-template-columns: 1fr; max-width: 380px; } }
 @media (max-width: 480px) {
@@ -3207,49 +3227,140 @@ a {
   color: #2563eb;
 }
 
-.dashboard-mode-bar {
-  position: relative;
-  /* Above fixed in-page panels (e.g. AI live dock) but below sticky nav */
-  z-index: 44;
-  padding: 10px 0 6px;
-  animation: dashboardModeBarReveal 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+/* Dashboard: workspace tabs live in the top navbar (logo | tabs | actions) */
+.glass-nav--dashboard .nav-container {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+  align-items: center;
+  column-gap: clamp(8px, 2vw, 18px);
+  row-gap: 10px;
+  /* Same overall bar height as default nav; shorter pill + align-self:center yields inset */
 }
 
-.dashboard-mode-bar__inner {
-  display: flex;
-  justify-content: center;
+.glass-nav--dashboard .logo-container {
+  grid-column: 1;
+  justify-self: start;
+  align-self: center;
+  min-width: 0;
 }
 
-/* Segmented control: sliding pill + smooth motion */
-.dashboard-mode-toggle {
-  --mode-toggle-pad: 4px;
+.glass-nav--dashboard .nav-dashboard-mode {
+  grid-column: 2;
+  justify-self: center;
+  align-self: center;
+  width: 100%;
+  max-width: min(760px, 98vw);
+  min-width: 0;
+}
+
+.glass-nav--dashboard .nav-actions {
+  grid-column: 3;
+  justify-self: end;
+  align-self: center;
+}
+
+@media (max-width: 760px) {
+  .glass-nav--dashboard .nav-container {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    min-height: auto;
+  }
+
+  .glass-nav--dashboard .logo-container {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .glass-nav--dashboard .nav-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .glass-nav--dashboard .nav-dashboard-mode {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-width: 100%;
+  }
+}
+
+/* Dashboard nav: pill sized to sit inside default ~58px bar (navbar height unchanged) */
+.glass-nav--dashboard .dashboard-mode-toggle {
+  --mode-toggle-pad: 5px;
   --mode-toggle-between: 8px;
+}
+
+.glass-nav--dashboard .dashboard-mode-toggle__tab {
+  padding: 0.48rem 1.05rem;
+  font-size: 0.84375rem;
+  line-height: 1.3;
+}
+
+/* Segmented control: sliding pill + sheen + motion */
+.dashboard-mode-toggle {
+  --mode-toggle-pad: 6px;
+  --mode-toggle-between: 10px;
   --mode-ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
   --mode-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --mode-ease-spring: cubic-bezier(0.34, 1.25, 0.64, 1);
   position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   width: 100%;
-  max-width: min(720px, 100%);
+  max-width: min(760px, 98vw);
   padding: var(--mode-toggle-pad);
   border-radius: 999px;
-  background: transparent;
-  border: 1px solid rgba(148, 163, 184, 0.42);
+  background: linear-gradient(180deg, rgba(252, 252, 253, 0.95) 0%, rgba(241, 245, 249, 0.55) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.4);
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.75),
-    0 1px 2px rgba(15, 23, 42, 0.04);
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 4px 20px rgba(37, 99, 235, 0.04);
   isolation: isolate;
-  animation: dashboardModeToggleIn 0.7s var(--mode-ease-smooth) both;
+  animation: dashboardModeToggleIn 0.85s var(--mode-ease-smooth) both;
   transition:
-    border-color 0.45s var(--mode-ease-out),
-    box-shadow 0.45s var(--mode-ease-out);
+    border-color 0.4s var(--mode-ease-out),
+    box-shadow 0.45s var(--mode-ease-out),
+    transform 0.35s var(--mode-ease-out);
+}
+
+/* Soft moving highlight across the track (premium glass) */
+.dashboard-mode-toggle::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(255, 255, 255, 0.65) 50%,
+    transparent 62%,
+    transparent 100%
+  );
+  background-size: 240% 100%;
+  animation: dashboardModeSheen 5.2s ease-in-out infinite;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .dashboard-mode-toggle:hover {
-  border-color: rgba(148, 163, 184, 0.58);
+  border-color: rgba(99, 102, 241, 0.28);
+  transform: translateY(-1px);
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.85),
-    0 2px 8px rgba(15, 23, 42, 0.06);
+    inset 0 1px 1px rgba(255, 255, 255, 0.95),
+    0 3px 14px rgba(15, 23, 42, 0.08),
+    0 8px 28px rgba(37, 99, 235, 0.08);
+}
+
+.dashboard-mode-toggle:hover::before {
+  animation-duration: 3.2s;
+  opacity: 0.65;
+}
+
+.dashboard-mode-toggle:active {
+  transform: translateY(0);
+  transition-duration: 0.12s;
 }
 
 .dashboard-mode-toggle::after {
@@ -3260,16 +3371,17 @@ a {
   bottom: var(--mode-toggle-pad);
   width: calc((100% - (var(--mode-toggle-pad) * 2) - (var(--mode-toggle-between) * 2)) / 3);
   border-radius: 999px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 50%, #eef2ff 100%);
   box-shadow:
-    0 2px 8px rgba(15, 23, 42, 0.1),
-    0 1px 0 rgba(255, 255, 255, 0.95) inset;
-  z-index: 0;
+    0 2px 12px rgba(15, 23, 42, 0.1),
+    0 0 0 1px rgba(99, 102, 241, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.98) inset;
+  z-index: 1;
   pointer-events: none;
   backface-visibility: hidden;
   transition:
-    transform 0.62s var(--mode-ease-smooth),
-    box-shadow 0.45s var(--mode-ease-out);
+    transform 0.68s var(--mode-ease-spring),
+    box-shadow 0.5s var(--mode-ease-out);
   will-change: transform;
 }
 
@@ -3290,11 +3402,11 @@ a {
 
 .dashboard-mode-toggle__tab {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   text-align: center;
-  padding: 0.55rem 0.7rem;
+  padding: 0.65rem 1.05rem;
   border-radius: 999px;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 500;
   font-family: var(--font-sans);
   letter-spacing: -0.01em;
@@ -3333,7 +3445,8 @@ a {
   color: #1d4ed8;
   font-weight: 600;
   opacity: 1;
-  text-shadow: 0 0 24px rgba(37, 99, 235, 0.14);
+  text-shadow: 0 0 22px rgba(37, 99, 235, 0.18);
+  animation: dashboardModeTabGlow 2.8s ease-in-out infinite;
 }
 
 .dashboard-mode-toggle__tab:focus-visible {
@@ -3345,10 +3458,10 @@ a {
 @keyframes dashboardModeToggleIn {
   0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.96);
-    filter: blur(2px);
+    transform: translateY(8px) scale(0.97);
+    filter: blur(3px);
   }
-  70% {
+  55% {
     opacity: 1;
     filter: blur(0);
   }
@@ -3359,19 +3472,37 @@ a {
   }
 }
 
-@keyframes dashboardModeBarReveal {
-  from {
-    opacity: 0;
+@keyframes dashboardModeSheen {
+  0% {
+    background-position: 130% 50%;
   }
-  to {
-    opacity: 1;
+  100% {
+    background-position: -130% 50%;
+  }
+}
+
+@keyframes dashboardModeTabGlow {
+  0%,
+  100% {
+    text-shadow: 0 0 18px rgba(37, 99, 235, 0.12);
+  }
+  50% {
+    text-shadow: 0 0 26px rgba(37, 99, 235, 0.22);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dashboard-mode-toggle,
-  .dashboard-mode-bar {
+  .dashboard-mode-toggle {
     animation: none;
+  }
+
+  .dashboard-mode-toggle::before {
+    animation: none;
+    opacity: 0;
+  }
+
+  .dashboard-mode-toggle:hover {
+    transform: none;
   }
 
   .dashboard-mode-toggle::after {
@@ -3381,6 +3512,12 @@ a {
 
   .dashboard-mode-toggle__tab {
     transition: color 0.15s ease, opacity 0.15s ease;
+  }
+
+  .dashboard-mode-toggle__tab.is-active,
+  .dashboard-mode-toggle__tab[aria-current="page"] {
+    animation: none;
+    text-shadow: 0 0 18px rgba(37, 99, 235, 0.14);
   }
 
   .dashboard-mode-toggle__tab:hover:not(.is-active):not([aria-current="page"]),
@@ -3396,8 +3533,8 @@ a {
   }
 
   .dashboard-mode-toggle__tab {
-    font-size: 0.75rem;
-    padding: 0.48rem 0.45rem;
+    font-size: 0.78rem;
+    padding: 0.52rem 0.65rem;
   }
 }
 
@@ -4031,7 +4168,6 @@ body.landing-page.dashboard-page:has(main.dashboard-main--ai-analysis) {
 }
 
 body.landing-page.dashboard-page:has(main.dashboard-main--ai-analysis) nav.glass-nav,
-body.landing-page.dashboard-page:has(main.dashboard-main--ai-analysis) .dashboard-mode-bar,
 body.landing-page.dashboard-page:has(main.dashboard-main--ai-analysis) .site-footer.site-footer--dashboard {
   flex-shrink: 0;
 }
@@ -6380,8 +6516,8 @@ main.dashboard-main--ai-analysis .ai-live-main-actions {
   }
 
   .dashboard-mode-toggle__tab {
-    font-size: 0.6875rem;
-    padding: 0.4rem 0.3rem;
+    font-size: 0.72rem;
+    padding: 0.45rem 0.5rem;
   }
 
   .dashboard-analysis-title {
