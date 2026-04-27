@@ -26,6 +26,11 @@ body.landing-page.dashboard-page.page--ai-chat {
   flex-shrink: 0;
 }
 
+/* Back-to-home is moved into the chat topbar on AI page */
+.page--ai-chat #navbar .nav-back-home {
+  display: none;
+}
+
 @media (min-width: 861px) {
   .page--ai-chat {
     --cht-sidebar-track: 260px;
@@ -171,6 +176,10 @@ body.landing-page.dashboard-page.page--ai-chat {
   background: #ffffff;
   color: #6b7280;
   cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cht-btn:disabled {
@@ -186,6 +195,66 @@ body.landing-page.dashboard-page.page--ai-chat {
 .cht-btn:hover:not(:disabled) {
   background: #f9fafb;
   border-color: #d1d5db;
+}
+
+/* Topbar back button style (blue text-link button) */
+.cht-btn--back-home {
+  border: none;
+  background: transparent;
+  color: #1a73e8;
+  font-weight: 600;
+  border-radius: 8px;
+  min-height: 28px;
+  padding: 2px 4px;
+  line-height: 1.1;
+}
+
+.cht-btn.cht-btn--back-home:hover,
+.cht-btn.cht-btn--back-home:hover:not(:disabled) {
+  border: none;
+  background: transparent;
+  color: #1558d6;
+  text-decoration: underline;
+  box-shadow: none;
+}
+
+.cht-btn--back-home:active {
+  transform: none;
+}
+
+/* Composer Save PDF button (next to send) */
+.cht-composer__pdf {
+  flex-shrink: 0;
+  height: 36px;
+  border: 1px solid #c7dcff;
+  border-radius: 999px;
+  background: #eaf2ff;
+  color: #1558d6;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.cht-composer__pdf--outside {
+  min-width: 88px;
+  white-space: nowrap;
+}
+
+.cht-composer__pdf:hover:not(:disabled) {
+  border-color: #b3ceff;
+  background: #dbe9ff;
+  color: #124dbb;
+}
+
+.cht-composer__pdf:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 /* Save PDF button accent */
@@ -256,12 +325,12 @@ body.landing-page.dashboard-page.page--ai-chat {
 }
 
 .cht-shell--awaiting-upload .cht-topbar__actions {
-  pointer-events: none;
-  user-select: none;
-  filter: blur(2px);
-  -webkit-filter: blur(2px);
-  opacity: 0.94;
-  transition: filter 0.28s ease, opacity 0.28s ease;
+  pointer-events: auto;
+  user-select: auto;
+  filter: none;
+  -webkit-filter: none;
+  opacity: 1;
+  transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1015,7 +1084,14 @@ body.landing-page.dashboard-page.page--ai-chat {
   line-height: 1.3;
 }
 
+.cht-composer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .cht-composer {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1031,6 +1107,15 @@ body.landing-page.dashboard-page.page--ai-chat {
 .cht-composer:focus-within {
   border-color: #1a73e8;
   box-shadow: 0 0 0 1px #1a73e8;
+}
+
+@media (max-width: 640px) {
+  .cht-composer-row {
+    flex-wrap: wrap;
+  }
+  .cht-composer__pdf--outside {
+    margin-left: auto;
+  }
 }
 
 .cht-composer__attach,

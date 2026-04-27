@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SiteSureLabs — Login</title>
+  <script>
+    // Keep a single canonical login entrypoint.
+    window.location.replace("/");
+  </script>
+  <link rel="stylesheet" href="/shared/styles.css" />
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <div class="logo">SiteSureLabs</div>
+    <p class="subtitle">Access your inspection dashboard and real-time project insights</p>
+
+    <div id="alert" class="alert"></div>
+
+    <form id="loginForm" autocomplete="on" novalidate>
+      <div class="form-group" id="email-group">
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="Enter your mail" required autocomplete="email" />
+        <span class="field-error" id="email-error" role="alert"></span>
+      </div>
+      <div class="form-group" id="password-group">
+        <label for="password">Password</label>
+        <div class="password-field-wrap">
+          <input id="password" type="password" placeholder="••••••••" required autocomplete="current-password" />
+          <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password" aria-pressed="false"></button>
+        </div>
+        <span class="field-error" id="password-error" role="alert"></span>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" id="submitBtn">
+        <span class="btn-text">Sign In</span>
+      </button>
+    </form>
+
+    <p class="auth-link">New to this platform? <a href="/register/">Register</a></p>
+  </div>
+
+  <script type="module">
+    import { saveAuth, getUser } from "/shared/auth.js";
+    import { wirePasswordToggle } from "/shared/password-toggle.js";
+
+    const user = getUser();
+    if (user) {
+      window.location.href = user.role === "admin" ? "/admin/" : "/inspect/";
+    }
+
+    const form       = document.getElementById("loginForm");
+    const alertEl    = document.getElementById("alert");
+    const submitBtn  = document.getElementById("submitBtn");
+    const emailInput = document.getElementById("email");
+    const passInput  = document.getElementById("password");
+
+    wirePasswordToggle(passInput, document.getElementById("password-toggle"));
+
+    /* ── Field validation helpers ── */
+    function showFieldError(groupId, errorId, msg) {
+      document.getElementById(groupId).classList.add("has-error");
+      const span = document.getElementById(errorId);
+      span.textContent = msg;
+      span.classList.add("visible");
+    }
+
+    function clearFieldError(groupId, errorId) {
+      document.getElementById(groupId).classList.remove("has-error");
+      const span = document.getElementById(errorId);
+      span.textContent = "";
+      span.classList.remove("visible");
+    }
+
+    function validateEmail() {
+      const val = emailInput.value.trim();
+      if (!val) {
+        showFieldError("email-group", "email-error", "Email is required.");
+        return false;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+        showFieldError("email-group", "email-error", "Enter a valid email address.");
+        return false;
+      }
+      clearFieldError("email-group", "email-error");
+      return true;
+    }
+
+    function validatePassword() {
+      if (!passInput.value) {
+        showFieldError("password-group", "password-error", "Password is required.");
+        return false;
+      }
+      clearFieldError("password-group", "password-error");
+      return true;
+    }
+
+    /* Validate on blur — only surface errors after the user has touched the field */
+    emailInput.addEventListener("blur", validateEmail);
+    passInput.addEventListener("blur", validatePassword);
+
+    /* Clear the error as the user corrects their input */
+    emailInput.addEventListener("input", () => clearFieldError("email-group", "email-error"));
+    passInput.addEventListener("input", () => clearFieldError("password-group", "password-error"));
+
+    /* ── Alert helper ── */
+    function showAlert(msg, type) {
+      alertEl.textContent = msg;
+      alertEl.className = `alert alert-${type} show`;
+    }
+
+    /* ── Loading state templates ── */
+    const BTN_DEFAULT = '<span class="btn-text">Sign In</span>';
+    const BTN_LOADING = '<span class="btn-spinner"></span><span class="btn-text">Signing in…</span>';
+
+    /* ── Shake on invalid attempt ── */
+    function shakeForm() {
+      form.classList.remove("shake");
+      void form.offsetWidth; // force reflow to restart animation
+      form.classList.add("shake");
+    }
+
+    /* ── Submit handler ── */
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      alertEl.className = "alert";
+
+      const emailOk = validateEmail();
+      const passOk  = validatePassword();
+
+      if (!emailOk || !passOk) {
+        shakeForm();
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = BTN_LOADING;
+
+      const email    = emailInput.value.trim();
+      const password = passInput.value;
+
+      try {
+        const res  = await fetch("/api/auth/login", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showAlert(data.detail || "Login failed", "error");
+          shakeForm();
+          return;
+        }
+
+        saveAuth(data.access_token, {
+          user_id: data.user_id,
+          email:   data.email,
+          role:    data.role,
+          name: data.name || null,
+          profile_photo: data.profile_photo || null,
+        });
+
+        window.location.href = data.role === "admin" ? "/admin/" : "/inspect/";
+      } catch {
+        showAlert("Network error — is the server running?", "error");
+        shakeForm();
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = BTN_DEFAULT;
+      }
+    });
+  </script>
+</body>
+</html>

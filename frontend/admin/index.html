@@ -1,0 +1,2311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - SiteSureLabs</title>
+  <link rel="icon" type="image/png" href="/MyHomeLogo/MyHomeLogo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/shared/styles.css" />
+  <style>
+    /* ── Admin navbar — identical to glass-nav on all other pages ── */
+    .admin-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: linear-gradient(180deg, rgba(255,255,255,.9) 0%, rgba(255,255,255,.78) 100%);
+      backdrop-filter: blur(18px) saturate(145%);
+      -webkit-backdrop-filter: blur(18px) saturate(145%);
+      border-bottom: 1px solid rgba(148,163,184,.22);
+      box-shadow: 0 1px 0 rgba(255,255,255,.78) inset, 0 8px 24px rgba(15,23,42,.055), 0 1px 6px rgba(148,163,184,.1);
+    }
+    .admin-nav__inner {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      min-height: 58px;
+      padding-left: clamp(0.75rem, 3vw, 2rem);
+      padding-right: clamp(0.75rem, 3vw, 2rem);
+      gap: 12px;
+    }
+    .admin-nav__logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 0;
+      text-decoration: none;
+    }
+    .admin-nav__logo-text {
+      font-family: Montserrat, system-ui, sans-serif;
+      font-weight: 700;
+      font-size: clamp(1.05rem, 2.2vw, 1.15rem);
+      letter-spacing: -0.02em;
+      color: #0f172a;
+    }
+    .admin-nav__title {
+      margin: 0;
+      font-family: Montserrat, system-ui, sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+      text-align: center;
+    }
+    .admin-nav__actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1rem;
+    }
+    .admin-nav__back {
+      font-size: 0.82rem;
+      color: #2563eb;
+      text-decoration: none;
+      font-family: Montserrat, sans-serif;
+    }
+    .admin-nav__back:hover { text-decoration: underline; }
+
+    /* ── Metric stat cards (layout: icon + trend / number / label) ── */
+    .stats-block { margin-bottom: 1.25rem; }
+    .stats-row--metric {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    @keyframes stat-card-enter {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .stat-card--metric {
+      position: relative;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid #e8eef4;
+      background: linear-gradient(165deg, #ffffff 0%, #f8fafc 100%);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      padding: 1.1rem 1.15rem 1rem;
+      transition: box-shadow 0.35s ease, transform 0.3s ease, border-color 0.2s ease;
+    }
+    .stat-card--metric::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 14px 14px 0 0;
+      opacity: 0.9;
+    }
+    .stat-card--users::before  { background: linear-gradient(90deg, #2563eb, #3b82f6); }
+    .stat-card--uploads::before { background: linear-gradient(90deg, #0ea5e9, #38bdf8); }
+    .stat-card--logs::before  { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+    .stat-card--metric:hover {
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
+      transform: translateY(-3px);
+      border-color: #dbeafe;
+    }
+    .stat-card--metric:hover .stat-card__icon {
+      transform: scale(1.05);
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+    }
+    .stat-card--metric.stat-card--enter {
+      animation: stat-card-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .stat-card--metric#cardUsers.stat-card--enter  { animation-delay: 0ms; }
+    .stat-card--metric#cardUploads.stat-card--enter { animation-delay: 100ms; }
+    .stat-card--metric#cardLogs.stat-card--enter  { animation-delay: 200ms; }
+    .stat-card.stat-card--metric.stat-card--changed {
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35), 0 8px 24px rgba(37, 99, 235, 0.12);
+      transform: translateY(-2px);
+    }
+    .stat-card__head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .stat-card__icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .stat-card__icon svg { width: 20px; height: 20px; }
+    .stat-card--users .stat-card__icon  { background: #eff6ff; color: #2563eb; }
+    .stat-card--uploads .stat-card__icon { background: #e0f2fe; color: #0284c7; }
+    .stat-card--logs .stat-card__icon  { background: #f3e8ff; color: #7c3aed; }
+    .stat-card--metric:hover.stat-card--users .stat-card__icon  { color: #1d4ed8; }
+    .stat-card--metric:hover.stat-card--uploads .stat-card__icon { color: #0369a1; }
+    .stat-card--metric:hover.stat-card--logs .stat-card__icon  { color: #6d28d9; }
+    .stat-card__trend {
+      text-align: right;
+      min-width: 0;
+    }
+    .stat-card__trend-line {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: #16a34a;
+      line-height: 1.35;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    .stat-card__trend-line--muted {
+      color: #64748b;
+      font-weight: 500;
+    }
+    .stat-card__body {
+      text-align: center;
+    }
+    .stat-card__value-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.4rem;
+    }
+    .stat-card--metric .stat-value {
+      display: inline-block;
+      font-size: 1.9rem;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: #0f172a;
+      font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.1;
+      transition: color 0.3s ease;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1, "lnum" 1;
+    }
+    .stat-card.stat-card--metric.stat-card--changed .stat-value { color: #2563eb; }
+    .stat-card--metric .stat-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+      margin-top: 0.35rem;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    .stat-delta {
+      position: absolute;
+      top: -0.1rem;
+      right: -2.1rem;
+      font-size: 0.6rem;
+      font-weight: 700;
+      font-family: Montserrat, system-ui, sans-serif;
+      color: #fff;
+      background: #2563eb;
+      border-radius: 999px;
+      padding: 2px 6px;
+      opacity: 0;
+      transform: translateY(4px) scale(0.8);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .stat-delta.stat-delta--visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    /* Skeleton */
+    @keyframes stat-shimmer {
+      0% { background-position: -120% 0; }
+      100% { background-position: 120% 0; }
+    }
+    .stat-card__inner { position: relative; z-index: 1; }
+    .stat-card--loading .stat-card__inner { opacity: 0; pointer-events: none; }
+    .stat-card--loading .stat-card__shimmer { display: block; }
+    .stat-card--loading { min-height: 168px; }
+    .stat-card__shimmer {
+      display: none;
+      position: absolute;
+      inset: 0;
+      padding: 1.1rem 1.15rem 1rem;
+    }
+    .shimmer-line {
+      border-radius: 8px;
+      background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+      background-size: 200% 100%;
+      animation: stat-shimmer 1.2s ease-in-out infinite;
+    }
+    .shimmer-line--head { width: 45%; height: 36px; margin-bottom: 1rem; }
+    .shimmer-line--val { width: 40%; height: 36px; margin: 0 auto 0.5rem; }
+    .shimmer-line--lbl { width: 32%; height: 12px; margin: 0 auto; }
+    .stats-live {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.45rem;
+      margin-top: 0.75rem;
+      min-height: 1.1rem;
+    }
+    .stats-live__dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .stats-live__dot::after {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      background: rgba(34, 197, 94, 0.35);
+      animation: live-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+    .stats-live__text {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      font-weight: 500;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    @media (max-width: 480px) {
+      .stat-card__trend { max-width: 8.5rem; }
+    }
+
+    /* Live dot pulsing next to the dashboard title */
+    .live-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      margin-left: 8px;
+      vertical-align: middle;
+      position: relative;
+    }
+    .live-dot::after {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      background: rgba(34,197,94,.35);
+      animation: live-ping 2s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    @keyframes live-ping {
+      0%   { transform: scale(1);   opacity: 0.75; }
+      75%, 100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    /* New-row highlight for tables */
+    @keyframes row-slide-in {
+      from { opacity: 0; transform: translateY(-6px); background: rgba(37,99,235,.06); }
+      to   { opacity: 1; transform: translateY(0);    background: transparent; }
+    }
+    .row-new {
+      animation: row-slide-in 0.5s ease both;
+    }
+
+    /* ── Users Summary Bar ── */
+    .users-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .summary-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.85rem 1rem;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      border: 1px solid #f1f5f9;
+    }
+    .summary-chip__icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .summary-chip__icon svg { width: 18px; height: 18px; }
+    .summary-chip__icon--total { background: #eff6ff; color: #2563eb; }
+    .summary-chip__icon--active { background: #f0fdf4; color: #16a34a; }
+    .summary-chip__icon--admin { background: #fef3c7; color: #d97706; }
+    .summary-chip__val {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.1;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    .summary-chip__label {
+      font-size: 0.7rem;
+      color: #64748b;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+
+    /* ── Search & Filters ── */
+    .users-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-bottom: 1.25rem;
+      align-items: center;
+    }
+    .users-search {
+      flex: 1;
+      min-width: 200px;
+      max-width: 340px;
+      position: relative;
+    }
+    .users-search__icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      pointer-events: none;
+    }
+    .users-search__icon svg { width: 16px; height: 16px; }
+    .users-search input {
+      width: 100%;
+      padding: 0.55rem 0.75rem 0.55rem 2.35rem;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      color: #1e293b;
+      background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+      font-family: inherit;
+    }
+    .users-search input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    }
+    .users-search input::placeholder { color: #94a3b8; }
+    .users-filter-btn {
+      padding: 0.5rem 0.85rem;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: #fff;
+      color: #475569;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      font-family: Montserrat, system-ui, sans-serif;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .users-filter-btn:hover { border-color: #cbd5e1; background: #f8fafc; }
+    .users-filter-btn.active { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+    .users-view-control {
+      margin-left: auto;
+      position: relative;
+    }
+    .users-view-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.38rem;
+      min-height: 36px;
+      padding: 0.5rem 0.72rem;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fff;
+      color: #334155;
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: Montserrat, system-ui, sans-serif;
+      cursor: pointer;
+      transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+    .users-view-btn:hover { border-color: #cbd5e1; background: #f8fafc; }
+    .users-view-btn.active {
+      border-color: #2563eb;
+      color: #1d4ed8;
+      background: #eff6ff;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    .users-view-btn svg { width: 14px; height: 14px; }
+    .users-view-panel {
+      position: absolute;
+      top: calc(100% + .45rem);
+      right: 0;
+      width: 150px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      box-shadow: 0 14px 30px rgba(15,23,42,.14);
+      padding: .35rem;
+      z-index: 20;
+      display: none;
+    }
+    .users-view-panel.open { display: block; }
+    .users-view-option {
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: #334155;
+      text-align: left;
+      border-radius: 8px;
+      padding: .45rem .5rem;
+      font-size: .78rem;
+      font-weight: 600;
+      font-family: Montserrat, system-ui, sans-serif;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: .38rem;
+    }
+    .users-view-option svg { width: 13px; height: 13px; }
+    .users-view-option:hover { background: #f8fafc; }
+    .users-view-option.active { background: #eff6ff; color: #1d4ed8; }
+
+    /* ── User Cards Grid ── */
+    .users-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    @keyframes card-enter {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .user-card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+      border: 1px solid #f1f5f9;
+      padding: 1.15rem;
+      transition: box-shadow .2s, border-color .2s, transform .2s;
+      animation: card-enter .35s ease both;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    .user-card:hover {
+      box-shadow: 0 4px 16px rgba(15,23,42,.08), 0 2px 6px rgba(15,23,42,.04);
+      border-color: #e2e8f0;
+      transform: translateY(-2px);
+    }
+    .user-card__top {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .user-card__avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Montserrat, system-ui, sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+    .user-card__avatar--blue { background: #2563eb; }
+    .user-card__avatar--indigo { background: #6366f1; }
+    .user-card__avatar--violet { background: #8b5cf6; }
+    .user-card__avatar--pink { background: #ec4899; }
+    .user-card__avatar--teal { background: #14b8a6; }
+    .user-card__avatar--amber { background: #f59e0b; }
+    .user-card__avatar--emerald { background: #10b981; }
+    .user-card__avatar--rose { background: #f43f5e; }
+    .user-card__info {
+      flex: 1;
+      min-width: 0;
+    }
+    .user-card__email {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #1e293b;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    .user-card__name {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 1px;
+    }
+    .user-card__badges {
+      display: flex;
+      gap: 0.35rem;
+      margin-top: 3px;
+    }
+    .user-card__badge {
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 99px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    .user-card__badge--admin { background: #dbeafe; color: #1e40af; }
+    .user-card__badge--user { background: #f0fdf4; color: #166534; }
+    .user-card__stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    .user-card__stat {
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 0.55rem 0.7rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .user-card__stat-val {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1e293b;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    .user-card__stat-label {
+      font-size: 0.68rem;
+      color: #94a3b8;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    .user-card__footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding-top: 0.55rem;
+      border-top: 1px solid #f1f5f9;
+    }
+    .user-card__date {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    .user-card__action {
+      font-family: Montserrat, system-ui, sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #2563eb;
+      background: #eff6ff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.4rem 0.85rem;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .user-card__action:hover { background: #dbeafe; color: #1d4ed8; }
+    .user-card__action:active { transform: scale(.97); }
+
+    /* ── Tile/List mode for users ── */
+    .users-grid.users-grid--tile {
+      grid-template-columns: 1fr;
+      gap: 0.7rem;
+    }
+    .users-grid.users-grid--tile .user-card {
+      flex-direction: row;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.85rem 0.95rem;
+      border-radius: 12px;
+    }
+    .users-grid.users-grid--tile .user-card__top {
+      min-width: 0;
+      flex: 1 1 44%;
+      margin-right: 0.2rem;
+    }
+    .users-grid.users-grid--tile .user-card__stats {
+      grid-template-columns: repeat(2, minmax(88px, 1fr));
+      min-width: 210px;
+      flex: 0 0 210px;
+    }
+    .users-grid.users-grid--tile .user-card__stat {
+      padding: 0.45rem 0.55rem;
+    }
+    .users-grid.users-grid--tile .user-card__footer {
+      border-top: none;
+      border-left: 1px solid #f1f5f9;
+      padding-top: 0;
+      padding-left: 0.75rem;
+      margin-left: 0.15rem;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 0.42rem;
+      min-width: 126px;
+    }
+
+    /* Pagination */
+    .users-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      margin-top: 1.5rem;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    .users-pagination__btn {
+      width: 34px; height: 34px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color .15s, background .15s;
+    }
+    .users-pagination__btn:hover:not(:disabled) { background: #f8fafc; border-color: #cbd5e1; }
+    .users-pagination__btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .users-pagination__btn:disabled { opacity: .4; cursor: not-allowed; }
+    .users-pagination__info {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      padding: 0 0.5rem;
+    }
+    .users-empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #94a3b8;
+    }
+    .users-empty-state svg { width: 48px; height: 48px; margin-bottom: 0.75rem; }
+    .users-empty-state p { font-size: 0.9rem; }
+
+    @media (max-width: 640px) {
+      .users-grid { grid-template-columns: 1fr; }
+      .users-toolbar { flex-direction: column; align-items: stretch; }
+      .users-search { max-width: none; }
+      .users-view-control {
+        margin-left: 0;
+      }
+      .users-grid.users-grid--tile .user-card {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .users-grid.users-grid--tile .user-card__top,
+      .users-grid.users-grid--tile .user-card__stats,
+      .users-grid.users-grid--tile .user-card__footer {
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      .users-grid.users-grid--tile .user-card__footer {
+        border-left: none;
+        border-top: 1px solid #f1f5f9;
+        padding-left: 0;
+        padding-top: 0.55rem;
+        margin-left: 0;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+      }
+    }
+
+    /* ── Date-grouped upload sections ── */
+    .upload-date-group {
+      margin-bottom: 1.5rem;
+    }
+    .upload-date-group:last-child {
+      margin-bottom: 0;
+    }
+    .upload-date-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.85rem;
+      padding: 0 0.15rem;
+    }
+    .upload-date-header__label {
+      font-family: Montserrat, system-ui, sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+    }
+    .upload-date-header__label--today {
+      color: #2563eb;
+    }
+    .upload-date-header__count {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #64748b;
+      background: #f1f5f9;
+      border-radius: 999px;
+      padding: 1px 8px;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    .upload-date-header__line {
+      flex: 1;
+      height: 1px;
+      background: #e2e8f0;
+    }
+
+    /* ── All Uploads filter/sort controls ── */
+    .all-uploads-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: .85rem;
+      position: relative;
+    }
+    .all-uploads-sort-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .5rem .8rem;
+      border: 1px solid #dbe3ed;
+      border-radius: 10px;
+      background: #fff;
+      color: #334155;
+      font-size: .8rem;
+      font-weight: 600;
+      font-family: Montserrat, system-ui, sans-serif;
+      cursor: pointer;
+      transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+    .all-uploads-sort-btn:hover {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+    }
+    .all-uploads-sort-btn.active {
+      border-color: #2563eb;
+      color: #1d4ed8;
+      background: #eff6ff;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    .all-uploads-sort-panel {
+      position: absolute;
+      top: calc(100% + .5rem);
+      right: 0;
+      width: min(300px, calc(100vw - 2rem));
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      box-shadow: 0 16px 38px rgba(15,23,42,.16);
+      padding: .8rem;
+      z-index: 30;
+      display: none;
+    }
+    .all-uploads-sort-panel.open { display: block; }
+    .all-uploads-sort-panel__title {
+      font-size: .74rem;
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin: 0 0 .6rem;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    .all-uploads-sort-field { margin-bottom: .7rem; }
+    .all-uploads-sort-field label {
+      display: block;
+      font-size: .74rem;
+      color: #64748b;
+      margin-bottom: .35rem;
+      font-weight: 600;
+      font-family: Montserrat, system-ui, sans-serif;
+    }
+    .all-uploads-sort-field select {
+      width: 100%;
+      border: 1px solid #dbe3ed;
+      border-radius: 9px;
+      padding: .48rem .55rem;
+      font-size: .82rem;
+      color: #1e293b;
+      background: #fff;
+      font-family: inherit;
+    }
+    .all-uploads-sort-field select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    }
+    .all-uploads-sort-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: .45rem;
+      margin-top: .1rem;
+    }
+    .all-uploads-sort-actions button {
+      border: none;
+      border-radius: 8px;
+      font-size: .76rem;
+      font-weight: 600;
+      font-family: Montserrat, system-ui, sans-serif;
+      padding: .45rem .75rem;
+      cursor: pointer;
+    }
+    .all-uploads-sort-clear {
+      background: #f1f5f9;
+      color: #475569;
+    }
+    .all-uploads-sort-apply {
+      background: #2563eb;
+      color: #fff;
+    }
+
+    /* ── Upload card delete button ── */
+    .upload-item {
+      position: relative;
+    }
+    .upload-item__delete {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(4px);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: scale(0.85);
+      transition: opacity 0.2s ease, transform 0.2s ease, background 0.15s ease;
+      z-index: 2;
+      padding: 0;
+    }
+    .upload-item:hover .upload-item__delete {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .upload-item__delete:hover {
+      background: rgba(239, 68, 68, 0.85);
+    }
+    .upload-item__delete:active {
+      transform: scale(0.92);
+    }
+    .upload-item__delete svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* ── Confirm modal overlay ── */
+    .confirm-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(6px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+    .confirm-modal--open {
+      opacity: 1;
+      visibility: visible;
+    }
+    .confirm-modal__card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
+      width: min(400px, calc(100vw - 2rem));
+      padding: 1.75rem;
+      transform: translateY(12px) scale(0.97);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .confirm-modal--open .confirm-modal__card {
+      transform: translateY(0) scale(1);
+    }
+    .confirm-modal__icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #fef2f2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+    .confirm-modal__icon svg {
+      width: 22px;
+      height: 22px;
+      color: #ef4444;
+    }
+    .confirm-modal__title {
+      font-family: Montserrat, system-ui, sans-serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #0f172a;
+      margin: 0 0 0.35rem;
+    }
+    .confirm-modal__msg {
+      font-size: 0.85rem;
+      color: #64748b;
+      line-height: 1.5;
+      margin: 0 0 1.35rem;
+    }
+    .confirm-modal__actions {
+      display: flex;
+      gap: 0.65rem;
+      justify-content: flex-end;
+    }
+    .confirm-modal__btn {
+      font-family: Montserrat, system-ui, sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 0.55rem 1.15rem;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.12s ease, opacity 0.15s ease;
+    }
+    .confirm-modal__btn:active {
+      transform: scale(0.97);
+    }
+    .confirm-modal__btn--cancel {
+      background: #f1f5f9;
+      color: #334155;
+    }
+    .confirm-modal__btn--cancel:hover {
+      background: #e2e8f0;
+    }
+    .confirm-modal__btn--danger {
+      background: #ef4444;
+      color: #fff;
+    }
+    .confirm-modal__btn--danger:hover {
+      background: #dc2626;
+    }
+    .confirm-modal__btn--danger:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* ── Toast notification ── */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      font-family: Montserrat, system-ui, sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 0.65rem 1.25rem;
+      border-radius: 10px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.14);
+      z-index: 10000;
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: none;
+    }
+    .toast--visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast--success {
+      background: #f0fdf4;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+    .toast--error {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    /* ── User uploads modal (premium inline experience) ── */
+    .user-uploads-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .2s ease, visibility .2s ease;
+    }
+    .user-uploads-modal--open {
+      opacity: 1;
+      visibility: visible;
+    }
+    .user-uploads-modal__card {
+      width: min(1100px, calc(100vw - 2rem));
+      max-height: min(88vh, 840px);
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      box-shadow: 0 20px 55px rgba(15, 23, 42, .22);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: translateY(10px) scale(.985);
+      transition: transform .26s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .user-uploads-modal--open .user-uploads-modal__card {
+      transform: translateY(0) scale(1);
+    }
+    .user-uploads-modal__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      padding: 1rem 1.15rem;
+      border-bottom: 1px solid #e2e8f0;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+    .user-uploads-modal__title-wrap { min-width: 0; }
+    .user-uploads-modal__title {
+      margin: 0;
+      font-family: Montserrat, system-ui, sans-serif;
+      font-size: 1.02rem;
+      font-weight: 650;
+      color: #0f172a;
+    }
+    .user-uploads-modal__meta {
+      margin-top: .2rem;
+      font-size: .76rem;
+      color: #64748b;
+      font-family: Montserrat, system-ui, sans-serif;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 72vw;
+    }
+    .user-uploads-modal__close {
+      border: none;
+      background: transparent;
+      color: #64748b;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+      transition: background .15s ease, color .15s ease;
+    }
+    .user-uploads-modal__close:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    .user-uploads-modal__body {
+      padding: 1rem 1.15rem 1.15rem;
+      overflow: auto;
+    }
+    .user-uploads-state {
+      text-align: center;
+      color: #64748b;
+      padding: 2.4rem 1rem;
+      font-size: .9rem;
+    }
+    .user-uploads-skeleton {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 1rem;
+    }
+    .user-uploads-skeleton__card {
+      border: 1px solid #eef2f7;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .user-uploads-skeleton__img,
+    .user-uploads-skeleton__line {
+      background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+      background-size: 200% 100%;
+      animation: stat-shimmer 1.15s ease-in-out infinite;
+    }
+    .user-uploads-skeleton__img { height: 140px; }
+    .user-uploads-skeleton__line { height: 12px; margin: .7rem; border-radius: 6px; }
+    .user-uploads-skeleton__line:last-child { width: 65%; }
+    @media (max-width: 640px) {
+      .user-uploads-modal__card {
+        width: calc(100vw - 1rem);
+        max-height: calc(100vh - 1rem);
+      }
+      .user-uploads-modal__meta { max-width: 62vw; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar — same glass appearance as every other page -->
+  <nav class="admin-nav" aria-label="Primary">
+    <div class="admin-nav__inner">
+      <a href="/" class="admin-nav__logo">
+        <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="40" height="40" decoding="async" style="display:block;flex-shrink:0;width:clamp(34px,4.2vw,42px);height:clamp(34px,4.2vw,42px);object-fit:contain">
+        <span class="admin-nav__logo-text">SiteSureLabs</span>
+      </a>
+      <h1 class="admin-nav__title">Admin Dashboard<span class="live-dot" title="Live — auto-refreshing"></span></h1>
+      <div class="admin-nav__actions" id="admin-nav-actions">
+        <a href="/" class="admin-nav__back">← Back to site</a>
+        <!-- profile icon injected by shared/profile-nav.js -->
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Stats -->
+    <div class="stats-block">
+      <div class="stats-row stats-row--metric" id="statsRow">
+        <div class="stat-card stat-card--metric stat-card--users stat-card--loading" id="cardUsers" aria-busy="true">
+          <div class="stat-card__shimmer" aria-hidden="true">
+            <div class="shimmer-line shimmer-line--head"></div>
+            <div class="shimmer-line shimmer-line--val"></div>
+            <div class="shimmer-line shimmer-line--lbl"></div>
+          </div>
+          <div class="stat-card__inner">
+            <div class="stat-card__head">
+              <div class="stat-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <div class="stat-card__trend">
+                <span class="stat-card__trend-line" id="trendUsersToday">—</span>
+                <span class="stat-card__trend-line stat-card__trend-line--muted" id="trendUsersWeek">—</span>
+              </div>
+            </div>
+            <div class="stat-card__body">
+              <div class="stat-card__value-wrap">
+                <div class="stat-value" id="statUsers">0</div>
+                <span class="stat-delta" id="deltaUsers"></span>
+              </div>
+              <div class="stat-label">Users</div>
+            </div>
+          </div>
+        </div>
+        <div class="stat-card stat-card--metric stat-card--uploads stat-card--loading" id="cardUploads" aria-busy="true">
+          <div class="stat-card__shimmer" aria-hidden="true">
+            <div class="shimmer-line shimmer-line--head"></div>
+            <div class="shimmer-line shimmer-line--val"></div>
+            <div class="shimmer-line shimmer-line--lbl"></div>
+          </div>
+          <div class="stat-card__inner">
+            <div class="stat-card__head">
+              <div class="stat-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 5 17 10"/><line x1="12" y1="5" x2="12" y2="15"/></svg>
+              </div>
+              <div class="stat-card__trend">
+                <span class="stat-card__trend-line" id="trendUploadsToday">—</span>
+                <span class="stat-card__trend-line stat-card__trend-line--muted" id="trendUploadsWeek">—</span>
+              </div>
+            </div>
+            <div class="stat-card__body">
+              <div class="stat-card__value-wrap">
+                <div class="stat-value" id="statUploads">0</div>
+                <span class="stat-delta" id="deltaUploads"></span>
+              </div>
+              <div class="stat-label">Uploads</div>
+            </div>
+          </div>
+        </div>
+        <div class="stat-card stat-card--metric stat-card--logs stat-card--loading" id="cardLogs" aria-busy="true">
+          <div class="stat-card__shimmer" aria-hidden="true">
+            <div class="shimmer-line shimmer-line--head"></div>
+            <div class="shimmer-line shimmer-line--val"></div>
+            <div class="shimmer-line shimmer-line--lbl"></div>
+          </div>
+          <div class="stat-card__inner">
+            <div class="stat-card__head">
+              <div class="stat-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 12l3 3 4-4 5 5"/></svg>
+              </div>
+              <div class="stat-card__trend">
+                <span class="stat-card__trend-line" id="trendLogsToday">—</span>
+                <span class="stat-card__trend-line stat-card__trend-line--muted" id="trendLogsWeek">—</span>
+              </div>
+            </div>
+            <div class="stat-card__body">
+              <div class="stat-card__value-wrap">
+                <div class="stat-value" id="statLogs">0</div>
+                <span class="stat-delta" id="deltaLogs"></span>
+              </div>
+              <div class="stat-label">Log events</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="stats-live" id="statsLive">
+        <span class="stats-live__dot" aria-hidden="true"></span>
+        <span class="stats-live__text" id="statsUpdatedText">Loading metrics…</span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="all-uploads">All Uploads</button>
+      <button class="tab-btn" data-tab="users">Users</button>
+      <button class="tab-btn" data-tab="logs">Activity Logs</button>
+    </div>
+
+    <!-- Users tab -->
+    <div class="tab-panel" id="tab-users">
+      <!-- Summary chips -->
+      <div class="users-summary" id="usersSummary">
+        <div class="summary-chip">
+          <div class="summary-chip__icon summary-chip__icon--total">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          </div>
+          <div>
+            <div class="summary-chip__val" id="sumTotal">–</div>
+            <div class="summary-chip__label">Total Users</div>
+          </div>
+        </div>
+        <div class="summary-chip">
+          <div class="summary-chip__icon summary-chip__icon--active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div>
+            <div class="summary-chip__val" id="sumActive">–</div>
+            <div class="summary-chip__label">Active (7d)</div>
+          </div>
+        </div>
+        <div class="summary-chip">
+          <div class="summary-chip__icon summary-chip__icon--admin">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <div>
+            <div class="summary-chip__val" id="sumAdmins">–</div>
+            <div class="summary-chip__label">Admins</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search & filter toolbar -->
+      <div class="users-toolbar">
+        <div class="users-search">
+          <div class="users-search__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          </div>
+          <input type="text" id="usersSearchInput" placeholder="Search by email or name…" autocomplete="off">
+        </div>
+        <button class="users-filter-btn active" data-role="all" id="filterAll">All</button>
+        <button class="users-filter-btn" data-role="user" id="filterUser">Users</button>
+        <button class="users-filter-btn" data-role="admin" id="filterAdmin">Admins</button>
+        <div class="users-view-control">
+          <button class="users-view-btn" id="usersViewBtn" type="button" aria-expanded="false" aria-controls="usersViewPanel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M6 12h12"/><path d="M10 18h4"/></svg>
+            <span id="usersViewBtnText">View: Card</span>
+          </button>
+          <div class="users-view-panel" id="usersViewPanel">
+            <button type="button" class="users-view-option active" data-view="card">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              Card view
+            </button>
+            <button type="button" class="users-view-option" data-view="tile">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1.5"/><circle cx="4" cy="12" r="1.5"/><circle cx="4" cy="18" r="1.5"/></svg>
+              Tile view
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cards grid -->
+      <div class="users-grid" id="usersGrid"></div>
+      <div class="users-empty-state" id="usersEmpty" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <p>No users match your search.</p>
+      </div>
+
+      <!-- Pagination -->
+      <div class="users-pagination" id="usersPagination"></div>
+    </div>
+
+    <!-- All Uploads tab -->
+    <div class="tab-panel active" id="tab-all-uploads">
+      <div class="all-uploads-toolbar" id="allUploadsToolbar">
+        <button class="all-uploads-sort-btn" id="allUploadsSortBtn" type="button" aria-expanded="false" aria-controls="allUploadsSortPanel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M6 12h12"/><path d="M10 18h4"/></svg>
+          Sort
+        </button>
+        <div class="all-uploads-sort-panel" id="allUploadsSortPanel">
+          <p class="all-uploads-sort-panel__title">Filter uploads</p>
+          <div class="all-uploads-sort-field">
+            <label for="allUploadsDayFilter">Day</label>
+            <select id="allUploadsDayFilter">
+              <option value="all">All days</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="last7">Last 7 days</option>
+            </select>
+          </div>
+          <div class="all-uploads-sort-field">
+            <label for="allUploadsUserFilter">User</label>
+            <select id="allUploadsUserFilter">
+              <option value="all">All users</option>
+            </select>
+          </div>
+          <div class="all-uploads-sort-actions">
+            <button class="all-uploads-sort-clear" type="button" id="allUploadsSortClear">Clear</button>
+            <button class="all-uploads-sort-apply" type="button" id="allUploadsSortApply">Apply</button>
+          </div>
+        </div>
+      </div>
+      <div id="allUploadsContainer"></div>
+      <div id="allUploadsEmpty" class="empty" style="display:none">No uploads found.</div>
+    </div>
+
+    <!-- Logs tab -->
+    <div class="tab-panel" id="tab-logs">
+      <div class="card">
+        <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;align-items:end">
+          <div class="form-group" style="margin-bottom:0">
+            <label for="dateFrom">From</label>
+            <input type="date" id="dateFrom" />
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label for="dateTo">To</label>
+            <input type="date" id="dateTo" />
+          </div>
+          <button class="btn btn-primary btn-sm" id="filterLogsBtn">Filter</button>
+          <button class="btn btn-outline btn-sm" id="clearFilterBtn">Clear</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>User</th><th>Action</th><th>Timestamp</th></tr>
+            </thead>
+            <tbody id="logsBody"></tbody>
+          </table>
+        </div>
+        <div id="logsEmpty" class="empty" style="display:none">No logs found.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete confirmation modal -->
+  <div class="confirm-modal" id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+    <div class="confirm-modal__card">
+      <div class="confirm-modal__icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.007H12v-.007Z" /></svg>
+      </div>
+      <h3 class="confirm-modal__title" id="deleteModalTitle">Delete this upload?</h3>
+      <p class="confirm-modal__msg">This action cannot be undone. The image will be permanently removed from storage and the database.</p>
+      <div class="confirm-modal__actions">
+        <button class="confirm-modal__btn confirm-modal__btn--cancel" id="deleteCancelBtn">Cancel</button>
+        <button class="confirm-modal__btn confirm-modal__btn--danger" id="deleteConfirmBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User uploads modal -->
+  <div class="user-uploads-modal" id="userUploadsModal" role="dialog" aria-modal="true" aria-labelledby="userUploadsTitle">
+    <div class="user-uploads-modal__card">
+      <div class="user-uploads-modal__header">
+        <div class="user-uploads-modal__title-wrap">
+          <h3 class="user-uploads-modal__title" id="userUploadsTitle">User uploads</h3>
+          <div class="user-uploads-modal__meta" id="userUploadsMeta"></div>
+        </div>
+        <button class="user-uploads-modal__close" id="userUploadsClose" aria-label="Close uploads viewer">&times;</button>
+      </div>
+      <div class="user-uploads-modal__body">
+        <div id="userUploadsBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Lightbox overlay -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview">
+    <button class="lightbox__close" id="lightbox-close" aria-label="Close preview">&times;</button>
+    <img class="lightbox__img" id="lightbox-img" src="" alt="Full-size preview" />
+    <div class="lightbox__meta" id="lightbox-meta"></div>
+  </div>
+
+  <script type="module">
+    import { requireAdmin, apiFetch } from "/shared/auth.js";
+    import { mountProfileNav } from "/shared/profile-nav.js";
+
+    const token = requireAdmin();
+    if (!token) throw new Error("redirect");
+
+    mountProfileNav(document.getElementById("admin-nav-actions"));
+
+    const POLL_INTERVAL = 5000;
+    let prevStats = { total_users: null, total_uploads: null, total_logs: null };
+    let prevUserIds = new Set();
+    let prevLogIds = new Set();
+    let isFirstLoad = true;
+
+    /* ═══════════════════════════════════════════════
+       Lightbox
+       ═══════════════════════════════════════════════ */
+    const lightbox     = document.getElementById("lightbox");
+    const lightboxImg  = document.getElementById("lightbox-img");
+    const lightboxMeta = document.getElementById("lightbox-meta");
+
+    function openLightbox(src, meta) {
+      lightboxImg.src = src;
+      lightboxMeta.textContent = meta || "";
+      lightboxMeta.style.display = meta ? "block" : "none";
+      lightbox.classList.add("lightbox--open");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove("lightbox--open");
+      document.body.style.overflow = "";
+    }
+
+    document.getElementById("lightbox-close").addEventListener("click", closeLightbox);
+    lightbox.addEventListener("click", (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && lightbox.classList.contains("lightbox--open")) closeLightbox();
+    });
+
+    function wireGridLightbox(container) {
+      container.querySelectorAll(".upload-item").forEach((item) => {
+        const img = item.querySelector("img");
+        const metaEl = item.querySelector(".meta");
+        if (!img) return;
+        img.addEventListener("click", () => {
+          openLightbox(img.src, metaEl?.textContent?.trim() || "");
+        });
+      });
+    }
+
+    /* ═══════════════════════════════════════════════
+       Count-up (ease-out, ~1s) — for metric numbers
+       ═══════════════════════════════════════════════ */
+    const STAT_COUNT_DURATION = 1000;
+    function animateValue(el, from, to, duration = STAT_COUNT_DURATION) {
+      if (from === to) { el.textContent = String(to); return; }
+      const start = performance.now();
+      const diff = to - from;
+      function tick(now) {
+        const t = Math.min((now - start) / duration, 1);
+        const ease = 1 - Math.pow(1 - t, 2.4);
+        el.textContent = String(Math.round(from + diff * ease));
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function formatTrendLineToday(n) {
+      if (n <= 0) return "0 today";
+      return `+${n} today`;
+    }
+    function formatTrendLineWeek(n) {
+      if (n <= 0) return "0 this week";
+      return `+${n} this week`;
+    }
+
+    function setStatsUpdatedLabel() {
+      const el = document.getElementById("statsUpdatedText");
+      if (el) el.textContent = "Updated just now";
+    }
+
+    function flashCard(cardId, deltaId, diff) {
+      const card = document.getElementById(cardId);
+      const badge = document.getElementById(deltaId);
+
+      card.classList.add("stat-card--changed");
+      badge.textContent = `+${diff}`;
+      badge.classList.add("stat-delta--visible");
+
+      setTimeout(() => {
+        card.classList.remove("stat-card--changed");
+        badge.classList.remove("stat-delta--visible");
+      }, 3000);
+    }
+
+    /* ═══════════════════════════════════════════════
+       Tabs
+       ═══════════════════════════════════════════════ */
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+        if (btn.dataset.tab === "all-uploads") loadAllUploads();
+      });
+    });
+
+    function switchTab(name) {
+      document.querySelectorAll(".tab-btn").forEach((b) => {
+        b.classList.toggle("active", b.dataset.tab === name);
+      });
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      document.getElementById(`tab-${name}`).classList.add("active");
+    }
+
+    /* ═══════════════════════════════════════════════
+       Stats — trends, skeleton → enter, count-up, live label
+       ═══════════════════════════════════════════════ */
+    async function loadStats() {
+      try {
+        const res = await apiFetch("/api/admin/stats");
+        if (!res) return;
+        const s = await res.json();
+
+        document.getElementById("trendUsersToday").textContent = formatTrendLineToday(s.users_today ?? 0);
+        document.getElementById("trendUsersWeek").textContent = formatTrendLineWeek(s.users_week ?? 0);
+        document.getElementById("trendUploadsToday").textContent = formatTrendLineToday(s.uploads_today ?? 0);
+        document.getElementById("trendUploadsWeek").textContent = formatTrendLineWeek(s.uploads_week ?? 0);
+        document.getElementById("trendLogsToday").textContent = formatTrendLineToday(s.logs_today ?? 0);
+        document.getElementById("trendLogsWeek").textContent = formatTrendLineWeek(s.logs_week ?? 0);
+
+        const pairs = [
+          { key: "total_users",   elId: "statUsers",   cardId: "cardUsers",   deltaId: "deltaUsers" },
+          { key: "total_uploads", elId: "statUploads", cardId: "cardUploads", deltaId: "deltaUploads" },
+          { key: "total_logs",    elId: "statLogs",    cardId: "cardLogs",    deltaId: "deltaLogs" },
+        ];
+
+        if (isFirstLoad) {
+          document.querySelectorAll("#statsRow .stat-card--loading").forEach((card) => {
+            card.classList.remove("stat-card--loading");
+            card.classList.add("stat-card--enter");
+            card.setAttribute("aria-busy", "false");
+          });
+          setStatsUpdatedLabel();
+
+          const baseDelay = 320;
+          setTimeout(() => {
+            pairs.forEach(({ key, elId }, i) => {
+              const el = document.getElementById(elId);
+              const to = s[key];
+              setTimeout(
+                () => animateValue(el, 0, to, STAT_COUNT_DURATION),
+                i * 80,
+              );
+            });
+          }, baseDelay);
+        } else {
+          for (const { key, elId, cardId, deltaId } of pairs) {
+            const el = document.getElementById(elId);
+            const oldVal = prevStats[key];
+            const newVal = s[key];
+            if (oldVal === null) {
+              el.textContent = String(newVal);
+            } else if (newVal !== oldVal) {
+              animateValue(el, oldVal, newVal, 750);
+              flashCard(cardId, deltaId, newVal - oldVal);
+            }
+          }
+          setStatsUpdatedLabel();
+        }
+
+        prevStats = { ...s };
+        if (isFirstLoad) isFirstLoad = false;
+      } catch (err) {
+        console.error("Failed to load stats:", err);
+        const live = document.getElementById("statsUpdatedText");
+        if (live) live.textContent = "Couldn’t refresh metrics";
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       Users — card grid with search/filter/pagination
+       ═══════════════════════════════════════════════ */
+    let allUsersData = [];
+    let usersFilterRole = "all";
+    let usersSearchQuery = "";
+    const USERS_PER_PAGE = 12;
+    let usersCurrentPage = 1;
+    let usersViewMode = localStorage.getItem("admin_users_view_mode") || "card";
+
+    const AVATAR_COLORS = ["blue","indigo","violet","pink","teal","amber","emerald","rose"];
+    function displayUserName(userLike) {
+      const name = (userLike?.name || "").trim();
+      if (name) return name;
+      const email = (userLike?.email || "").trim();
+      if (!email) return "Unknown user";
+      return email.split("@")[0];
+    }
+    function avatarColor(email) {
+      let hash = 0;
+      for (let i = 0; i < email.length; i++) hash = ((hash << 5) - hash) + email.charCodeAt(i);
+      return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+    }
+
+    function relativeTime(iso) {
+      if (!iso) return "No activity";
+      const diff = Date.now() - new Date(iso).getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return "Just now";
+      if (mins < 60) return `${mins}m ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs}h ago`;
+      const days = Math.floor(hrs / 24);
+      if (days < 7) return `${days}d ago`;
+      return new Date(iso).toLocaleDateString();
+    }
+
+    function isActiveRecently(iso, days = 7) {
+      if (!iso) return false;
+      return (Date.now() - new Date(iso).getTime()) < days * 86400000;
+    }
+
+    function getFilteredUsers() {
+      let list = allUsersData;
+      if (usersFilterRole !== "all") {
+        list = list.filter(u => u.role === usersFilterRole);
+      }
+      if (usersSearchQuery) {
+        const q = usersSearchQuery.toLowerCase();
+        list = list.filter(u =>
+          u.email.toLowerCase().includes(q) ||
+          (u.name && u.name.toLowerCase().includes(q))
+        );
+      }
+      return list;
+    }
+
+    function renderUsersSummary() {
+      const all = allUsersData;
+      document.getElementById("sumTotal").textContent = all.length;
+      document.getElementById("sumActive").textContent = all.filter(u => isActiveRecently(u.last_activity)).length;
+      document.getElementById("sumAdmins").textContent = all.filter(u => u.role === "admin").length;
+    }
+
+    function renderUsersGrid() {
+      const grid = document.getElementById("usersGrid");
+      const empty = document.getElementById("usersEmpty");
+      const filtered = getFilteredUsers();
+
+      grid.classList.toggle("users-grid--tile", usersViewMode === "tile");
+
+      if (filtered.length === 0) {
+        grid.innerHTML = "";
+        empty.style.display = "block";
+        renderPagination(0);
+        return;
+      }
+      empty.style.display = "none";
+
+      const totalPages = Math.ceil(filtered.length / USERS_PER_PAGE);
+      if (usersCurrentPage > totalPages) usersCurrentPage = totalPages;
+      const start = (usersCurrentPage - 1) * USERS_PER_PAGE;
+      const page = filtered.slice(start, start + USERS_PER_PAGE);
+
+      grid.innerHTML = page.map((u, i) => {
+        const initial = (u.name || u.email || "?")[0].toUpperCase();
+        const displayName = displayUserName(u);
+        const color = avatarColor(u.email);
+        const lastAct = relativeTime(u.last_activity);
+        const isActive = isActiveRecently(u.last_activity);
+        return `
+        <div class="user-card" style="animation-delay:${i * 35}ms">
+          <div class="user-card__top">
+            <div class="user-card__avatar user-card__avatar--${color}">${initial}</div>
+            <div class="user-card__info">
+              <div class="user-card__name" title="${displayName}">${displayName}</div>
+              <div class="user-card__email" title="${u.email}">${u.email}</div>
+              <div class="user-card__badges">
+                <span class="user-card__badge user-card__badge--${u.role}">${u.role}</span>
+              </div>
+            </div>
+          </div>
+          <div class="user-card__stats">
+            <div class="user-card__stat">
+              <span class="user-card__stat-val">${u.upload_count}</span>
+              <span class="user-card__stat-label">Uploads</span>
+            </div>
+            <div class="user-card__stat">
+              <span class="user-card__stat-val" style="font-size:.78rem;color:${isActive ? "#16a34a" : "#94a3b8"}">${lastAct}</span>
+              <span class="user-card__stat-label">Last Active</span>
+            </div>
+          </div>
+          <div class="user-card__footer">
+            <span class="user-card__date">Joined ${new Date(u.created_at).toLocaleDateString()}</span>
+            <button class="user-card__action view-uploads-btn" data-uid="${u.id}" data-email="${u.email}" data-name="${displayName}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              View Uploads
+            </button>
+          </div>
+        </div>`;
+      }).join("");
+
+      grid.querySelectorAll(".view-uploads-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          loadUserUploadsModal(btn.dataset.uid, btn.dataset.email, btn.dataset.name);
+        });
+      });
+
+      renderPagination(filtered.length);
+    }
+
+    function setUsersViewMode(mode) {
+      usersViewMode = mode === "tile" ? "tile" : "card";
+      localStorage.setItem("admin_users_view_mode", usersViewMode);
+      document.querySelectorAll(".users-view-option").forEach((btn) => {
+        const active = btn.dataset.view === usersViewMode;
+        btn.classList.toggle("active", active);
+      });
+      const usersViewBtnText = document.getElementById("usersViewBtnText");
+      if (usersViewBtnText) {
+        usersViewBtnText.textContent = usersViewMode === "tile" ? "View: Tile" : "View: Card";
+      }
+      renderUsersGrid();
+    }
+
+    function renderPagination(total) {
+      const container = document.getElementById("usersPagination");
+      const totalPages = Math.ceil(total / USERS_PER_PAGE);
+      if (totalPages <= 1) { container.innerHTML = ""; return; }
+
+      let html = `<button class="users-pagination__btn" id="pgPrev" ${usersCurrentPage === 1 ? "disabled" : ""}>&laquo;</button>`;
+      const maxButtons = 5;
+      let startPage = Math.max(1, usersCurrentPage - Math.floor(maxButtons / 2));
+      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+      if (endPage - startPage < maxButtons - 1) startPage = Math.max(1, endPage - maxButtons + 1);
+
+      for (let p = startPage; p <= endPage; p++) {
+        html += `<button class="users-pagination__btn ${p === usersCurrentPage ? "active" : ""}" data-page="${p}">${p}</button>`;
+      }
+      html += `<span class="users-pagination__info">${total} user${total !== 1 ? "s" : ""}</span>`;
+      html += `<button class="users-pagination__btn" id="pgNext" ${usersCurrentPage === totalPages ? "disabled" : ""}>&raquo;</button>`;
+
+      container.innerHTML = html;
+
+      container.querySelectorAll("[data-page]").forEach(btn => {
+        btn.addEventListener("click", () => { usersCurrentPage = +btn.dataset.page; renderUsersGrid(); });
+      });
+      document.getElementById("pgPrev")?.addEventListener("click", () => { if (usersCurrentPage > 1) { usersCurrentPage--; renderUsersGrid(); } });
+      document.getElementById("pgNext")?.addEventListener("click", () => { if (usersCurrentPage < totalPages) { usersCurrentPage++; renderUsersGrid(); } });
+    }
+
+    // Search input
+    document.getElementById("usersSearchInput").addEventListener("input", (e) => {
+      usersSearchQuery = e.target.value.trim();
+      usersCurrentPage = 1;
+      renderUsersGrid();
+    });
+
+    // Filter buttons
+    document.querySelectorAll(".users-filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".users-filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        usersFilterRole = btn.dataset.role;
+        usersCurrentPage = 1;
+        renderUsersGrid();
+      });
+    });
+
+    const usersViewBtn = document.getElementById("usersViewBtn");
+    const usersViewPanel = document.getElementById("usersViewPanel");
+    function closeUsersViewPanel() {
+      usersViewPanel?.classList.remove("open");
+      usersViewBtn?.classList.remove("active");
+      usersViewBtn?.setAttribute("aria-expanded", "false");
+    }
+    function openUsersViewPanel() {
+      usersViewPanel?.classList.add("open");
+      usersViewBtn?.classList.add("active");
+      usersViewBtn?.setAttribute("aria-expanded", "true");
+    }
+    usersViewBtn?.addEventListener("click", () => {
+      if (usersViewPanel?.classList.contains("open")) closeUsersViewPanel();
+      else openUsersViewPanel();
+    });
+    document.querySelectorAll(".users-view-option").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setUsersViewMode(btn.dataset.view);
+        closeUsersViewPanel();
+      });
+    });
+    document.addEventListener("click", (e) => {
+      if (!usersViewPanel || !usersViewBtn) return;
+      if (!usersViewPanel.contains(e.target) && !usersViewBtn.contains(e.target)) {
+        closeUsersViewPanel();
+      }
+    });
+    setUsersViewMode(usersViewMode);
+
+    async function loadUsers() {
+      try {
+        const res = await apiFetch("/api/admin/users");
+        if (!res) return;
+        const users = await res.json();
+
+        const currentIds = new Set(users.map(u => u.id));
+        allUsersData = users;
+        prevUserIds = currentIds;
+
+        renderUsersSummary();
+        renderUsersGrid();
+      } catch (err) { console.error("Failed to load users:", err); }
+    }
+
+    /* ═══════════════════════════════════════════════
+       All Uploads — date-grouped
+       ═══════════════════════════════════════════════ */
+    function dateLabel(dateObj) {
+      const now = new Date();
+      const today     = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+      const target    = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+
+      if (target.getTime() === today.getTime())     return "Today";
+      if (target.getTime() === yesterday.getTime())  return "Yesterday";
+      return dateObj.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+    }
+
+    function dateKey(dateObj) {
+      return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
+    }
+
+    function groupByDate(items) {
+      const groups = new Map();
+      for (const d of items) {
+        const dt = new Date(d.created_at);
+        if (isNaN(dt.getTime())) continue;
+        const key = dateKey(dt);
+        if (!groups.has(key)) groups.set(key, { label: dateLabel(dt), items: [] });
+        groups.get(key).items.push(d);
+      }
+      return groups;
+    }
+
+    let allUploadsData = [];
+    let allUploadsFilters = { day: "all", user: "all" };
+
+    function isSameDate(a, b) {
+      return a.getFullYear() === b.getFullYear()
+        && a.getMonth() === b.getMonth()
+        && a.getDate() === b.getDate();
+    }
+
+    function getFilteredAllUploads(items) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+
+      return items.filter((d) => {
+        const dt = new Date(d.created_at);
+        if (isNaN(dt.getTime())) return false;
+
+        if (allUploadsFilters.day === "today" && !isSameDate(dt, today)) return false;
+        if (allUploadsFilters.day === "yesterday" && !isSameDate(dt, yesterday)) return false;
+        if (allUploadsFilters.day === "last7") {
+          const sevenDaysAgo = new Date(today);
+          sevenDaysAgo.setDate(today.getDate() - 6);
+          if (dt < sevenDaysAgo) return false;
+        }
+
+        if (allUploadsFilters.user !== "all" && (d.email || "unknown") !== allUploadsFilters.user) return false;
+        return true;
+      });
+    }
+
+    function refreshAllUploadsUserOptions(items) {
+      const userSelect = document.getElementById("allUploadsUserFilter");
+      if (!userSelect) return;
+      const users = Array.from(
+        new Map(
+          items.map((d) => [
+            (d.email || "unknown"),
+            { email: (d.email || "unknown"), name: displayUserName(d) },
+          ]),
+        ).values(),
+      ).sort((a, b) => a.name.localeCompare(b.name));
+      const existing = allUploadsFilters.user;
+      userSelect.innerHTML = `<option value="all">All users</option>${users.map((u) => `<option value="${u.email}">${u.name}</option>`).join("")}`;
+      userSelect.value = users.some((u) => u.email === existing) ? existing : "all";
+    }
+
+    function renderAllUploads(items) {
+      const container = document.getElementById("allUploadsContainer");
+      const empty = document.getElementById("allUploadsEmpty");
+      if (!container || !empty) return;
+
+      const filtered = getFilteredAllUploads(items);
+      if (filtered.length === 0) {
+        container.innerHTML = "";
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+
+      const groups = groupByDate(filtered);
+      let html = "";
+      for (const [, group] of groups) {
+        const isToday = group.label === "Today";
+        html += `
+          <div class="upload-date-group">
+            <div class="upload-date-header">
+              <span class="upload-date-header__label${isToday ? " upload-date-header__label--today" : ""}">${group.label}</span>
+              <span class="upload-date-header__count">${group.items.length}</span>
+              <span class="upload-date-header__line"></span>
+            </div>
+            <div class="upload-grid">${group.items.map((d) => `
+              <div class="upload-item" data-upload-id="${d.id}">
+                <button class="upload-item__delete" aria-label="Delete upload" data-id="${d.id}">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                </button>
+                <img src="/${d.image_path}" alt="Defect" loading="lazy" />
+                <div class="meta">
+                  <strong>${d.tower}</strong> · Floor ${d.floor} · Flat ${d.flat}<br/>
+                  ${d.room}<br/>
+                  <small>${displayUserName(d)} · ${new Date(d.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</small>
+                </div>
+              </div>`).join("")}
+            </div>
+          </div>`;
+      }
+      container.innerHTML = html;
+      wireGridLightbox(container);
+      wireDeleteButtons(container);
+    }
+
+    async function loadAllUploads() {
+      const container = document.getElementById("allUploadsContainer");
+      const empty = document.getElementById("allUploadsEmpty");
+      container.innerHTML = '<div class="card"><p>Loading…</p></div>';
+      empty.style.display = "none";
+
+      try {
+        const res = await apiFetch("/api/admin/uploads");
+        if (!res) return;
+        const raw = await res.json();
+        const items = raw.filter((d) => !d.image_path.startsWith("missing/"));
+
+        if (items.length === 0) {
+          container.innerHTML = "";
+          empty.style.display = "block";
+          return;
+        }
+
+        allUploadsData = items;
+        refreshAllUploadsUserOptions(items);
+        renderAllUploads(allUploadsData);
+      } catch (err) {
+        console.error("Failed to load all uploads:", err);
+        container.innerHTML = '<div class="card"><p>Error loading uploads.</p></div>';
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       Delete system (modal + API + toast)
+       ═══════════════════════════════════════════════ */
+    const deleteModal      = document.getElementById("deleteModal");
+    const deleteCancelBtn  = document.getElementById("deleteCancelBtn");
+    const deleteConfirmBtn = document.getElementById("deleteConfirmBtn");
+    let pendingDeleteId    = null;
+
+    function showToast(message, type = "success") {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.className = `toast toast--${type} toast--visible`;
+      setTimeout(() => { toast.classList.remove("toast--visible"); }, 3000);
+    }
+
+    function openDeleteModal(uploadId) {
+      pendingDeleteId = uploadId;
+      deleteConfirmBtn.disabled = false;
+      deleteConfirmBtn.textContent = "Delete";
+      deleteModal.classList.add("confirm-modal--open");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeDeleteModal() {
+      deleteModal.classList.remove("confirm-modal--open");
+      document.body.style.overflow = "";
+      pendingDeleteId = null;
+    }
+
+    deleteCancelBtn.addEventListener("click", closeDeleteModal);
+    deleteModal.addEventListener("click", (e) => {
+      if (e.target === deleteModal) closeDeleteModal();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && deleteModal.classList.contains("confirm-modal--open")) closeDeleteModal();
+    });
+
+    deleteConfirmBtn.addEventListener("click", async () => {
+      if (!pendingDeleteId) return;
+      const id = pendingDeleteId;
+
+      deleteConfirmBtn.disabled = true;
+      deleteConfirmBtn.textContent = "Deleting…";
+
+      try {
+        const res = await apiFetch(`/api/admin/uploads/${id}`, { method: "DELETE" });
+        if (!res || !res.ok) {
+          const body = res ? await res.json().catch(() => ({})) : {};
+          throw new Error(body.detail || "Delete failed");
+        }
+
+        allUploadsData = allUploadsData.filter((item) => item.id !== id);
+        refreshAllUploadsUserOptions(allUploadsData);
+        renderAllUploads(allUploadsData);
+
+        closeDeleteModal();
+        showToast("Upload deleted successfully");
+        loadStats();
+      } catch (err) {
+        console.error("Delete failed:", err);
+        closeDeleteModal();
+        showToast(err.message || "Failed to delete upload", "error");
+      }
+    });
+
+    function wireDeleteButtons(container) {
+      container.querySelectorAll(".upload-item__delete").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openDeleteModal(btn.dataset.id);
+        });
+      });
+    }
+
+    function updateGroupCounts() {
+      document.querySelectorAll(".upload-date-group").forEach((group) => {
+        const items = group.querySelectorAll(".upload-item");
+        const countEl = group.querySelector(".upload-date-header__count");
+        if (items.length === 0) {
+          group.remove();
+        } else if (countEl) {
+          countEl.textContent = items.length;
+        }
+      });
+    }
+
+    const allUploadsSortBtn = document.getElementById("allUploadsSortBtn");
+    const allUploadsSortPanel = document.getElementById("allUploadsSortPanel");
+    const allUploadsDayFilter = document.getElementById("allUploadsDayFilter");
+    const allUploadsUserFilter = document.getElementById("allUploadsUserFilter");
+    const allUploadsSortApply = document.getElementById("allUploadsSortApply");
+    const allUploadsSortClear = document.getElementById("allUploadsSortClear");
+
+    function closeAllUploadsSortPanel() {
+      allUploadsSortPanel.classList.remove("open");
+      allUploadsSortBtn.classList.remove("active");
+      allUploadsSortBtn.setAttribute("aria-expanded", "false");
+    }
+    function openAllUploadsSortPanel() {
+      allUploadsSortPanel.classList.add("open");
+      allUploadsSortBtn.classList.add("active");
+      allUploadsSortBtn.setAttribute("aria-expanded", "true");
+    }
+
+    allUploadsSortBtn.addEventListener("click", () => {
+      if (allUploadsSortPanel.classList.contains("open")) closeAllUploadsSortPanel();
+      else openAllUploadsSortPanel();
+    });
+    allUploadsSortApply.addEventListener("click", () => {
+      allUploadsFilters.day = allUploadsDayFilter.value;
+      allUploadsFilters.user = allUploadsUserFilter.value;
+      renderAllUploads(allUploadsData);
+      closeAllUploadsSortPanel();
+    });
+    allUploadsSortClear.addEventListener("click", () => {
+      allUploadsFilters = { day: "all", user: "all" };
+      allUploadsDayFilter.value = "all";
+      allUploadsUserFilter.value = "all";
+      renderAllUploads(allUploadsData);
+      closeAllUploadsSortPanel();
+    });
+    document.addEventListener("click", (e) => {
+      if (!allUploadsSortPanel.contains(e.target) && !allUploadsSortBtn.contains(e.target)) {
+        closeAllUploadsSortPanel();
+      }
+    });
+
+    /* ═══════════════════════════════════════════════
+       User Uploads Modal (from Users → View Uploads)
+       ═══════════════════════════════════════════════ */
+    const userUploadsModal = document.getElementById("userUploadsModal");
+    const userUploadsBody = document.getElementById("userUploadsBody");
+    const userUploadsTitle = document.getElementById("userUploadsTitle");
+    const userUploadsMeta = document.getElementById("userUploadsMeta");
+    const userUploadsClose = document.getElementById("userUploadsClose");
+
+    function openUserUploadsModal() {
+      userUploadsModal.classList.add("user-uploads-modal--open");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeUserUploadsModal() {
+      userUploadsModal.classList.remove("user-uploads-modal--open");
+      document.body.style.overflow = "";
+    }
+
+    function userUploadsSkeleton() {
+      return `<div class="user-uploads-skeleton">${Array.from({ length: 6 }).map(() => `
+        <div class="user-uploads-skeleton__card">
+          <div class="user-uploads-skeleton__img"></div>
+          <div class="user-uploads-skeleton__line"></div>
+          <div class="user-uploads-skeleton__line"></div>
+        </div>`).join("")}</div>`;
+    }
+
+    userUploadsClose.addEventListener("click", closeUserUploadsModal);
+    userUploadsModal.addEventListener("click", (e) => {
+      if (e.target === userUploadsModal) closeUserUploadsModal();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && userUploadsModal.classList.contains("user-uploads-modal--open")) {
+        closeUserUploadsModal();
+      }
+    });
+
+    async function loadUserUploadsModal(userId, email, name) {
+      const displayName = name || displayUserName({ email, name });
+      userUploadsTitle.textContent = "User uploads";
+      userUploadsMeta.textContent = `${displayName} · ${email}`;
+      userUploadsBody.innerHTML = userUploadsSkeleton();
+      openUserUploadsModal();
+
+      try {
+        const res = await apiFetch(`/api/admin/users/${userId}/uploads`);
+        if (!res) return;
+        const items = await res.json();
+        const visible = items.filter((d) => !d.image_path.startsWith("missing/"));
+
+        userUploadsTitle.textContent = "User uploads";
+        userUploadsMeta.textContent = `${displayName} · ${visible.length} image${visible.length !== 1 ? "s" : ""}`;
+
+        if (visible.length === 0) {
+          userUploadsBody.innerHTML = `<div class="user-uploads-state">No uploads found for this user.</div>`;
+          return;
+        }
+
+        userUploadsBody.innerHTML = `<div class="upload-grid">${visible.map((d) => `
+          <div class="upload-item">
+            <img src="/${d.image_path}" alt="Defect" loading="lazy" />
+            <div class="meta">
+              <strong>${d.tower}</strong> · Floor ${d.floor} · Flat ${d.flat}<br/>
+              ${d.room}<br/>
+              <small>${new Date(d.created_at).toLocaleString()}</small>
+            </div>
+          </div>`).join("")}</div>`;
+
+        wireGridLightbox(userUploadsBody);
+      } catch (err) {
+        console.error("Failed to load user uploads:", err);
+        userUploadsBody.innerHTML = `<div class="user-uploads-state">Failed to load uploads. Please try again.</div>`;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════
+       Logs (with new-row animation)
+       ═══════════════════════════════════════════════ */
+    async function loadLogs(dateFrom, dateTo) {
+      const params = new URLSearchParams();
+      if (dateFrom) params.set("date_from", dateFrom);
+      if (dateTo) params.set("date_to", dateTo);
+      const qs = params.toString();
+
+      try {
+        const res = await apiFetch(`/api/admin/logs${qs ? "?" + qs : ""}`);
+        if (!res) return;
+        const logs = await res.json();
+        const tbody = document.getElementById("logsBody");
+        const empty = document.getElementById("logsEmpty");
+
+        if (logs.length === 0) {
+          tbody.innerHTML = "";
+          empty.style.display = "block";
+          prevLogIds = new Set();
+          return;
+        }
+        empty.style.display = "none";
+
+        const currentIds = new Set(logs.map((l) => l.id));
+
+        tbody.innerHTML = logs
+          .map((l) => {
+            const isNew = prevLogIds.size > 0 && !prevLogIds.has(l.id);
+            const label = displayUserName(l);
+            return `
+          <tr class="${isNew ? "row-new" : ""}">
+            <td>${label}${l.email ? ` <span style="color:#94a3b8;font-size:.75rem">(${l.email})</span>` : ""}</td>
+            <td><span class="badge badge-${l.action}">${l.action}</span></td>
+            <td>${new Date(l.timestamp).toLocaleString()}</td>
+          </tr>`;
+          })
+          .join("");
+
+        prevLogIds = currentIds;
+      } catch (err) { console.error("Failed to load logs:", err); }
+    }
+
+    document.getElementById("filterLogsBtn").addEventListener("click", () => {
+      loadLogs(
+        document.getElementById("dateFrom").value,
+        document.getElementById("dateTo").value
+      );
+    });
+
+    document.getElementById("clearFilterBtn").addEventListener("click", () => {
+      document.getElementById("dateFrom").value = "";
+      document.getElementById("dateTo").value = "";
+      loadLogs();
+    });
+
+    /* ═══════════════════════════════════════════════
+       Live polling engine
+       ═══════════════════════════════════════════════ */
+    function activeTabName() {
+      return document.querySelector(".tab-btn.active")?.dataset?.tab || "all-uploads";
+    }
+
+    async function pollAll() {
+      // Keep auto-refresh lightweight to avoid "page refreshing" feel.
+      await loadStats();
+
+      // Refresh only currently visible tab content.
+      const active = activeTabName();
+      if (active === "users") {
+        await loadUsers();
+        return;
+      }
+      if (active === "logs") {
+        await loadLogs(
+          document.getElementById("dateFrom").value,
+          document.getElementById("dateTo").value,
+        );
+      }
+    }
+
+    // Initial load
+    pollAll();
+    loadAllUploads();
+
+    // Poll every 5 seconds — pause when tab is hidden to save resources
+    let pollTimer = null;
+    function startPolling() {
+      if (pollTimer) return;
+      pollTimer = setInterval(pollAll, POLL_INTERVAL);
+    }
+    function stopPolling() {
+      if (!pollTimer) return;
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+    startPolling();
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        pollAll();
+        startPolling();
+      }
+    });
+  </script>
+</body>
+</html>

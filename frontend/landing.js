@@ -1,6 +1,121 @@
 import { mountLandingAssistant } from "./assistant-widget.js";
+import { getToken, getUser, saveAuth, clearAuth } from "/shared/auth.js";
+import { formatApiDetail } from "/shared/format-api-detail.js";
+import { wirePasswordToggle } from "/shared/password-toggle.js";
+import { mountLandingProfile } from "/shared/profile-nav.js";
 
 document.addEventListener("DOMContentLoaded", () => {
+  /* ═══ AUTH GATE ═══ */
+  const overlay       = document.getElementById("login-overlay");
+  const loginForm     = document.getElementById("login-form");
+  const loginAlert    = document.getElementById("login-alert");
+  const loginSubmit   = document.getElementById("login-submit");
+  const loginAsAdminBtn = document.getElementById("login-as-admin");
+  const navUserPill   = document.getElementById("nav-user-pill");
+
+  function showAlert(msg, type) {
+    if (!loginAlert) return;
+    loginAlert.textContent = msg;
+    loginAlert.className = `login-alert login-alert--${type}`;
+  }
+
+  function showLogin() {
+    // Remove the pre-paint "authed" class so the overlay CSS is re-enabled
+    // (critical when page is restored from bfcache after logout).
+    document.documentElement.classList.remove("authed");
+    document.getElementById("ssl-assistant-root")?.remove();
+    overlay?.classList.remove("is-hidden");
+    if (navUserPill) {
+      // Remove the dynamically mounted profile widget
+      navUserPill.querySelector(".pn-landing-wrapper")?.remove();
+      navUserPill.style.display = "none";
+    }
+  }
+
+  function showSite(user) {
+    overlay?.classList.add("is-hidden");
+    if (navUserPill) {
+      navUserPill.style.display = "flex";
+      // Mount the shared profile dropdown (single source of truth)
+      mountLandingProfile(navUserPill, user, {
+        onLogout: () => { clearAuth(); showLogin(); },
+      });
+    }
+    if (!document.getElementById("ssl-assistant-root")) {
+      mountLandingAssistant();
+    }
+  }
+
+  async function validateAndApply() {
+    const token = getToken();
+    const user = getUser();
+
+    // No local session → show login immediately, nothing to validate
+    if (!token || !user) { showLogin(); return; }
+
+    // Token exists → show the site right away (no flash) and validate silently
+    // in the background. Only force login if the server actively rejects the token.
+    showSite(user);
+    try {
+      const res = await fetch("/api/defects/my", { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) { clearAuth(); showLogin(); }
+      // res.ok → session confirmed, user already sees the site — nothing else to do
+    } catch {
+      // Network error — keep the user on the site; don't log them out for a blip
+    }
+  }
+
+  async function doLogin(email, password) {
+    loginSubmit.disabled = true;
+    loginSubmit.textContent = "Signing in…";
+    loginAlert.className = "login-alert";
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showAlert(formatApiDetail(data) || "Login failed", "error"); return; }
+      saveAuth(data.access_token, {
+        user_id: data.user_id,
+        email: data.email,
+        role: data.role,
+        name: data.name || null,
+        profile_photo: data.profile_photo || null,
+      });
+      showSite({ email: data.email, role: data.role });
+    } catch { showAlert("Network error — is the server running?", "error"); }
+    finally { loginSubmit.disabled = false; loginSubmit.textContent = "Sign In"; }
+  }
+
+  loginForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    if (!email || !password) return;
+    doLogin(email, password);
+  });
+
+  loginAsAdminBtn?.addEventListener("click", () => {
+    window.location.href = "/admin/login/";
+  });
+
+  validateAndApply();
+
+  // Re-run auth check when the browser restores this page from bfcache
+  // (e.g. user logs out on a dashboard page and navigates back to "/").
+  // DOMContentLoaded does NOT fire on bfcache restoration — pageshow does.
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) validateAndApply();
+  });
+
+  wirePasswordToggle(
+    document.getElementById("login-password"),
+    document.getElementById("login-password-toggle")
+  );
+
+  /* ═══ LANDING LOGIC ═══ */
   const scrollToFeatures = () => {
     const el = document.getElementById("features");
     if (el) el.scrollIntoView({ behavior: "smooth" });
@@ -337,5 +452,4 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  mountLandingAssistant();
 });

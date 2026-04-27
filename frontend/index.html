@@ -9,20 +9,112 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="assistant-widget.css">
+  <style>
+    /* ── Login Overlay (matches /register/ — shared/styles auth-page + auth-card) ── */
+    /* Above #ssl-assistant-root (z-index ~2e9) so login is never covered */
+    .login-overlay{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:#f1f5f9;padding:1rem;transition:opacity .4s,visibility .4s}
+    .login-overlay.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
+    .login-card{background:#fff;padding:2.5rem;border-radius:14px;box-shadow:0 12px 34px rgba(15,23,42,.10),0 2px 8px rgba(15,23,42,.06);width:100%;max-width:420px;text-align:center}
+    .login-card,.login-card label,.login-card input,.login-card button,.login-card p,.login-card a{font-family:Roboto,Arial,sans-serif}
+    .login-card .login-header{display:flex;flex-direction:column;align-items:center;gap:.38rem;margin-bottom:1.45rem}
+    .login-card .login-logo{display:flex;align-items:center;justify-content:center;margin:0}
+    /* Match navbar .logo-img — natural aspect ratio, no stretch (same asset as / nav) */
+    .login-card .login-logo img.logo-img{flex-shrink:0;width:56px;height:56px}
+    .login-card .login-brand{font-family:Inter,Roboto,Arial,sans-serif;font-size:1.72rem;font-weight:700;color:#0f172a;letter-spacing:-.012em;line-height:1.06;margin:0}
+    .login-card .login-descriptor{font-family:Inter,Roboto,Arial,sans-serif;color:#334155;font-size:.92rem;font-weight:600;letter-spacing:.005em;line-height:1.24;margin:0}
+    .login-card .login-subtitle{color:#64748b;font-size:.92rem;line-height:1.45;margin-top:.3rem}
+    .login-card .login-alert{padding:.6rem .85rem;border-radius:8px;font-size:.85rem;margin-bottom:1rem;display:none}
+    .login-card .login-alert--error{display:block;background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+    .login-card .login-alert--success{display:block;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+    .login-field{margin-bottom:1rem;text-align:left}
+    .login-field label{display:block;font-size:.875rem;font-weight:500;color:#1e293b;margin-bottom:.35rem}
+    .login-field>input:not([type=hidden]){width:100%;padding:.65rem .85rem;border:1px solid #e2e8f0;border-radius:6px;font-size:.95rem;color:#1e293b;background:#fff;transition:border-color .15s}
+    .login-field>input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+    .login-field .password-field-wrap{position:relative;width:100%}
+    .login-field .password-field-wrap>input{width:100%;padding:.65rem 2.75rem .65rem .85rem;border:1px solid #e2e8f0;border-radius:6px;font-size:.95rem;color:#1e293b;background:#fff;transition:border-color .15s}
+    .login-field .password-field-wrap>input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+    .login-field .password-toggle{position:absolute;right:.35rem;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;width:2.25rem;height:2.25rem;padding:0;border:none;border-radius:6px;background:transparent;color:#64748b;cursor:pointer;transition:color .15s,background .15s}
+    .login-field .password-toggle:hover{color:#2563eb;background:rgba(37,99,235,.08)}
+    .login-field .password-toggle:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+    .login-field .password-toggle__svg{display:block;flex-shrink:0}
+    .login-btn{width:100%;padding:.65rem 1.25rem;border:none;border-radius:6px;font-size:.95rem;font-weight:500;cursor:pointer;transition:background .15s,opacity .15s;margin-top:.25rem}
+    .login-btn--primary{background:#2563eb;color:#fff}
+    .login-btn--primary:hover{background:#1d4ed8}
+    .login-btn--primary:disabled{opacity:.55;cursor:not-allowed}
+    .login-divider{display:flex;align-items:center;gap:.75rem;margin:1rem 0;color:#64748b;font-size:.875rem}
+    .login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:#e2e8f0}
+    .login-btn--admin{background:#fff;border:1px solid #e2e8f0;color:#475569;font-weight:500}
+    .login-btn--admin:hover{background:#f8fafc;border-color:#cbd5e1}
+    .login-admin-hint{margin-top:.75rem;padding:.65rem .85rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;text-align:left;font-size:.82rem;color:#475569;line-height:1.6}
+    .login-admin-hint code{background:#e2e8f0;padding:.1rem .35rem;border-radius:4px;font-size:.82rem;color:#1e293b}
+    .login-register-link{margin-top:1.25rem;font-size:.85rem;color:#64748b}
+    .login-register-link a{color:#2563eb;text-decoration:none;font-weight:600}
+    .login-register-link a:hover{text-decoration:underline}
+    /* Profile menu + uploads modal styles injected by shared/profile-nav.js */
+  </style>
+  <!--
+    Runs synchronously before first paint. If a session token is already stored,
+    immediately mark the overlay as hidden so users coming back from a dashboard
+    page never see even a single frame of the login screen.
+  -->
+  <script>
+    try {
+      if (localStorage.getItem("defectra_token")) {
+        document.documentElement.classList.add("authed");
+      }
+    } catch (_) {}
+  </script>
+  <style>
+    /* Applied before DOMContentLoaded — eliminates the login flash on return visits */
+    html.authed #login-overlay { opacity: 0; visibility: hidden; pointer-events: none; }
+  </style>
 </head>
 <body class="landing-page">
+  <!-- ═══ LOGIN OVERLAY ═══ -->
+  <div class="login-overlay" id="login-overlay">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-logo">
+          <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="56" height="56" class="logo-img" decoding="async">
+        </div>
+        <h1 class="login-brand">SiteSureLabs</h1>
+        <p class="login-descriptor">AI-Powered Construction Intelligence</p>
+      </div>
+      <div class="login-alert" id="login-alert"></div>
+      <form id="login-form" autocomplete="on">
+        <div class="login-field">
+          <label for="login-email">Email</label>
+          <input id="login-email" type="email" placeholder="Enter your mail" required autocomplete="email">
+        </div>
+        <div class="login-field">
+          <label for="login-password">Password</label>
+          <div class="password-field-wrap">
+            <input id="login-password" type="password" placeholder="Password" required autocomplete="current-password" />
+            <button type="button" class="password-toggle" id="login-password-toggle" aria-label="Show password" aria-pressed="false"></button>
+          </div>
+        </div>
+        <button type="submit" class="login-btn login-btn--primary" id="login-submit">Sign In</button>
+      </form>
+      <div class="login-divider">or</div>
+      <button type="button" class="login-btn login-btn--admin" id="login-as-admin">Login as Admin</button>
+      <p class="login-register-link">New to this platform? <a href="/register/">Register</a></p>
+    </div>
+  </div>
+
   <nav id="navbar" class="glass-nav" aria-label="Primary">
     <div class="nav-container">
-      <a href="#hero" class="logo-container logo-container--nav">
+      <a href="/" class="logo-container logo-container--nav">
         <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="40" height="40" class="logo-img" decoding="async">
         <span class="logo-text">SiteSureLabs</span>
       </a>
       <div class="nav-actions">
         <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="primary-nav"></button>
         <ul class="nav-links" id="primary-nav">
-          <li><a href="#hero">Home</a></li>
+          <li><a href="/">Home</a></li>
           <li class="nav-dropdown">
             <button type="button" class="nav-dropdown__trigger" id="nav-features-trigger" aria-expanded="false" aria-haspopup="true" aria-controls="nav-features-menu">
               Features
@@ -38,6 +130,8 @@
           <li><a href="#faq">FAQ</a></li>
           <li><a href="#contact">Contact</a></li>
         </ul>
+        <!-- profile dropdown injected by shared/profile-nav.js → mountLandingProfile() -->
+        <div id="nav-user-pill" style="display:none;align-items:center"></div>
       </div>
     </div>
   </nav>
@@ -533,6 +627,8 @@
       </div>
     </div>
   </footer>
+
+  <!-- uploads modal injected by shared/profile-nav.js → mountLandingProfile() -->
 
   <script type="module" src="/landing.js"></script>
 </body>

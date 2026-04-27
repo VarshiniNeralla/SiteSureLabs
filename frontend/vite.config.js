@@ -3,10 +3,8 @@ import { resolve } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-/** Repo root `.env` is the single env file for FastAPI + Vite (see `envDir` below). */
 const repoRoot = resolve(__dirname, "..");
 
-/** PMO vision calls can exceed default ~120s proxy timeouts. */
 const PROXY_TIMEOUT_MS = 600_000;
 
 function apiProxyOptions(target) {
@@ -35,11 +33,11 @@ export default defineConfig(({ mode }) => {
     base: "/",
     server: {
       host: true,
-      // Default 5173 avoids conflict with another app on :3000. Override: npm run dev -- --port 5174
       port: 5173,
       strictPort: false,
       proxy: {
         "/api": apiProxy,
+        "/uploads": apiProxy,
       },
     },
     preview: {
@@ -48,6 +46,7 @@ export default defineConfig(({ mode }) => {
       strictPort: false,
       proxy: {
         "/api": apiProxy,
+        "/uploads": apiProxy,
       },
     },
     build: {
@@ -55,6 +54,10 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           main: resolve(__dirname, "index.html"),
+          login: resolve(__dirname, "login/index.html"),
+          register: resolve(__dirname, "register/index.html"),
+          adminDashboard: resolve(__dirname, "admin/index.html"),
+          adminLogin: resolve(__dirname, "admin/login/index.html"),
           aiAnalysis: resolve(__dirname, "dashboard/ai-analysis/index.html"),
           imageAnalysis: resolve(__dirname, "dashboard/image-analysis/index.html"),
           live: resolve(__dirname, "dashboard/live/index.html"),

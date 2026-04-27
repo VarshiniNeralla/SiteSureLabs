@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SiteSureLabs — Register</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/shared/styles.css" />
+  <style>
+    .auth-card.auth-card--register {
+      max-width: 420px;
+    }
+    .auth-card--register,
+    .auth-card--register label,
+    .auth-card--register input,
+    .auth-card--register button,
+    .auth-card--register p,
+    .auth-card--register a,
+    .auth-card--register span {
+      font-family: Roboto, Arial, sans-serif;
+    }
+    .auth-card--register .brand-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      margin-bottom: 0.7rem;
+    }
+    .auth-card--register .brand-logo img {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+    }
+    .auth-card--register .brand-logo span {
+      font-size: 1.75rem;
+      line-height: 1;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.01em;
+    }
+    .auth-card--register .subtitle {
+      font-size: 0.9rem;
+      color: #64748b;
+      margin-bottom: 1.6rem;
+    }
+    .register-steps {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+    .register-steps__dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .register-steps__dot.active {
+      background: #2563eb;
+      transform: scale(1.15);
+    }
+    .register-slide { display: none; }
+    .register-slide.active { display: block; }
+    .register-nav {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 1.25rem;
+    }
+    .register-nav .btn { flex: 1; }
+    .register-nav .btn:only-child { flex: 0 0 100%; }
+  </style>
+</head>
+<body class="auth-page">
+  <div class="auth-card auth-card--register">
+    <div class="brand-logo">
+      <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="56" height="56" decoding="async" />
+      <span>SiteSureLabs</span>
+    </div>
+    <p class="subtitle">Create a new account</p>
+    <div class="register-steps" aria-hidden="true">
+      <span class="register-steps__dot active" id="step-dot-1"></span>
+      <span class="register-steps__dot" id="step-dot-2"></span>
+    </div>
+
+    <div id="alert" class="alert"></div>
+
+    <form id="registerForm" autocomplete="on">
+      <div class="register-slide active" id="register-slide-1">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input id="email" type="email" placeholder="Enter your mail" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="password-field-wrap">
+            <input id="password" type="password" placeholder="At least 4 characters" required minlength="4" autocomplete="new-password" />
+            <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password" aria-pressed="false"></button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="confirm">Confirm Password</label>
+          <div class="password-field-wrap">
+            <input id="confirm" type="password" placeholder="Re-enter password" required minlength="4" autocomplete="new-password" />
+            <button type="button" class="password-toggle" id="confirm-toggle" aria-label="Show password" aria-pressed="false"></button>
+          </div>
+        </div>
+        <div class="register-nav">
+          <button type="button" class="btn btn-primary btn-full" id="nextStepBtn">Next</button>
+        </div>
+      </div>
+
+      <div class="register-slide" id="register-slide-2">
+        <div class="form-group">
+          <label for="fullName">Full Name</label>
+          <input id="fullName" type="text" placeholder="Enter your full name" required autocomplete="name" />
+        </div>
+        <div class="form-group">
+          <label for="mobile">Mobile Number</label>
+          <input id="mobile" type="tel" placeholder="+91 XXXXX XXXXX" required autocomplete="tel" />
+        </div>
+        <div class="register-nav">
+          <button type="button" class="btn btn-outline" id="backStepBtn">Back</button>
+          <button type="submit" class="btn btn-primary" id="submitBtn">Register</button>
+        </div>
+      </div>
+    </form>
+
+    <p class="auth-link">Already have an account? <a href="/">Login</a></p>
+  </div>
+
+  <script type="module">
+    import { getUser } from "/shared/auth.js";
+    import { wirePasswordToggle } from "/shared/password-toggle.js";
+
+    const user = getUser();
+    if (user) {
+      window.location.href = user.role === "admin" ? "/admin/" : "/inspect/";
+    }
+
+    const form = document.getElementById("registerForm");
+    const alertEl = document.getElementById("alert");
+    const submitBtn = document.getElementById("submitBtn");
+    const nextStepBtn = document.getElementById("nextStepBtn");
+    const backStepBtn = document.getElementById("backStepBtn");
+    const slide1 = document.getElementById("register-slide-1");
+    const slide2 = document.getElementById("register-slide-2");
+    const dot1 = document.getElementById("step-dot-1");
+    const dot2 = document.getElementById("step-dot-2");
+    wirePasswordToggle(document.getElementById("password"), document.getElementById("password-toggle"));
+    wirePasswordToggle(document.getElementById("confirm"), document.getElementById("confirm-toggle"));
+
+    function showAlert(msg, type) {
+      alertEl.textContent = msg;
+      alertEl.className = `alert alert-${type} show`;
+    }
+
+    /** FastAPI may return `detail` as a string or a list of validation errors */
+    function formatApiDetail(data) {
+      const d = data && data.detail;
+      if (typeof d === "string") return d;
+      if (Array.isArray(d))
+        return d.map((e) => (e && (e.msg || e.message)) || JSON.stringify(e)).join(" ");
+      return "Registration failed";
+    }
+
+    function goToStep(step) {
+      const isStep2 = step === 2;
+      slide1.classList.toggle("active", !isStep2);
+      slide2.classList.toggle("active", isStep2);
+      dot1.classList.toggle("active", !isStep2);
+      dot2.classList.toggle("active", isStep2);
+      alertEl.className = "alert";
+    }
+
+    function validateStep1() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const confirm = document.getElementById("confirm").value;
+      if (!email) { showAlert("Email is required", "error"); return false; }
+      if (password.length < 4) { showAlert("Password must be at least 4 characters", "error"); return false; }
+      if (password !== confirm) { showAlert("Passwords do not match", "error"); return false; }
+      return true;
+    }
+
+    nextStepBtn.addEventListener("click", () => {
+      if (validateStep1()) goToStep(2);
+    });
+    backStepBtn.addEventListener("click", () => goToStep(1));
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      alertEl.className = "alert";
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const confirm = document.getElementById("confirm").value;
+      const name = document.getElementById("fullName").value.trim();
+      const mobile = document.getElementById("mobile").value.trim();
+
+      if (password !== confirm) {
+        showAlert("Passwords do not match", "error");
+        goToStep(1);
+        return;
+      }
+      if (!name || name.length < 2) {
+        showAlert("Full name is required", "error");
+        goToStep(2);
+        return;
+      }
+      if (!/^\+?[0-9][0-9\s-]{7,14}$/.test(mobile)) {
+        showAlert("Enter a valid mobile number", "error");
+        goToStep(2);
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Creating account…";
+
+      try {
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, name, mobile }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showAlert(formatApiDetail(data), "error");
+          return;
+        }
+
+        showAlert("Account created! Redirecting to login…", "success");
+        setTimeout(() => (window.location.href = "/"), 1200);
+      } catch {
+        showAlert("Network error — is the server running?", "error");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Register";
+      }
+    });
+  </script>
+</body>
+</html>

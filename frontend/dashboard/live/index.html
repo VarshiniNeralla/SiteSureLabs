@@ -4,163 +4,402 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Live Inspection - SiteSureLabs</title>
-  <meta name="description" content="Connect your camera for real-time construction site inspection with SiteSureLabs.">
+  <meta name="description" content="Upload defect images with site metadata for construction inspection.">
+  <link rel="icon" type="image/png" href="/MyHomeLogo/MyHomeLogo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="/shared/styles.css">
+  <style>
+    /* ═══════════════════════════════════════
+       Mobile-first base (< 768px is default)
+       ═══════════════════════════════════════ */
+
+    /* ── Layout shell ── */
+    .insp-shell{max-width:560px;margin:0 auto;padding:16px 16px 0}
+    #live-inspection{padding-bottom:0}
+
+    /* ── Main card with depth ── */
+    .insp-card{
+      background:linear-gradient(168deg,#ffffff 0%,#f8faff 100%);
+      border-radius:20px;
+      border:1px solid rgba(37,99,235,.08);
+      box-shadow:
+        0 1px 3px rgba(15,23,42,.04),
+        0 4px 16px rgba(37,99,235,.05),
+        inset 0 1px 0 rgba(255,255,255,.8);
+      padding:24px 20px;
+      margin-bottom:16px;
+      transition:box-shadow .3s ease
+    }
+    .insp-card--recent{padding:20px;background:#fff;border-color:rgba(0,0,0,.04);box-shadow:0 1px 4px rgba(0,0,0,.05)}
+
+    /* ── Step indicator with labels ── */
+    .step-bar{display:flex;align-items:flex-start;gap:0;margin-bottom:28px}
+    .step-bar__step{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0}
+    .step-bar__dot{width:32px;height:32px;border-radius:50%;border:2.5px solid #e2e8f0;background:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#94a3b8;font-family:Montserrat,sans-serif;transition:all .35s cubic-bezier(.4,0,.2,1);flex-shrink:0;position:relative}
+    .step-bar__dot--active{border-color:#2563eb;background:#2563eb;color:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.15)}
+    .step-bar__dot--done{border-color:#16a34a;background:#16a34a;color:#fff}
+    .step-bar__dot--done::after{content:'';position:absolute;inset:0;border-radius:50%;background:rgba(22,163,74,.15);animation:dotPulse 1s ease forwards}
+    .step-bar__label{font-size:.65rem;font-weight:600;color:#94a3b8;font-family:Montserrat,sans-serif;text-align:center;transition:color .3s;white-space:nowrap}
+    .step-bar__step--active .step-bar__label{color:#2563eb}
+    .step-bar__step--done .step-bar__label{color:#16a34a}
+    .step-bar__line{flex:1;height:2.5px;background:#e2e8f0;transition:background .4s;margin-top:15px;border-radius:2px}
+    .step-bar__line--done{background:linear-gradient(90deg,#16a34a,#22c55e)}
+    @keyframes dotPulse{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.8);opacity:0}}
+
+    /* ── Step 1: Capture ── */
+    .capture-heading{text-align:center;margin-bottom:8px}
+    .capture-heading h2{font-size:1.15rem;font-weight:700;color:#0f172a;font-family:Montserrat,sans-serif;margin:0 0 6px}
+    .capture-heading p{font-size:.82rem;color:#64748b;margin:0}
+
+    /* rotating tip */
+    .capture-tip{text-align:center;margin-bottom:20px;min-height:20px}
+    .capture-tip span{display:inline-flex;align-items:center;gap:5px;font-size:.73rem;color:#3b82f6;font-weight:500;font-family:Montserrat,sans-serif;background:#eff6ff;padding:4px 12px;border-radius:999px;animation:tipIn .4s ease both}
+    .capture-tip span svg{flex-shrink:0;opacity:.7}
+    @keyframes tipIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+    /* camera illustration placeholder */
+    .capture-visual{display:flex;align-items:center;justify-content:center;margin:0 auto 20px;width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#eff6ff 0%,#e0e7ff 100%);border:2px dashed rgba(37,99,235,.18);position:relative}
+    .capture-visual svg{color:#3b82f6;opacity:.55}
+    .capture-visual::before{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px solid transparent;border-top-color:rgba(37,99,235,.2);animation:scanRing 3s linear infinite}
+    @keyframes scanRing{to{transform:rotate(360deg)}}
+
+    .capture-actions{display:flex;flex-direction:column;gap:12px}
+    .btn-capture{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:12px 16px;border-radius:12px;font-size:.92rem;font-weight:600;font-family:Montserrat,sans-serif;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);border:none;position:relative}
+    .btn-capture:active{transform:scale(.98)}
+    .btn-capture--primary{background:linear-gradient(135deg,#1a73e8 0%,#1765cc 100%);color:#fff;box-shadow:0 4px 14px rgba(26,115,232,.3);min-height:52px;font-size:.95rem}
+    .btn-capture--primary:hover{box-shadow:0 8px 24px rgba(26,115,232,.38);transform:translateY(-1px)}
+    .btn-capture--secondary{background:#fff;color:#334155;border:1.5px solid #e2e8f0}
+    .btn-capture--secondary:hover{background:#f8fafc;border-color:#cbd5e1;transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+    .btn-capture svg{flex-shrink:0}
+    .btn-capture__hint{display:block;font-size:.68rem;font-weight:400;opacity:.75;margin-top:1px}
+
+    /* status line */
+    .capture-status{text-align:center;margin-top:16px;font-size:.75rem;font-family:Montserrat,sans-serif;transition:color .2s}
+    .capture-status--empty{color:#94a3b8}
+    .capture-status--ready{color:#16a34a;font-weight:600}
+    .capture-status--error{color:#dc2626;font-weight:600}
+
+    /* format hint */
+    .capture-formats{text-align:center;margin-top:8px;font-size:.68rem;color:#94a3b8;font-family:Montserrat,sans-serif;letter-spacing:.01em}
+
+    /* ── Step 2: Preview ── */
+    .preview-heading{text-align:center;margin-bottom:16px}
+    .preview-heading h2{font-size:1.05rem;font-weight:700;color:#0f172a;font-family:Montserrat,sans-serif;margin:0 0 4px}
+    .preview-heading p{font-size:.8rem;color:#64748b;margin:0}
+    .preview-frame{position:relative;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;margin-bottom:16px;background:#f8fafc}
+    .preview-frame img{display:block;width:100%;max-height:360px;object-fit:contain}
+    .preview-actions{display:flex;flex-direction:column;gap:10px}
+    .preview-actions .btn-capture{flex:1}
+
+    /* ── Step 3: Form ── */
+    .form-heading{margin-bottom:20px}
+    .form-heading h2{font-size:1.05rem;font-weight:700;color:#0f172a;font-family:Montserrat,sans-serif;margin:0 0 4px}
+    .form-heading p{font-size:.8rem;color:#64748b;margin:0}
+    .form-thumb{width:56px;height:56px;border-radius:10px;object-fit:cover;border:1px solid #e2e8f0;float:right;margin:0 0 8px 12px}
+    .insp-row{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px}
+    .insp-field label{display:block;font-size:.78rem;font-weight:600;color:#334155;margin-bottom:6px;font-family:Montserrat,sans-serif}
+    .insp-field select,.insp-field textarea{width:100%;min-height:44px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:.9rem;color:#1e293b;background:#fff;transition:border-color .15s,box-shadow .15s;font-family:inherit}
+    .insp-field select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+    .insp-field select:focus,.insp-field textarea:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+    .insp-field textarea{min-height:96px;resize:vertical;line-height:1.45}
+    .desc-field__head{display:flex;align-items:center;justify-content:flex-start;gap:8px}
+    .desc-field__input-wrap{position:relative}
+    .desc-field__input-wrap textarea{padding-right:46px}
+    .stt-btn{position:absolute;right:10px;bottom:10px;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#334155;cursor:pointer;transition:all .15s}
+    .stt-btn svg{width:14px;height:14px;flex-shrink:0}
+    .stt-btn:hover:not(:disabled){background:#f8fafc;border-color:#94a3b8;transform:translateY(-1px)}
+    .stt-btn:disabled{opacity:.55;cursor:not-allowed}
+    .stt-btn--active{border-color:#dc2626;background:#fef2f2;color:#b91c1c;box-shadow:0 0 0 3px rgba(220,38,38,.12)}
+    .desc-help{margin-top:6px;font-size:.72rem;color:#64748b}
+    .btn-submit{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:12px 16px;border:none;border-radius:12px;background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);color:#fff;font-size:.95rem;font-weight:600;font-family:Montserrat,sans-serif;cursor:pointer;transition:box-shadow .2s,opacity .2s,transform .1s;margin-top:8px;box-shadow:0 4px 14px rgba(22,163,74,.25)}
+    .btn-submit:hover:not(:disabled){box-shadow:0 6px 20px rgba(22,163,74,.35);transform:translateY(-1px)}
+    .btn-submit:active:not(:disabled){transform:scale(.985)}
+    .btn-submit:disabled{opacity:.5;cursor:not-allowed}
+    .btn-back{display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:#2563eb;font-size:.8rem;font-weight:600;font-family:Montserrat,sans-serif;cursor:pointer;padding:0;margin-bottom:16px;min-height:44px}
+    .btn-back:hover{text-decoration:underline}
+
+    /* ── Spinner ── */
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .btn-spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+
+    /* ── Step 4: Success ── */
+    .success-wrap{text-align:center;padding:16px 0}
+    .success-icon{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #bbf7d0;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;animation:successPop .5s cubic-bezier(.34,1.56,.64,1) both}
+    .success-icon svg{color:#16a34a}
+    @keyframes successPop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+    .success-wrap h2{font-size:1.1rem;font-weight:700;color:#0f172a;font-family:Montserrat,sans-serif;margin:0 0 6px}
+    .success-wrap p{font-size:.82rem;color:#64748b;margin:0 0 16px}
+    .success-thumb{width:80px;height:80px;border-radius:12px;object-fit:cover;border:1px solid #e2e8f0;margin:0 auto 20px;display:block}
+    .btn-another{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:10px 20px;border-radius:10px;background:#fff;border:1.5px solid #e2e8f0;color:#334155;font-size:.85rem;font-weight:600;font-family:Montserrat,sans-serif;cursor:pointer;transition:all .15s}
+    .btn-another:hover{background:#f8fafc;transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+
+    /* ── Alert ── */
+    .insp-alert{padding:10px 14px;border-radius:10px;font-size:.85rem;margin-bottom:16px;display:none}
+    .insp-alert--error{display:block;background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+
+    /* Desktop camera modal */
+    .camera-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.65);backdrop-filter:blur(2px);z-index:1200;padding:16px}
+    .camera-modal--open{display:flex}
+    .camera-modal__panel{width:min(92vw,640px);background:#fff;border-radius:16px;border:1px solid rgba(148,163,184,.22);box-shadow:0 18px 40px rgba(15,23,42,.25);overflow:hidden}
+    .camera-modal__head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e2e8f0}
+    .camera-modal__head h3{margin:0;font-size:1rem;color:#0f172a;font-family:Montserrat,sans-serif}
+    .camera-modal__close{border:none;background:transparent;color:#64748b;font-size:1.4rem;line-height:1;cursor:pointer}
+    .camera-modal__body{padding:14px 16px 16px}
+    .camera-modal__video-wrap{background:#0f172a;border-radius:12px;overflow:hidden;aspect-ratio:16/10;display:flex;align-items:center;justify-content:center}
+    .camera-modal__video{width:100%;height:100%;object-fit:cover}
+    .camera-modal__hint{margin:10px 2px 0;font-size:.78rem;color:#64748b;text-align:center;font-family:Montserrat,sans-serif}
+    .camera-modal__actions{display:flex;gap:10px;margin-top:14px}
+    .camera-modal__actions .btn-capture{flex:1}
+
+    /* ── Activity summary (replaces show-recent-uploads) ── */
+    .activity-bar{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border-radius:14px;background:#fff;border:1px solid rgba(0,0,0,.05);box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:16px;cursor:pointer;transition:all .2s;min-height:44px}
+    .activity-bar:hover{box-shadow:0 3px 12px rgba(0,0,0,.07);transform:translateY(-1px)}
+    .activity-bar__thumbs{display:flex;gap:0;flex-shrink:0}
+    .activity-bar__thumbs img{width:32px;height:32px;border-radius:8px;object-fit:cover;border:2px solid #fff;margin-left:-8px}
+    .activity-bar__thumbs img:first-child{margin-left:0}
+    .activity-bar__text{flex:1;font-size:.8rem;color:#334155;font-family:Montserrat,sans-serif;line-height:1.4}
+    .activity-bar__text strong{font-weight:700;color:#0f172a}
+    .activity-bar__arrow{flex-shrink:0;color:#94a3b8;transition:transform .2s}
+    .activity-bar--open .activity-bar__arrow{transform:rotate(180deg)}
+
+    /* ── Recent uploads ── */
+    .recent-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .recent-header h3{font-size:.92rem;font-weight:700;color:#1e293b;font-family:Montserrat,sans-serif;margin:0}
+    .recent-toggle{background:none;border:none;color:#2563eb;font-size:.78rem;font-weight:600;font-family:Montserrat,sans-serif;cursor:pointer;padding:0;min-height:44px}
+    .recent-toggle:hover{text-decoration:underline}
+    .insp-grid{display:grid;grid-template-columns:1fr;gap:12px}
+    .insp-item{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.05);overflow:hidden;border:1px solid rgba(0,0,0,.05);transition:box-shadow .2s,transform .2s}
+    .insp-item:hover{box-shadow:0 3px 12px rgba(0,0,0,.08);transform:translateY(-1px)}
+    .insp-item img{width:100%;height:180px;object-fit:cover;cursor:zoom-in}
+    .insp-item .meta{padding:10px 12px;font-size:.78rem;color:#64748b;line-height:1.5}
+    .insp-item .meta strong{color:#1e293b}
+    .insp-empty{text-align:center;padding:24px 16px;color:#94a3b8;font-size:.88rem}
+
+    /* ── Transitions ── */
+    .step-panel{display:none}
+    .step-panel--active{display:block;animation:fadeUp .3s ease both}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+    /* ═══════════════════════════════════════
+       Tablet / small desktop (≥ 768px)
+       ═══════════════════════════════════════ */
+    @media(min-width:768px){
+      .insp-shell{padding:24px 16px 0}
+      .insp-card{padding:32px 28px}
+      .insp-card--recent{padding:24px}
+      .step-bar{margin-bottom:32px}
+      .capture-heading{margin-bottom:10px}
+      .capture-actions{max-width:340px;margin:0 auto;gap:10px}
+      .preview-actions{flex-direction:row;gap:10px}
+      .insp-row{grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+      .insp-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+      .insp-item img{height:140px}
+      .capture-visual{width:110px;height:110px}
+    }
+  </style>
 </head>
 <body class="landing-page dashboard-page">
-  <nav id="navbar" class="glass-nav glass-nav--dashboard" aria-label="Primary">
-    <div class="nav-container">
-      <a href="/" class="logo-container logo-container--nav">
-        <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="40" height="40" class="logo-img" decoding="async">
-        <span class="logo-text">SiteSureLabs</span>
-      </a>
-      <div class="dashboard-mode-toggle nav-dashboard-mode" role="tablist" aria-label="Choose workspace">
-        <a
-          href="/dashboard/live/"
-          class="dashboard-mode-toggle__tab is-active"
-          role="tab"
-          aria-selected="true"
-          aria-current="page"
-        >Live Inspection</a>
-        <a
-          href="/dashboard/ai-analysis/"
-          class="dashboard-mode-toggle__tab"
-          role="tab"
-          aria-selected="false"
-        >AI Analysis</a>
-        <a
-          href="/dashboard/image-analysis/"
-          class="dashboard-mode-toggle__tab"
-          role="tab"
-          aria-selected="false"
-        >Image Analysis</a>
-      </div>
-      <div class="nav-actions">
-        <a href="/" class="nav-back-home">
-          <span class="nav-back-home__icon" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          </span>
-          Back to home
-        </a>
-      </div>
-    </div>
-  </nav>
+  <!-- nav injected by shared/components/dashboard-nav.js -->
 
   <main class="landing-main dashboard-main dashboard-main--live">
     <div class="dashboard-page-decor" aria-hidden="true">
       <span class="dashboard-page-decor__orb dashboard-page-decor__orb--a"></span>
       <span class="dashboard-page-decor__orb dashboard-page-decor__orb--b"></span>
-      <span class="dashboard-page-decor__orb dashboard-page-decor__orb--c"></span>
     </div>
-    <section class="landing-section dashboard-live dashboard-live--v2" id="live-inspection" aria-labelledby="live-heading">
-      <div class="container">
-        <header class="landing-section-header dashboard-live__header">
-          <h2 id="live-heading">Live site inspection</h2>
-          <p class="landing-section-lead dashboard-live__lead">
-            Turn on your camera to view the site in real time.
-          </p>
-        </header>
 
-        <article class="dashboard-live-panel glass-panel live-stream-container" id="live-panel">
-          <div class="dashboard-live-toolbar stream-toolbar">
-            <div class="dashboard-live-status status-indicator">
-              <span class="dot" id="stream-status-dot" aria-hidden="true"></span>
-              <span class="dashboard-live-status__text" id="stream-status-text">Not connected</span>
+    <section class="landing-section" id="live-inspection">
+      <div class="insp-shell">
+        <div class="dashboard-page-back-link-row">
+          <a href="/" class="dashboard-page-back-link" aria-label="Back to home">← Back to home</a>
+        </div>
+        <div class="insp-card">
+          <!-- Step indicator with labels -->
+          <div class="step-bar" id="step-bar">
+            <div class="step-bar__step step-bar__step--active" data-step="1">
+              <span class="step-bar__dot step-bar__dot--active" data-step="1">1</span>
+              <span class="step-bar__label">Capture</span>
+            </div>
+            <span class="step-bar__line" data-line="1"></span>
+            <div class="step-bar__step" data-step="2">
+              <span class="step-bar__dot" data-step="2">2</span>
+              <span class="step-bar__label">Details</span>
+            </div>
+            <span class="step-bar__line" data-line="2"></span>
+            <div class="step-bar__step" data-step="3">
+              <span class="step-bar__dot" data-step="3">3</span>
+              <span class="step-bar__label">Submit</span>
             </div>
           </div>
 
-          <div class="dashboard-live-video video-wrapper">
-            <div class="placeholder-view dashboard-live-placeholder" id="video-placeholder">
-              <div class="dashboard-live-placeholder__icon" aria-hidden="true">
-                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="10" y="16" width="44" height="36" rx="4" stroke="#60a5fa" stroke-width="1.5"/>
-                  <circle cx="32" cy="34" r="10" stroke="#93c5fd" stroke-width="1.2"/>
-                  <circle cx="32" cy="34" r="4" fill="#bfdbfe"/>
-                  <path d="M6 22l8-6v36l-8-6V22z" stroke="#38bdf8" stroke-width="1.4" stroke-linejoin="round"/>
-                </svg>
+          <div class="insp-alert" id="insp-alert"></div>
+
+          <!-- Step 1: Capture -->
+          <div class="step-panel step-panel--active" id="step-capture">
+            <div class="capture-heading">
+              <h2>Capture the defect</h2>
+              <p>Take a photo or upload an existing image</p>
+            </div>
+
+            <div class="capture-tip" id="capture-tip"></div>
+
+            <div class="capture-visual" aria-hidden="true">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+
+            <input type="file" id="camera-input" accept="image/*" capture="environment" hidden />
+            <input type="file" id="image-input" accept="image/*" hidden />
+            <div class="capture-actions">
+              <button type="button" class="btn-capture btn-capture--primary" id="btn-take-photo">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Take Photo
+              </button>
+              <button type="button" class="btn-capture btn-capture--secondary" id="btn-upload-image">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload Image
+              </button>
+            </div>
+            <div class="capture-status capture-status--empty" id="capture-status">No image selected</div>
+          </div>
+
+          <!-- Step 2: Preview -->
+          <div class="step-panel" id="step-preview">
+            <div class="preview-heading">
+              <h2>Review your photo</h2>
+              <p>Make sure the defect is clearly visible</p>
+            </div>
+            <div class="preview-frame">
+              <img id="preview-img" alt="Captured defect preview" />
+            </div>
+            <div class="preview-actions">
+              <button type="button" class="btn-capture btn-capture--secondary" id="btn-retake">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                Retake
+              </button>
+              <button type="button" class="btn-capture btn-capture--primary" id="btn-continue">
+                Continue
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 3: Form + Submit -->
+          <div class="step-panel" id="step-form">
+            <button type="button" class="btn-back" id="btn-back-to-preview">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+              Back
+            </button>
+            <img class="form-thumb" id="form-thumb" alt="" />
+            <div class="form-heading">
+              <h2>Add location details</h2>
+              <p>Tell us where this defect was found</p>
+            </div>
+            <div class="insp-row">
+              <div class="insp-field">
+                <label for="sel-tower">Tower</label>
+                <select id="sel-tower"><option value="">Select tower</option><option>Tower A</option><option>Tower B</option><option>Tower C</option><option>Tower D</option><option>Tower E</option></select>
               </div>
-              <p class="dashboard-live-placeholder__title">Camera feed not connected</p>
-              <p class="dashboard-live-placeholder__hint">Use your device camera directly, or scan a QR code to stream from another device.</p>
+              <div class="insp-field">
+                <label for="sel-floor">Floor</label>
+                <select id="sel-floor"><option value="">Select floor</option></select>
+              </div>
             </div>
-            <video id="live-video" autoplay playsinline muted class="hidden"></video>
+            <div class="insp-row">
+              <div class="insp-field">
+                <label for="sel-flat">Flat</label>
+                <select id="sel-flat"><option value="">Select flat</option></select>
+              </div>
+              <div class="insp-field">
+                <label for="sel-room">Room</label>
+                <select id="sel-room">
+                  <option value="">Select room</option>
+                  <option>Living Room</option><option>Master Bedroom</option><option>Bedroom 2</option><option>Bedroom 3</option>
+                  <option>Kitchen</option><option>Bathroom 1</option><option>Bathroom 2</option><option>Balcony</option>
+                  <option>Hall</option><option>Lobby</option><option>Terrace</option>
+                </select>
+              </div>
+            </div>
+            <div class="insp-field">
+              <div class="desc-field__head">
+                <label for="sel-description">Description</label>
+              </div>
+              <div class="desc-field__input-wrap">
+                <textarea id="sel-description" placeholder="Describe the defect in your own words"></textarea>
+                <button type="button" class="stt-btn" id="btn-stt" aria-label="Start voice input for description">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+                </button>
+              </div>
+              <div class="desc-help" id="desc-help">Type manually or use mic for live speech-to-text.</div>
+            </div>
+            <button type="button" class="btn-submit" id="btn-submit" disabled>
+              <span id="submit-text">Submit</span>
+            </button>
           </div>
 
-          <div class="dashboard-live-cta-row" id="cta-row">
-            <button type="button" class="primary-btn dashboard-live-start-btn" id="start-stream-btn">
-              <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="2" y="5" width="14" height="12" rx="1.5" stroke-width="1.8"/>
-                <path d="M16 9l5-2.5v11L16 15" stroke-width="1.8" stroke-linejoin="round"/>
-                <circle cx="9" cy="11" r="3" stroke-width="1.2" stroke-dasharray="2 1.5" class="detect-ring" style="animation-duration:4s"/>
-                <circle cx="9" cy="11" r="1" fill="currentColor" opacity="0.4" class="ai-core-pulse"/>
-              </svg>
-              Start live inspection
-            </button>
-
-            <span class="dashboard-live-cta-divider" aria-hidden="true">or</span>
-
-            <button type="button" class="secondary-btn dashboard-live-qr-btn" id="qr-connect-btn">
-              <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="3" y="3" width="7" height="7" rx="1" stroke-width="1.8"/>
-                <rect x="14" y="3" width="7" height="7" rx="1" stroke-width="1.8"/>
-                <rect x="3" y="14" width="7" height="7" rx="1" stroke-width="1.8"/>
-                <path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 18h3M18 14v3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              Connect via QR code
-            </button>
-
-            <button type="button" class="danger-btn dashboard-live-stop-btn hidden" id="stop-stream-btn">Stop inspection</button>
+          <!-- Step 4: Success -->
+          <div class="step-panel" id="step-success">
+            <div class="success-wrap">
+              <div class="success-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <h2>Inspection submitted</h2>
+              <p>Your defect report has been recorded successfully</p>
+              <img class="success-thumb" id="success-thumb" alt="" />
+              <button type="button" class="btn-another" id="btn-another">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Upload Another
+              </button>
+            </div>
           </div>
-        </article>
+        </div>
+
+        <!-- Activity bar (collapsed by default) -->
+        <div class="activity-bar" id="activity-bar" role="button" tabindex="0" style="display:none">
+          <div class="activity-bar__thumbs" id="activity-thumbs"></div>
+          <div class="activity-bar__text" id="activity-text"></div>
+          <svg class="activity-bar__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="insp-card insp-card--recent" id="recent-section" style="display:none">
+          <div class="recent-header">
+            <h3>Recent Uploads</h3>
+            <button type="button" class="recent-toggle" id="toggle-all" style="display:none"></button>
+          </div>
+          <div class="insp-grid" id="uploads-grid"></div>
+          <div class="insp-empty" id="uploads-empty" style="display:none">No inspections uploaded yet.</div>
+        </div>
       </div>
     </section>
   </main>
 
-  <!-- QR Code Modal (outside article for proper overlay) -->
-  <div class="qr-modal-overlay hidden" id="qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title">
-    <div class="qr-modal">
-      <button type="button" class="qr-modal__close" id="qr-modal-close" aria-label="Close">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-      </button>
-      <div class="qr-modal__header">
-        <div class="qr-modal__icon" aria-hidden="true">
-          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="6" y="6" width="14" height="14" rx="2" stroke="#60a5fa" stroke-width="1.5"/>
-            <rect x="28" y="6" width="14" height="14" rx="2" stroke="#60a5fa" stroke-width="1.5"/>
-            <rect x="6" y="28" width="14" height="14" rx="2" stroke="#60a5fa" stroke-width="1.5"/>
-            <rect x="28" y="28" width="6" height="6" rx="1" fill="#93c5fd"/>
-            <rect x="36" y="36" width="6" height="6" rx="1" fill="#93c5fd"/>
-            <rect x="10" y="10" width="6" height="6" rx="1" fill="#bfdbfe"/>
-            <rect x="32" y="10" width="6" height="6" rx="1" fill="#bfdbfe"/>
-            <rect x="10" y="32" width="6" height="6" rx="1" fill="#bfdbfe"/>
-          </svg>
-        </div>
-        <h3 class="qr-modal__title" id="qr-modal-title">Scan to connect camera</h3>
-        <p class="qr-modal__desc">Scan this QR code with your phone to open the camera and start streaming to this page.</p>
+  <!-- Lightbox overlay -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview">
+    <button class="lightbox__close" id="lightbox-close" aria-label="Close preview">&times;</button>
+    <img class="lightbox__img" id="lightbox-img" src="" alt="Full-size preview" />
+    <div class="lightbox__meta" id="lightbox-meta"></div>
+  </div>
+
+  <div class="camera-modal" id="camera-modal" role="dialog" aria-modal="true" aria-label="Take photo with camera">
+    <div class="camera-modal__panel">
+      <div class="camera-modal__head">
+        <h3>Use camera</h3>
+        <button type="button" class="camera-modal__close" id="camera-modal-close" aria-label="Close camera">&times;</button>
       </div>
-      <div class="qr-modal__code-wrapper" id="qr-code-container">
-        <div class="qr-modal__spinner" id="qr-spinner">
-          <div class="dashboard-spinner spinner"></div>
-          <span>Generating link&hellip;</span>
+      <div class="camera-modal__body">
+        <div class="camera-modal__video-wrap">
+          <video id="camera-preview" class="camera-modal__video" autoplay playsinline muted></video>
         </div>
-      </div>
-      <div class="qr-modal__footer">
-        <div class="qr-modal__status" id="qr-status">
-          <span class="dot" id="qr-status-dot"></span>
-          <span id="qr-status-text">Waiting for device&hellip;</span>
+        <p class="camera-modal__hint">Center the defect in frame, then capture.</p>
+        <div class="camera-modal__actions">
+          <button type="button" class="btn-capture btn-capture--secondary" id="camera-cancel-btn">Cancel</button>
+          <button type="button" class="btn-capture btn-capture--primary" id="camera-capture-btn">Capture</button>
         </div>
-        <p class="qr-modal__tip">Works across any network — no same-WiFi needed</p>
       </div>
     </div>
   </div>
 
-  <footer class="site-footer site-footer--dashboard" aria-label="Site footer">
-    <div class="container site-footer__bottom-inner">
-      <p class="site-footer__copy">&copy; 2026 SiteSureLabs Construction Intelligence. All rights reserved.</p>
-    </div>
-  </footer>
+  <!-- footer injected by shared/components/dashboard-footer.js -->
 
   <script type="module" src="/live.js"></script>
 </body>

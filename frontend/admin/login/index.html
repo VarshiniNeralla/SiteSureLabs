@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SiteSureLabs — Admin sign in</title>
+  <link rel="stylesheet" href="/shared/styles.css" />
+  <style>
+    .auth-card--admin {
+      max-width: 420px;
+    }
+    .auth-card--admin .brand-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.35rem;
+    }
+    .auth-card--admin .brand-logo img {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+    }
+    .auth-card--admin .brand-title {
+      margin: 0;
+      text-align: center;
+      font-size: 1.72rem;
+      line-height: 1.06;
+      letter-spacing: -0.012em;
+      font-weight: 700;
+      color: #0f172a;
+      font-family: Inter, Roboto, Arial, sans-serif;
+    }
+    .auth-card--admin .brand-subtitle {
+      margin: 0.3rem 0 1.35rem;
+      text-align: center;
+      color: #334155;
+      font-size: 0.92rem;
+      font-weight: 600;
+      letter-spacing: 0.005em;
+      font-family: Inter, Roboto, Arial, sans-serif;
+    }
+  </style>
+</head>
+<body class="auth-page">
+  <div class="auth-card auth-card--admin">
+    <div class="brand-logo">
+      <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="56" height="56" decoding="async" />
+    </div>
+    <h1 class="brand-title">SiteSureLabs</h1>
+    <p class="brand-subtitle">Administrator sign in</p>
+
+    <div id="alert" class="alert"></div>
+
+    <form id="adminLoginForm" autocomplete="on" novalidate>
+      <div class="form-group" id="email-group">
+        <label for="email">Admin email</label>
+        <input id="email" type="email" placeholder="Enter your mail" required autocomplete="username" />
+        <span class="field-error" id="email-error" role="alert"></span>
+      </div>
+      <div class="form-group" id="password-group">
+        <label for="password">Password</label>
+        <div class="password-field-wrap">
+          <input id="password" type="password" placeholder="••••••••" required autocomplete="current-password" />
+          <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password" aria-pressed="false"></button>
+        </div>
+        <span class="field-error" id="password-error" role="alert"></span>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" id="submitBtn">
+        <span class="btn-text">Sign in</span>
+      </button>
+    </form>
+
+    <p class="auth-link"><a href="/">← Standard user sign in</a></p>
+  </div>
+
+  <script type="module">
+    import { saveAuth, getUser } from "/shared/auth.js";
+    import { wirePasswordToggle } from "/shared/password-toggle.js";
+    import { formatApiDetail } from "/shared/format-api-detail.js";
+
+    const user = getUser();
+    if (user && user.role === "admin") {
+      window.location.href = "/admin/";
+    }
+
+    const form = document.getElementById("adminLoginForm");
+    const alertEl = document.getElementById("alert");
+    const submitBtn = document.getElementById("submitBtn");
+    const emailInput = document.getElementById("email");
+    const passInput = document.getElementById("password");
+
+    wirePasswordToggle(passInput, document.getElementById("password-toggle"));
+
+    function showFieldError(groupId, errorId, msg) {
+      document.getElementById(groupId).classList.add("has-error");
+      const span = document.getElementById(errorId);
+      span.textContent = msg;
+      span.classList.add("visible");
+    }
+
+    function clearFieldError(groupId, errorId) {
+      document.getElementById(groupId).classList.remove("has-error");
+      const span = document.getElementById(errorId);
+      span.textContent = "";
+      span.classList.remove("visible");
+    }
+
+    function validateEmail() {
+      const val = emailInput.value.trim();
+      if (!val) {
+        showFieldError("email-group", "email-error", "Email is required.");
+        return false;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+        showFieldError("email-group", "email-error", "Enter a valid email address.");
+        return false;
+      }
+      clearFieldError("email-group", "email-error");
+      return true;
+    }
+
+    function validatePassword() {
+      if (!passInput.value) {
+        showFieldError("password-group", "password-error", "Password is required.");
+        return false;
+      }
+      clearFieldError("password-group", "password-error");
+      return true;
+    }
+
+    emailInput.addEventListener("blur", validateEmail);
+    passInput.addEventListener("blur", validatePassword);
+    emailInput.addEventListener("input", () => clearFieldError("email-group", "email-error"));
+    passInput.addEventListener("input", () => clearFieldError("password-group", "password-error"));
+
+    function showAlert(msg, type) {
+      alertEl.textContent = msg;
+      alertEl.className = `alert alert-${type} show`;
+    }
+
+    const BTN_DEFAULT = '<span class="btn-text">Sign in</span>';
+    const BTN_LOADING = '<span class="btn-spinner"></span><span class="btn-text">Signing in…</span>';
+
+    function shakeForm() {
+      form.classList.remove("shake");
+      void form.offsetWidth;
+      form.classList.add("shake");
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      alertEl.className = "alert";
+
+      if (!validateEmail() || !validatePassword()) {
+        shakeForm();
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = BTN_LOADING;
+
+      const email = emailInput.value.trim();
+      const password = passInput.value;
+
+      try {
+        const res = await fetch("/api/auth/admin-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          showAlert(formatApiDetail(data) || "Sign in failed", "error");
+          shakeForm();
+          return;
+        }
+
+        saveAuth(data.access_token, {
+          user_id: data.user_id,
+          email: data.email,
+          role: data.role,
+          name: data.name || null,
+          profile_photo: data.profile_photo || null,
+        });
+
+        window.location.href = "/admin/";
+      } catch {
+        showAlert("Network error — is the server running?", "error");
+        shakeForm();
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = BTN_DEFAULT;
+      }
+    });
+  </script>
+</body>
+</html>

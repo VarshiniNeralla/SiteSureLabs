@@ -16,13 +16,26 @@ def _load_dotenv() -> None:
 
 
 _load_dotenv()
+
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class Settings:
-    """vLLM OpenAI-compatible API (chat completions + vision)."""
+    # MongoDB
+    mongodb_uri: str
+    mongodb_db: str
 
+    # JWT
+    jwt_secret: str
+    jwt_algorithm: str
+    jwt_expiry_hours: int
+
+    # Default admin (seeded on first startup)
+    admin_email: str
+    admin_password: str
+
+    # vLLM (kept for existing AI services)
     vllm_base_url: str
     vllm_model: str
     vllm_api_key: str
@@ -40,28 +53,28 @@ class Settings:
     @classmethod
     def from_env(cls) -> Settings:
         return cls(
-            vllm_base_url=os.getenv(
-                "VLLM_BASE_URL",
-                "http://127.0.0.1:8000",
-            ).rstrip("/"),
+            # MongoDB
+            mongodb_uri=os.getenv("MONGODB_URI", "mongodb://localhost:27017"),
+            mongodb_db=os.getenv("MONGODB_DB", "defectra"),
+            # JWT
+            jwt_secret=os.getenv("JWT_SECRET", "change-me-in-production"),
+            jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
+            jwt_expiry_hours=int(os.getenv("JWT_EXPIRY_HOURS", "24")),
+            # Default admin
+            admin_email=os.getenv("ADMIN_EMAIL", "admin@gmail.com"),
+            admin_password=os.getenv("ADMIN_PASSWORD", "amin"),
+            # vLLM
+            vllm_base_url=os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8000").rstrip("/"),
             vllm_model=os.getenv("VLLM_MODEL", "gemma4-31b"),
             vllm_api_key=os.getenv("VLLM_API_KEY", ""),
             vllm_temperature=float(os.getenv("VLLM_TEMPERATURE", "0.3")),
             vllm_max_tokens=int(os.getenv("VLLM_MAX_TOKENS", "20000")),
             http_timeout_s=float(os.getenv("VLLM_HTTP_TIMEOUT_S", "300")),
-            max_image_upload_mb=max(
-                1,
-                min(512, int(os.getenv("INSPECTION_MAX_IMAGE_MB", "20"))),
-            ),
-            inspection_chat_temperature=float(
-                os.getenv("INSPECTION_CHAT_TEMPERATURE", "0.35"),
-            ),
-            landing_assistant_temperature=float(
-                os.getenv("LANDING_ASSISTANT_TEMPERATURE", "0.42"),
-            ),
+            max_image_upload_mb=max(1, min(512, int(os.getenv("INSPECTION_MAX_IMAGE_MB", "20")))),
+            inspection_chat_temperature=float(os.getenv("INSPECTION_CHAT_TEMPERATURE", "0.35")),
+            landing_assistant_temperature=float(os.getenv("LANDING_ASSISTANT_TEMPERATURE", "0.42")),
         )
 
 
 def get_settings() -> Settings:
-    """Fresh read each call so .env / environment changes apply without stale cache."""
     return Settings.from_env()

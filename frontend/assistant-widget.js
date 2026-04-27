@@ -1,6 +1,6 @@
 /**
  * SiteSureLabs — premium floating landing assistant.
- * Streams from POST /api/assistant/landing/stream (Gemma via backend vLLM).
+ * Streams from POST /api/chat/landing/stream (Gemma via backend vLLM).
  */
 
 import { marked } from "marked";
@@ -22,7 +22,7 @@ function apiBase() {
 }
 
 function landingStreamUrl() {
-  return `${apiBase()}/api/assistant/landing/stream`;
+  return `${apiBase()}/api/chat/landing/stream`;
 }
 
 function escapeHtml(s) {
