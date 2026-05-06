@@ -504,6 +504,34 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ── Smart Navbar Scroll ──
+  const navbar = document.getElementById("navbar");
+  if (navbar) {
+    let lastScrollY = window.scrollY;
+    let ticking = false;
+
+    window.addEventListener("scroll", () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          const scrollDelta = currentScrollY - lastScrollY;
+          
+          // Use a threshold of 5px to prevent jitter on small scroll movements
+          if (Math.abs(scrollDelta) > 5 || currentScrollY <= 0) {
+            if (scrollDelta > 0 && currentScrollY > 80) {
+              navbar.classList.add("nav-hidden");
+            } else {
+              navbar.classList.remove("nav-hidden");
+            }
+            lastScrollY = currentScrollY;
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    }, { passive: true });
+  }
+
   runWhenIdle(initDeferredLandingSections);
 
 });

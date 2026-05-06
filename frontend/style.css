@@ -116,13 +116,9 @@ body.landing-page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #eef2f7;
-  background-image:
-    radial-gradient(ellipse 120% 80% at 0% -20%, rgba(99, 102, 241, 0.18), transparent 50%),
-    radial-gradient(ellipse 90% 70% at 100% 0%, rgba(236, 72, 153, 0.1), transparent 45%),
-    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(59, 130, 246, 0.12), transparent 55%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, transparent 35%, transparent 65%, rgba(255, 255, 255, 0.35) 100%);
-  background-attachment: fixed;
+  background-color: #ffffff;
+  background-image: none;
+  background-attachment: scroll;
 }
 
 .landing-page .landing-main {
@@ -162,15 +158,12 @@ a {
   position: sticky;
   top: 0;
   z-index: 50;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.78) 100%);
-  backdrop-filter: blur(18px) saturate(145%);
-  -webkit-backdrop-filter: blur(18px) saturate(145%);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.78) inset,
-    0 8px 24px rgba(15, 23, 42, 0.055),
-    0 1px 6px rgba(148, 163, 184, 0.1);
+  background: #ffffff;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-nav.nav-hidden {
+  transform: translateY(-100%);
 }
 
 /* Full-bleed bar: logo at left edge, links at right (only small gutter padding) */
@@ -229,7 +222,7 @@ a {
 }
 
 .logo-text {
-  font-family: var(--font-sans);
+  font-family: Inter, Roboto, "Google Sans", sans-serif;
   font-weight: 700;
   font-size: clamp(1.05rem, 2.2vw, 1.15rem);
   letter-spacing: -0.02em;
@@ -305,6 +298,7 @@ a {
 
 .nav-links > li > a,
 .nav-dropdown__trigger {
+  font-family: Inter, Roboto, "Google Sans", sans-serif;
   color: #374151;
   padding: 8px 12px;
   border-radius: 8px;
@@ -470,8 +464,8 @@ a {
   align-items: center;
   justify-content: center;
   padding: clamp(28px, 5vh, 48px) 5%;
-  background: linear-gradient(165deg, #f1f5f9 0%, #f8fafc 38%, #eef2f6 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  background: #ffffff;
+  box-shadow: none;
 }
 
 /* Floating icons — spread across viewport (not clustered on copy) */
@@ -589,7 +583,7 @@ a {
 .hero-content-shell {
   position: relative;
   z-index: 1;
-  width: min(40rem, 100%);
+  width: min(80rem, 100%);
   margin: 0 auto;
   padding: 0 clamp(0.5rem, 2vw, 1rem);
 }
@@ -641,11 +635,12 @@ a {
 
 /* Landing hero: one clear display headline, both lines aligned */
 .hero-section--landing .hero-title {
-  font-size: clamp(2rem, 5vw, 3.15rem);
-  font-weight: 700;
-  line-height: 1.12;
-  letter-spacing: -0.03em;
-  color: #0f172a;
+  font-family: Inter, Roboto, "Google Sans", sans-serif;
+  font-size: clamp(3rem, 7.5vw, 6.5rem);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+  color: #111827;
 }
 
 .hero-title__line {
@@ -653,7 +648,7 @@ a {
 }
 
 .hero-title__line:first-child {
-  animation: heroTitleFloat 7s ease-in-out infinite;
+  animation: none;
 }
 
 .hero-title__line--accent {
@@ -666,13 +661,11 @@ a {
   color: transparent;
   background-image: linear-gradient(
     110deg,
-    #dc2626 0%,
-    #ef4444 24%,
-    #0f172a 50%,
-    #ef4444 76%,
-    #dc2626 100%
+    #ef4444 0%,
+    #b91c1c 50%,
+    #ef4444 100%
   );
-  background-size: 220% 100%;
+  background-size: 200% auto;
   background-position: 0% 50%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -1500,7 +1493,7 @@ a {
 }
 
 .landing-page .landing-section > .container {
-  background: linear-gradient(165deg, #f1f5f9 0%, #f8fafc 38%, #eef2f6 100%);
+  background: #ffffff;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 18px;
   padding: clamp(1.1rem, 2.8vw, 1.8rem);
@@ -6619,7 +6612,7 @@ main.dashboard-main--ai-analysis .ai-live-main-actions {
   }
 
   .hero-section--landing .hero-title {
-    font-size: clamp(1.75rem, 6vw, 2.5rem);
+    font-size: clamp(2.5rem, 8vw, 4rem);
   }
 
   .hero-content--landing .hero-tagline {
@@ -6808,7 +6801,7 @@ main.dashboard-main--ai-analysis .ai-live-main-actions {
   }
 
   .hero-section--landing .hero-title {
-    font-size: clamp(1.5rem, 7vw, 2rem);
+    font-size: clamp(2rem, 9vw, 3rem);
   }
 
   .hero-content--landing .hero-tagline {
@@ -6995,7 +6988,7 @@ main.dashboard-main--ai-analysis .ai-live-main-actions {
   }
 
   .hero-section--landing .hero-title {
-    font-size: 1.4rem;
+    font-size: 1.8rem;
   }
 
   .landing-cta {
