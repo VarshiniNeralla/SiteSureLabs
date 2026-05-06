@@ -1048,10 +1048,6 @@
       padding: .45rem .75rem;
       cursor: pointer;
     }
-    .all-uploads-sort-clear {
-      background: #f1f5f9;
-      color: #475569;
-    }
     .all-uploads-sort-apply {
       background: #2563eb;
       color: #fff;
@@ -1655,6 +1651,10 @@
         <button class="users-filter-btn active" data-role="all" id="filterAll">All</button>
         <button class="users-filter-btn" data-role="user" id="filterUser">Users</button>
         <button class="users-filter-btn" data-role="admin" id="filterAdmin">Admins</button>
+        <select id="usersLastActiveSort" class="users-filter-btn" aria-label="Sort users by last active">
+          <option value="recent">Last Active: Recent first</option>
+          <option value="oldest">Last Active: Oldest first</option>
+        </select>
         <div class="users-view-control">
           <button class="users-view-btn" id="usersViewBtn" type="button" aria-expanded="false" aria-controls="usersViewPanel">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M6 12h12"/><path d="M10 18h4"/></svg>
@@ -1719,7 +1719,6 @@
             <option value="newest">Newest ↓</option>
             <option value="oldest">Oldest ↑</option>
           </select>
-          <button class="all-uploads-sort-clear" type="button" id="allUploadsSortClear">Clear</button>
         </div>
       </div>
       <div id="allUploadsContainer"></div>
@@ -2255,6 +2254,7 @@
     let allUsersData = [];
     let usersFilterRole = "all";
     let usersSearchQuery = "";
+    let usersLastActiveSort = "recent";
     const USERS_PER_PAGE = 12;
     let usersCurrentPage = 1;
     let usersViewMode = localStorage.getItem("admin_users_view_mode") || "card";
@@ -2337,7 +2337,18 @@
           (u.name && u.name.toLowerCase().includes(q))
         );
       }
-      return list;
+      const withActivityScore = (u) => {
+        const t = new Date(u.last_activity || "").getTime();
+        return Number.isNaN(t) ? -1 : t;
+      };
+      const dir = usersLastActiveSort === "oldest" ? 1 : -1;
+      return [...list].sort((a, b) => {
+        const diff = (withActivityScore(a) - withActivityScore(b)) * dir;
+        if (diff !== 0) return diff;
+        const nameA = displayUserName(a).toLowerCase();
+        const nameB = displayUserName(b).toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
     }
 
     function renderUsersSummary() {
@@ -2509,14 +2520,19 @@
     });
 
     // Filter buttons
-    document.querySelectorAll(".users-filter-btn").forEach(btn => {
+    document.querySelectorAll(".users-filter-btn[data-role]").forEach(btn => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".users-filter-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".users-filter-btn[data-role]").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         usersFilterRole = btn.dataset.role;
         usersCurrentPage = 1;
         renderUsersGrid();
       });
+    });
+    document.getElementById("usersLastActiveSort")?.addEventListener("change", (e) => {
+      usersLastActiveSort = e.target.value === "oldest" ? "oldest" : "recent";
+      usersCurrentPage = 1;
+      renderUsersGrid();
     });
 
     const usersViewBtn = document.getElementById("usersViewBtn");
@@ -3419,7 +3435,6 @@
     const allUploadsDateFromWrap = document.getElementById("allUploadsDateFromWrap");
     const allUploadsDateToWrap = document.getElementById("allUploadsDateToWrap");
     const allUploadsSortOrder = document.getElementById("allUploadsSortOrder");
-    const allUploadsSortClear = document.getElementById("allUploadsSortClear");
     function syncCustomDateVisibility() {
       const isCustom = allUploadsDayFilter?.value === "custom";
       if (allUploadsDateFromWrap) allUploadsDateFromWrap.style.display = isCustom ? "" : "none";
@@ -3436,16 +3451,6 @@
     }
     [allUploadsDayFilter, allUploadsUserFilter, allUploadsDateFrom, allUploadsDateTo, allUploadsSortOrder]
       .forEach((el) => el?.addEventListener("change", applyAllUploadsFiltersFromUi));
-    allUploadsSortClear.addEventListener("click", () => {
-      allUploadsFilters = { day: "all", user: "all", dateFrom: "", dateTo: "", sortOrder: "newest" };
-      allUploadsDayFilter.value = "all";
-      allUploadsUserFilter.value = "all";
-      if (allUploadsDateFrom) allUploadsDateFrom.value = "";
-      if (allUploadsDateTo) allUploadsDateTo.value = "";
-      allUploadsSortOrder.value = "newest";
-      syncCustomDateVisibility();
-      renderAllUploads(allUploadsData);
-    });
     syncCustomDateVisibility();
 
     const reportDateFrom = document.getElementById("reportDateFrom");

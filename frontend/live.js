@@ -52,7 +52,16 @@ document.addEventListener("DOMContentLoaded", () => {
   let previewUrl   = "";
   let allUploadItems = [];
   let desktopCameraStream = null;
-  const COLLECTION_STORAGE_KEY = "liveInspectionCollectionV1";
+  const LEGACY_COLLECTION_STORAGE_KEY = "liveInspectionCollectionV1";
+  function buildUserCollectionStorageKey() {
+    const userScopeRaw =
+      String(user?.user_id || "").trim() ||
+      String(user?.email || "").trim().toLowerCase() ||
+      "anonymous";
+    const userScope = userScopeRaw.replace(/[^\w.-]/g, "_");
+    return `liveInspectionCollectionV2:${userScope}`;
+  }
+  const COLLECTION_STORAGE_KEY = buildUserCollectionStorageKey();
   let collectionItems = [];
 
   /* ═══════════════════════════════════════════════
@@ -205,6 +214,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const raw = localStorage.getItem(COLLECTION_STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : [];
       if (Array.isArray(parsed)) collectionItems = parsed;
+      else collectionItems = [];
+
+      // Remove old shared drafts key so collections no longer leak across users.
+      if (localStorage.getItem(LEGACY_COLLECTION_STORAGE_KEY) !== null) {
+        localStorage.removeItem(LEGACY_COLLECTION_STORAGE_KEY);
+      }
     } catch {
       collectionItems = [];
     }

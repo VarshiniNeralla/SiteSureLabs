@@ -1,8 +1,45 @@
-import { mountLandingAssistant } from "./assistant-widget.js";
 import { getToken, getUser, saveAuth, clearAuth } from "/shared/auth.js";
-import { formatApiDetail } from "/shared/format-api-detail.js";
-import { wirePasswordToggle } from "/shared/password-toggle.js";
-import { mountLandingProfile } from "/shared/profile-nav.js";
+let _profileNavModulePromise = null;
+let _assistantModulePromise = null;
+let _formatApiDetailPromise = null;
+let _passwordTogglePromise = null;
+
+function loadProfileNavModule() {
+  if (!_profileNavModulePromise) _profileNavModulePromise = import("/shared/profile-nav.js");
+  return _profileNavModulePromise;
+}
+
+function loadAssistantModule() {
+  if (!_assistantModulePromise) _assistantModulePromise = import("./assistant-widget.js");
+  return _assistantModulePromise;
+}
+
+function loadFormatApiDetail() {
+  if (!_formatApiDetailPromise) _formatApiDetailPromise = import("/shared/format-api-detail.js");
+  return _formatApiDetailPromise;
+}
+
+function loadPasswordToggle() {
+  if (!_passwordTogglePromise) _passwordTogglePromise = import("/shared/password-toggle.js");
+  return _passwordTogglePromise;
+}
+
+function ensureAssistantStylesheet() {
+  if (document.getElementById("assistant-widget-style")) return;
+  const link = document.createElement("link");
+  link.id = "assistant-widget-style";
+  link.rel = "stylesheet";
+  link.href = "assistant-widget.css";
+  document.head.appendChild(link);
+}
+
+function runWhenIdle(fn) {
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(() => fn(), { timeout: 1200 });
+  } else {
+    window.setTimeout(fn, 180);
+  }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   /* ═══ AUTH GATE ═══ */
@@ -36,13 +73,19 @@ document.addEventListener("DOMContentLoaded", () => {
     overlay?.classList.add("is-hidden");
     if (navUserPill) {
       navUserPill.style.display = "flex";
-      // Mount the shared profile dropdown (single source of truth)
-      mountLandingProfile(navUserPill, user, {
-        onLogout: () => { clearAuth(); showLogin(); },
+      runWhenIdle(async () => {
+        const { mountLandingProfile } = await loadProfileNavModule();
+        mountLandingProfile(navUserPill, user, {
+          onLogout: () => { clearAuth(); showLogin(); },
+        });
       });
     }
     if (!document.getElementById("ssl-assistant-root")) {
-      mountLandingAssistant();
+      runWhenIdle(async () => {
+        ensureAssistantStylesheet();
+        const { mountLandingAssistant } = await loadAssistantModule();
+        mountLandingAssistant();
+      });
     }
   }
 
@@ -76,7 +119,11 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) { showAlert(formatApiDetail(data) || "Login failed", "error"); return; }
+      if (!res.ok) {
+        const { formatApiDetail } = await loadFormatApiDetail();
+        showAlert(formatApiDetail(data) || "Login failed", "error");
+        return;
+      }
       saveAuth(data.access_token, {
         user_id: data.user_id,
         email: data.email,
@@ -110,10 +157,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.persisted) validateAndApply();
   });
 
-  wirePasswordToggle(
-    document.getElementById("login-password"),
-    document.getElementById("login-password-toggle")
-  );
+  runWhenIdle(async () => {
+    const { wirePasswordToggle } = await loadPasswordToggle();
+    wirePasswordToggle(
+      document.getElementById("login-password"),
+      document.getElementById("login-password-toggle")
+    );
+  });
 
   /* ═══ LANDING LOGIC ═══ */
   const scrollToFeatures = () => {
@@ -209,9 +259,10 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleScrollHint();
   }
 
-  // Unified workflow decision engine
-  const workflowEngine = document.getElementById("workflow-engine");
-  if (workflowEngine) {
+  function initDeferredLandingSections() {
+    // Unified workflow decision engine
+    const workflowEngine = document.getElementById("workflow-engine");
+    if (workflowEngine) {
     const scene = workflowEngine.querySelector(".workflow-engine__scene");
     const hotspots = workflowEngine.querySelectorAll(".workflow-engine__hotspot");
     const timeEl = document.getElementById("workflow-engine-time");
@@ -338,9 +389,9 @@ document.addEventListener("DOMContentLoaded", () => {
       clearTimeout(scanResetTimer);
       clearTimeout(startTimer);
     });
-  }
+    }
 
-  const setupReveal = (selector, threshold = 0.15) => {
+    const setupReveal = (selector, threshold = 0.15) => {
     const items = document.querySelectorAll(selector);
     if (!items.length) return;
     if (!("IntersectionObserver" in window)) {
@@ -363,15 +414,15 @@ document.addEventListener("DOMContentLoaded", () => {
     items.forEach((item) => observer.observe(item));
   };
 
-  // Section reveal animations
-  setupReveal(".m-stepper__step--reveal", 0.15);
-  setupReveal(".benefit-card--reveal", 0.12);
-  setupReveal(".reveal-on-scroll", 0.1);
+    // Section reveal animations
+    setupReveal(".m-stepper__step--reveal", 0.15);
+    setupReveal(".benefit-card--reveal", 0.12);
+    setupReveal(".reveal-on-scroll", 0.1);
 
-  // ── FAQ Accordion ──
-  const faqItems = document.querySelectorAll(".faq-item");
+    // ── FAQ Accordion ──
+    const faqItems = document.querySelectorAll(".faq-item");
 
-  const closeFaq = (item) => {
+    const closeFaq = (item) => {
     const answer = item.querySelector(".faq-answer");
     if (!answer) return Promise.resolve();
 
@@ -392,7 +443,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  const openFaq = (item) => {
+    const openFaq = (item) => {
     const answer = item.querySelector(".faq-answer");
     if (!answer) return;
 
@@ -414,8 +465,8 @@ document.addEventListener("DOMContentLoaded", () => {
     answer.addEventListener("transitionend", onEnd);
   };
 
-  // Normalize initial accordion state — all items start collapsed.
-  faqItems.forEach((item) => {
+    // Normalize initial accordion state — all items start collapsed.
+    faqItems.forEach((item) => {
     item.removeAttribute("open");
     item.classList.remove("is-open");
     const answer = item.querySelector(".faq-answer");
@@ -425,7 +476,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  faqItems.forEach((item) => {
+    faqItems.forEach((item) => {
     const summary = item.querySelector("summary");
     if (!summary) return;
 
@@ -450,6 +501,9 @@ document.addEventListener("DOMContentLoaded", () => {
         openFaq(item);
       }
     });
-  });
+    });
+  }
+
+  runWhenIdle(initDeferredLandingSections);
 
 });

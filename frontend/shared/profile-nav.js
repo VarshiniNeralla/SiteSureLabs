@@ -322,6 +322,10 @@ button.pn-profile-avatar-xl:focus-visible{outline:2px solid #2563eb;outline-offs
   border:1px solid #bbf7d0;background:#f0fdf4;color:#166534}
 .pn-profile-feedback__tick{color:#15803d;flex-shrink:0}
 .pn-profile-feedback--error{border-color:#fecaca;background:#fef2f2;color:#b91c1c}
+.pn-profile-floating-feedback{position:fixed;z-index:21200;pointer-events:none;
+  left:50%;top:calc(100% - 88px);transform:translateX(-50%);
+  transition:opacity .22s ease,transform .22s ease;opacity:0}
+.pn-profile-floating-feedback--open{opacity:1;transform:translateX(-50%) translateY(0)}
 /* Photo cropper overlay */
 .pn-crop-backdrop{position:fixed;inset:0;z-index:21050;background:rgba(15,23,42,.5);
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;
@@ -400,6 +404,33 @@ function injectStyles() {
   document.head.appendChild(tag);
 }
 
+let _scrollLockDepth = 0;
+let _savedBodyOverflow = "";
+let _savedBodyPaddingRight = "";
+let _savedHtmlOverflow = "";
+
+function lockPageScroll() {
+  _scrollLockDepth += 1;
+  if (_scrollLockDepth !== 1) return;
+  _savedBodyOverflow = document.body.style.overflow;
+  _savedBodyPaddingRight = document.body.style.paddingRight;
+  _savedHtmlOverflow = document.documentElement.style.overflow;
+
+  const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+  document.body.style.overflow = "hidden";
+  document.documentElement.style.overflow = "hidden";
+  if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
+}
+
+function unlockPageScroll() {
+  if (_scrollLockDepth === 0) return;
+  _scrollLockDepth -= 1;
+  if (_scrollLockDepth !== 0) return;
+  document.body.style.overflow = _savedBodyOverflow;
+  document.body.style.paddingRight = _savedBodyPaddingRight;
+  document.documentElement.style.overflow = _savedHtmlOverflow;
+}
+
 /* ── Modal DOM ──────────────────────────────────────────────── */
 function buildModal() {
   if (document.getElementById("pn-uploads-backdrop")) return;
@@ -432,12 +463,18 @@ function buildModal() {
 }
 
 function openModal() {
-  document.getElementById("pn-uploads-backdrop")?.classList.remove("is-hidden");
+  const backdrop = document.getElementById("pn-uploads-backdrop");
+  if (!backdrop || !backdrop.classList.contains("is-hidden")) return;
+  backdrop.classList.remove("is-hidden");
+  lockPageScroll();
 }
 
 function closeModal() {
   closeUploadsLightbox();
-  document.getElementById("pn-uploads-backdrop")?.classList.add("is-hidden");
+  const backdrop = document.getElementById("pn-uploads-backdrop");
+  if (!backdrop || backdrop.classList.contains("is-hidden")) return;
+  backdrop.classList.add("is-hidden");
+  unlockPageScroll();
 }
 
 function normalizeUploadImageSrc(path) {
@@ -447,7 +484,10 @@ function normalizeUploadImageSrc(path) {
 }
 
 function closeUploadsLightbox() {
-  document.getElementById("pn-uploads-lightbox")?.remove();
+  const lb = document.getElementById("pn-uploads-lightbox");
+  if (!lb) return;
+  lb.remove();
+  unlockPageScroll();
 }
 
 function openUploadsLightbox(imageSrc) {
@@ -493,6 +533,7 @@ function openUploadsLightbox(imageSrc) {
   card.appendChild(closeBtn);
   backdrop.appendChild(card);
   document.body.appendChild(backdrop);
+  lockPageScroll();
 }
 
 async function loadAndShowUploads() {
@@ -566,6 +607,12 @@ function buildProfileModal() {
       </div>
     </div>`;
   document.body.appendChild(el);
+  const floatingFeedback = document.createElement("div");
+  floatingFeedback.id = "pn-profile-floating-feedback";
+  floatingFeedback.className = "pn-profile-floating-feedback";
+  floatingFeedback.setAttribute("aria-live", "polite");
+  floatingFeedback.setAttribute("aria-atomic", "true");
+  document.body.appendChild(floatingFeedback);
 
   document.getElementById("pn-profile-close").addEventListener("click", closeProfileModal);
   el.addEventListener("click", (e) => { if (e.target === el) closeProfileModal(); });
@@ -583,7 +630,10 @@ function buildProfileModal() {
 }
 
 function openProfileModal() {
-  document.getElementById("pn-profile-backdrop")?.classList.remove("is-hidden");
+  const backdrop = document.getElementById("pn-profile-backdrop");
+  if (!backdrop || !backdrop.classList.contains("is-hidden")) return;
+  backdrop.classList.remove("is-hidden");
+  lockPageScroll();
 }
 
 function closeAvatarLightbox() {
@@ -591,12 +641,19 @@ function closeAvatarLightbox() {
     document.removeEventListener("keydown", _avatarLightboxOnKey);
     _avatarLightboxOnKey = null;
   }
-  document.getElementById("pn-avatar-lightbox")?.remove();
+  const lb = document.getElementById("pn-avatar-lightbox");
+  if (!lb) return;
+  lb.remove();
+  unlockPageScroll();
 }
 
 function closeProfileModal() {
   closeAvatarLightbox();
-  document.getElementById("pn-profile-backdrop")?.classList.add("is-hidden");
+  const backdrop = document.getElementById("pn-profile-backdrop");
+  if (backdrop && !backdrop.classList.contains("is-hidden")) {
+    backdrop.classList.add("is-hidden");
+    unlockPageScroll();
+  }
   clearProfileInlineFeedback();
 }
 
@@ -658,6 +715,7 @@ function openProfilePhotoLightbox(imageSrc, fallbackLetter) {
 
   document.body.appendChild(backdrop);
   document.addEventListener("keydown", onKeyLb);
+  lockPageScroll();
 }
 
 let _profileFeedbackTimer = null;
@@ -669,15 +727,32 @@ function clearProfileInlineFeedback() {
     clearTimeout(_profileFeedbackTimer);
     _profileFeedbackTimer = null;
   }
-  const slot = document.getElementById("pn-profile-feedback-slot");
+  const slot = document.getElementById("pn-profile-floating-feedback");
   if (!slot) return;
-  slot.classList.remove("pn-profile-feedback-slot--open");
+  slot.classList.remove("pn-profile-floating-feedback--open");
   slot.innerHTML = "";
+}
+
+function positionProfileFloatingFeedback() {
+  const slot = document.getElementById("pn-profile-floating-feedback");
+  const modal = document.querySelector("#pn-profile-backdrop .pn-modal--profile");
+  if (!slot || !modal) return;
+
+  const rect = modal.getBoundingClientRect();
+  const slotHeight = slot.offsetHeight || 44;
+  const margin = 12;
+  const maxTop = window.innerHeight - slotHeight - margin;
+  const preferredTop = rect.bottom + margin;
+  const top = Math.max(margin, Math.min(preferredTop, maxTop));
+  const left = rect.left + rect.width / 2;
+
+  slot.style.top = `${Math.round(top)}px`;
+  slot.style.left = `${Math.round(left)}px`;
 }
 
 /** @param {"success" | "error"} variant */
 function showProfileInlineFeedback(msg, variant) {
-  const slot = document.getElementById("pn-profile-feedback-slot");
+  const slot = document.getElementById("pn-profile-floating-feedback");
   if (!slot) return;
   if (_profileFeedbackTimer) clearTimeout(_profileFeedbackTimer);
 
@@ -697,20 +772,11 @@ function showProfileInlineFeedback(msg, variant) {
 
   slot.innerHTML = "";
   slot.appendChild(inner);
-  slot.classList.add("pn-profile-feedback-slot--open");
-
-  const scrollProfileBodyToFeedback = () => {
-    const body = document.getElementById("pn-profile-body");
-    if (!body) return;
-    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    body.scrollTo({ top: body.scrollHeight, behavior: reduceMotion ? "auto" : "smooth" });
-  };
-  requestAnimationFrame(() => {
-    requestAnimationFrame(scrollProfileBodyToFeedback);
-  });
+  positionProfileFloatingFeedback();
+  slot.classList.add("pn-profile-floating-feedback--open");
 
   _profileFeedbackTimer = setTimeout(() => {
-    slot.classList.remove("pn-profile-feedback-slot--open");
+    slot.classList.remove("pn-profile-floating-feedback--open");
     slot.innerHTML = "";
     _profileFeedbackTimer = null;
   }, 3000);
@@ -863,7 +929,6 @@ function renderProfileForm(data) {
           <button type="button" class="pn-profile-btn pn-profile-btn--cancel" id="pf-cancel">Cancel</button>
           <button type="submit" class="pn-profile-btn pn-profile-btn--save" id="pf-save">Save changes</button>
         </div>
-        <div class="pn-profile-feedback-slot" id="pn-profile-feedback-slot" aria-live="polite" aria-atomic="true"></div>
       </form>
     </div>`;
 }

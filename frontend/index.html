@@ -8,11 +8,9 @@
   <link rel="icon" type="image/png" href="/MyHomeLogo/MyHomeLogo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap"></noscript>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="assistant-widget.css">
   <style>
     /* ── Login Overlay (matches /register/ — shared/styles auth-page + auth-card) ── */
     /* Above #ssl-assistant-root (z-index ~2e9) so login is never covered */
@@ -215,7 +213,7 @@
       </div>
     </section>
 
-    <section id="features" class="landing-section" aria-labelledby="features-heading">
+    <section id="features" class="landing-section cv-auto" aria-labelledby="features-heading">
       <div class="container">
         <div class="landing-section-header reveal-on-scroll" style="--reveal-i:0">
           <h2 id="features-heading">Select Inspection Mode</h2>
@@ -342,7 +340,7 @@
     </section>
 
 
-    <section id="how-it-works" class="landing-section landing-section--alt" aria-labelledby="how-heading">
+    <section id="how-it-works" class="landing-section landing-section--alt cv-auto" aria-labelledby="how-heading">
       <div class="container">
         <div class="landing-section-header reveal-on-scroll" style="--reveal-i:0">
           <h2 id="how-heading">How It Works</h2>
@@ -412,7 +410,7 @@
       </div>
     </section>
 
-    <section id="outcomes" class="landing-section" aria-labelledby="benefits-heading">
+    <section id="outcomes" class="landing-section cv-auto" aria-labelledby="benefits-heading">
       <div class="container">
         <div class="landing-section-header reveal-on-scroll" style="--reveal-i:0">
           <h2 id="benefits-heading">What You Get Instantly</h2>
@@ -490,7 +488,7 @@
       </div>
     </section>
 
-    <section id="faq" class="landing-section landing-section--alt" aria-labelledby="faq-heading">
+    <section id="faq" class="landing-section landing-section--alt cv-auto" aria-labelledby="faq-heading">
       <div class="container">
         <div class="landing-section-header reveal-on-scroll" style="--reveal-i:0">
           <h2 id="faq-heading">Common Questions</h2>

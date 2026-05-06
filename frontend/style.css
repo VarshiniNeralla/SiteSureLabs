@@ -652,12 +652,76 @@ a {
   display: block;
 }
 
+.hero-title__line:first-child {
+  animation: heroTitleFloat 7s ease-in-out infinite;
+}
+
 .hero-title__line--accent {
   margin-top: 0.1em;
 }
 
 .gradient-text {
-  color: var(--brand-red);
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  background-image: linear-gradient(
+    110deg,
+    #dc2626 0%,
+    #ef4444 24%,
+    #0f172a 50%,
+    #ef4444 76%,
+    #dc2626 100%
+  );
+  background-size: 220% 100%;
+  background-position: 0% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: heroGradientShift 8s ease-in-out infinite;
+}
+
+.gradient-text::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.12em;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.16), rgba(239, 68, 68, 0.52), rgba(239, 68, 68, 0.16));
+  transform-origin: center;
+  animation: heroAccentLinePulse 4.8s ease-in-out infinite;
+}
+
+@keyframes heroTitleFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes heroGradientShift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes heroAccentLinePulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scaleX(0.95);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scaleX(1);
+  }
 }
 
 .hero-subtitle {
@@ -703,6 +767,12 @@ a {
   margin-top: 1.4rem;
   display: flex;
   justify-content: center;
+}
+
+/* Skip layout/paint work for below-the-fold sections until needed. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 900px;
 }
 
 /* ── Hero scroll indicator ── */
@@ -967,6 +1037,9 @@ a {
   .hero-content--landing .hero-tagline,
   .hero-content--landing .hero-subtitle,
   .hero-content--landing .hero-primary-cta,
+  .hero-title__line:first-child,
+  .gradient-text,
+  .gradient-text::after,
   .scan-beam,
   .defect-ping,
   .check-pulse,
@@ -989,6 +1062,15 @@ a {
   .hero-content--landing .hero-primary-cta {
     opacity: 1;
     transform: none;
+  }
+
+  .gradient-text {
+    color: var(--brand-red);
+    background-image: none;
+  }
+
+  .gradient-text::after {
+    opacity: 0;
   }
 
   .landing-page .benefit-card:hover,
