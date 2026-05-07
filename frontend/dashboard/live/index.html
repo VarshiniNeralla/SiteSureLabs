@@ -51,23 +51,37 @@
     }
     .dashboard-page-back-link-row--live{
       display:flex;align-items:center;justify-content:space-between;gap:10px;
-      position:sticky;top:58px;z-index:45;
+      position:sticky;top:40px;z-index:45;
       background:transparent;
-      margin:-8px 0 14px;
+      margin:-28px 0 18px;
     }
     .collection-chip{
       display:inline-flex;align-items:center;justify-content:center;
-      min-height:36px;padding:8px 12px;border-radius:10px;
-      border:1px solid #dbe4f0;background:#fff;color:#334155;
-      font-size:.76rem;font-weight:700;font-family:Montserrat,sans-serif;
-      cursor:pointer;transition:all .18s ease;white-space:nowrap;
-      box-shadow:0 2px 8px rgba(15,23,42,.06);
+      min-height:38px;padding:8px 14px;border-radius:12px;
+      border:1px solid rgba(148,163,184,.34);
+      background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(248,250,252,.94));
+      color:#1f2937;font-size:.78rem;font-weight:700;font-family:Montserrat,sans-serif;
+      letter-spacing:.01em;cursor:pointer;transition:all .22s cubic-bezier(.22,1,.36,1);white-space:nowrap;
+      box-shadow:0 6px 18px rgba(15,23,42,.07),0 1px 0 rgba(255,255,255,.9) inset;
     }
-    .collection-chip:hover{background:#f8fafc;border-color:#cbd5e1}
+    .collection-chip:hover{
+      border-color:rgba(59,130,246,.36);
+      background:linear-gradient(180deg,rgba(255,255,255,1),rgba(239,246,255,.94));
+      transform:translateY(-1px);
+      box-shadow:0 10px 24px rgba(37,99,235,.16),0 1px 0 rgba(255,255,255,.94) inset;
+    }
+    .collection-chip:focus-visible{
+      outline:none;
+      border-color:#60a5fa;
+      box-shadow:0 0 0 3px rgba(96,165,250,.28),0 6px 16px rgba(37,99,235,.14);
+    }
     .collection-chip__badge{
       margin-left:8px;display:inline-flex;align-items:center;justify-content:center;
-      min-width:20px;height:20px;padding:0 6px;border-radius:999px;
-      font-size:.7rem;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;
+      min-width:21px;height:21px;padding:0 6px;border-radius:999px;
+      font-size:.68rem;font-weight:700;
+      background:radial-gradient(circle at 30% 20%,#eff6ff 0%,#dbeafe 100%);
+      color:#1d4ed8;border:1px solid #bfdbfe;
+      box-shadow:0 1px 4px rgba(37,99,235,.16) inset;
     }
     .collection-chip--pulse{box-shadow:0 0 0 5px rgba(148,163,184,.2)}
     .step-bar__step{display:flex;flex-direction:column;align-items:center;gap:7px;flex-shrink:0}
@@ -395,7 +409,7 @@
       .insp-item img{height:140px}
       .collection-item__meta{grid-template-columns:repeat(4,minmax(0,1fr))}
       .collection-item__meta textarea{grid-column:1/-1}
-      .dashboard-page-back-link-row--live{top:64px;margin:-10px 0 16px}
+      .dashboard-page-back-link-row--live{top:44px;margin:-28px 0 18px}
     }
     @media(max-width:640px){
       .success-wrap h2{font-size:1.45rem}
@@ -540,6 +554,17 @@
                   <option>Living Room</option><option>Master Bedroom</option><option>Bedroom 2</option><option>Bedroom 3</option>
                   <option>Kitchen</option><option>Bathroom 1</option><option>Bathroom 2</option><option>Balcony</option>
                   <option>Hall</option><option>Lobby</option><option>Terrace</option>
+                </select>
+              </div>
+            </div>
+            <div class="insp-row">
+              <div class="insp-field">
+                <label for="sel-category">Category</label>
+                <select id="sel-category">
+                  <option value="">Select category</option>
+                  <option value="Civil">Civil</option>
+                  <option value="Finishing">Finishing</option>
+                  <option value="MEP">MEP</option>
                 </select>
               </div>
             </div>

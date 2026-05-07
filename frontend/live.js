@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const selFloor = document.getElementById("sel-floor");
   const selFlat  = document.getElementById("sel-flat");
   const selRoom  = document.getElementById("sel-room");
+  const selCategory = document.getElementById("sel-category");
   const selDescription = document.getElementById("sel-description");
   const uploadProgressEl = document.getElementById("upload-progress");
   const uploadProgressFill = document.getElementById("upload-progress-fill");
@@ -457,11 +458,11 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-back-to-preview").addEventListener("click", () => goTo("step-preview"));
 
   function validateForm() {
-    const filled = selTower.value && selFloor.value && selFlat.value && selRoom.value && selectedFile;
+    const filled = selTower.value && selFloor.value && selFlat.value && selRoom.value && selCategory.value && selectedFile;
     submitBtn.disabled = !filled;
   }
 
-  [selTower, selFloor, selFlat, selRoom].forEach((sel) => sel.addEventListener("change", validateForm));
+  [selTower, selFloor, selFlat, selRoom, selCategory].forEach((sel) => sel.addEventListener("change", validateForm));
 
   function showAlert(msg) {
     alertEl.textContent = msg;
@@ -499,6 +500,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="collection-item__summary">
             <p class="collection-item__title">${escapeHtml(item.tower || "Tower")} • Floor ${escapeHtml(item.floor || "-")}</p>
             <p class="collection-item__line">Flat ${escapeHtml(item.flat || "-")} • ${escapeHtml(item.room || "Room")}</p>
+            <p class="collection-item__line">Category: ${escapeHtml(item.category || "-")}</p>
             <p class="collection-item__line">${escapeHtml(item.description || "No description")}</p>
             <div class="collection-item__actions">
               <button type="button" class="collection-item__edit" data-edit="${idx}">Edit</button>
@@ -509,6 +511,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <input data-field="floor" value="${escapeHtml(item.floor)}" placeholder="Floor">
                 <input data-field="flat" value="${escapeHtml(item.flat)}" placeholder="Flat">
                 <input data-field="room" value="${escapeHtml(item.room)}" placeholder="Room">
+                <input data-field="category" value="${escapeHtml(item.category || "")}" placeholder="Category">
                 <textarea data-field="description" placeholder="Description">${escapeHtml(item.description || "")}</textarea>
               </div>
             </div>
@@ -549,8 +552,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   submitBtn.addEventListener("click", async () => {
     if (!selectedFile) { showAlert("No image selected."); return; }
-    if (!selTower.value || !selFloor.value || !selFlat.value || !selRoom.value) {
-      showAlert("Please fill all location fields.");
+    if (!selTower.value || !selFloor.value || !selFlat.value || !selRoom.value || !selCategory.value) {
+      showAlert("Please fill all location fields including category.");
       return;
     }
     submitBtn.disabled = true;
@@ -566,6 +569,7 @@ document.addEventListener("DOMContentLoaded", () => {
         floor: selFloor.value,
         flat: selFlat.value,
         room: selRoom.value,
+        category: selCategory.value,
         description: selDescription.value.trim(),
       });
       saveCollectionToStorage();
@@ -593,6 +597,7 @@ document.addEventListener("DOMContentLoaded", () => {
         floor: item.floor || "",
         flat: item.flat || "",
         room: item.room || "",
+        category: item.category || "",
         description: item.description || "",
       }))));
       for (const item of collectionItems) {
@@ -657,6 +662,7 @@ document.addEventListener("DOMContentLoaded", () => {
     selFloor.value = "";
     selFlat.value  = "";
     selRoom.value  = "";
+    selCategory.value = "";
     selDescription.value = "";
     submitBtn.disabled = true;
   }
@@ -759,6 +765,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="meta">
           <strong>${d.tower}</strong> &middot; Floor ${d.floor} &middot; Flat ${d.flat}<br>
           ${d.room}<br>
+          ${d.category ? `Category: ${d.category}<br>` : ""}
           ${d.description ? `<em>${d.description}</em><br>` : ""}
           <small>${new Date(d.created_at).toLocaleString()}</small>
         </div>

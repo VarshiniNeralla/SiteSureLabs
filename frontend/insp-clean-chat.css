@@ -1097,6 +1097,36 @@ body.landing-page.dashboard-page.page--ai-chat {
   padding: 0 20px;
   box-sizing: border-box;
 }
+.cht-jump-btn {
+  position: absolute;
+  top: -48px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.15s ease, color 0.15s ease;
+  z-index: 100;
+  font-family: var(--font-sans);
+}
+
+.cht-jump-btn:hover {
+  background: #f9fafb;
+  color: #111827;
+}
+
+.cht-jump-btn.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 10px);
+}
+
 
 .cht-dock__disclaimer {
   text-align: center;

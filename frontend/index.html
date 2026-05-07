@@ -10,6 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap"></noscript>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@200..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@200..900&display=swap"></noscript>
   <link rel="stylesheet" href="style.css">
   <style>
     /* ── Login Overlay (matches /register/ — shared/styles auth-page + auth-card) ── */
@@ -117,11 +119,53 @@
             <button type="button" class="nav-dropdown__trigger" id="nav-features-trigger" aria-expanded="false" aria-haspopup="true" aria-controls="nav-features-menu">
               Features
             </button>
-            <ul id="nav-features-menu" class="nav-dropdown__menu" role="menu" aria-labelledby="nav-features-trigger">
-              <li role="none"><a href="/dashboard/ai-analysis/" role="menuitem">AI Analysis</a></li>
-              <li role="none"><a href="/dashboard/image-analysis/" role="menuitem">Image Analysis</a></li>
-              <li role="none"><a href="/dashboard/live/" role="menuitem">Live Inspection</a></li>
-            </ul>
+            <div class="nav-dropdown__menu-wrapper" id="nav-features-menu">
+              <div class="nav-dropdown__mega">
+                <!-- Left Side -->
+                <div class="nav-dropdown__mega-left">
+                  <h3 class="nav-dropdown__heading">Built for modern Quality<br>Inspection teams</h3>
+                  <a href="/dashboard/ai-analysis/" class="nav-dropdown__cta">Explore platform</a>
+                </div>
+                <!-- Right Side -->
+                <div class="nav-dropdown__mega-right">
+                  <ul class="nav-dropdown__feature-list" role="menu" aria-labelledby="nav-features-trigger">
+                    <li role="none">
+                      <a href="/dashboard/live/" role="menuitem" class="nav-dropdown__feature-item">
+                        <span class="nav-dropdown__feature-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        </span>
+                        <span class="nav-dropdown__feature-text">
+                          <span class="nav-dropdown__feature-title">Live Inspection</span>
+                        </span>
+                        <svg class="nav-dropdown__feature-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                      </a>
+                    </li>
+                    <li role="none">
+                      <a href="/dashboard/ai-analysis/" role="menuitem" class="nav-dropdown__feature-item">
+                        <span class="nav-dropdown__feature-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"></path><path d="M5 19h14"></path></svg>
+                        </span>
+                        <span class="nav-dropdown__feature-text">
+                          <span class="nav-dropdown__feature-title">AI Analysis</span>
+                        </span>
+                        <svg class="nav-dropdown__feature-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                      </a>
+                    </li>
+                    <li role="none">
+                      <a href="/dashboard/image-analysis/" role="menuitem" class="nav-dropdown__feature-item">
+                        <span class="nav-dropdown__feature-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        </span>
+                        <span class="nav-dropdown__feature-text">
+                          <span class="nav-dropdown__feature-title">Image Analysis</span>
+                        </span>
+                        <svg class="nav-dropdown__feature-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </li>
           <li><a href="#how-it-works">Walkthrough</a></li>
           <li><a href="#outcomes">Deliverables</a></li>
@@ -137,6 +181,7 @@
   <main class="landing-main">
     <section id="hero" class="hero-section hero-section--landing">
       <div class="hero-viewport">
+        <canvas id="hero-spatial-canvas" class="hero-spatial-canvas" aria-hidden="true"></canvas>
         <div class="hero-decor-layer" aria-hidden="true">
           <span class="hero-decor-icon hero-decor-icon--1">
             <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -198,6 +243,7 @@
         </div>
         <div class="hero-content-shell">
           <div class="hero-content hero-content--landing">
+            <img src="/MyHomeLogo/MyHomeLogo.png" alt="My Home Group logo" width="54" height="54" class="hero-brand-mark" decoding="async">
             <h1 class="hero-title">AI-Powered<br><span class="gradient-text">Construction Inspection</span></h1>
             <p class="hero-tagline">Detect Construction Defects Before They Become Costly...</p>
             <div class="hero-primary-cta">
@@ -629,5 +675,6 @@
   <!-- uploads modal injected by shared/profile-nav.js → mountLandingProfile() -->
 
   <script type="module" src="/landing.js"></script>
+  <script src="/hero-bg.js" defer></script>
 </body>
 </html>

@@ -11,6 +11,7 @@ class Defect(Document):
     floor: str
     flat: str
     room: str
+    category: str = ""
     description: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

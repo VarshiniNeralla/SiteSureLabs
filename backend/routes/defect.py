@@ -53,6 +53,7 @@ async def _store_defect_upload(
     floor: str,
     flat: str,
     room: str,
+    category: str,
     description: str,
 ) -> dict[str, str]:
     if not tower.strip() or not floor.strip() or not flat.strip() or not room.strip():
@@ -93,6 +94,7 @@ async def _store_defect_upload(
         floor=floor.strip(),
         flat=flat.strip(),
         room=room.strip(),
+        category=category.strip(),
         description=description.strip(),
     )
     await defect.insert()
@@ -115,6 +117,7 @@ async def upload_defect(
     floor: str = Form(...),
     flat: str = Form(...),
     room: str = Form(...),
+    category: str = Form(""),
     description: str = Form(""),
     image: UploadFile = File(...),
     user: User = Depends(get_current_user),
@@ -126,6 +129,7 @@ async def upload_defect(
         floor=floor,
         flat=flat,
         room=room,
+        category=category,
         description=description,
     )
 
@@ -165,6 +169,7 @@ async def upload_defects_batch(
                 floor=str(item.get("floor", "")),
                 flat=str(item.get("flat", "")),
                 room=str(item.get("room", "")),
+                category=str(item.get("category", "")),
                 description=str(item.get("description", "")),
             )
             success_count += 1
@@ -194,6 +199,7 @@ async def my_defects(user: User = Depends(get_current_user)):
             "floor": d.floor,
             "flat": d.flat,
             "room": d.room,
+            "category": d.category,
             "description": d.description,
             "created_at": d.created_at.isoformat(),
         }

@@ -180,11 +180,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const featuresDropdown = navLinks?.querySelector(".nav-dropdown");
   const featuresTrigger = featuresDropdown?.querySelector(".nav-dropdown__trigger");
+  const featuresMenu = featuresDropdown?.querySelector(".nav-dropdown__menu-wrapper");
+  const DESKTOP_DROPDOWN_CLOSE_DELAY_MS = 170;
+  let featuresCloseTimer = null;
 
   const setFeaturesDropdownOpen = (open) => {
     if (!featuresDropdown || !featuresTrigger) return;
     featuresDropdown.classList.toggle("is-open", open);
     featuresTrigger.setAttribute("aria-expanded", open ? "true" : "false");
+  };
+
+  const clearFeaturesCloseTimer = () => {
+    if (featuresCloseTimer) {
+      window.clearTimeout(featuresCloseTimer);
+      featuresCloseTimer = null;
+    }
+  };
+
+  const openFeaturesDropdown = () => {
+    clearFeaturesCloseTimer();
+    setFeaturesDropdownOpen(true);
+  };
+
+  const scheduleFeaturesClose = () => {
+    clearFeaturesCloseTimer();
+    featuresCloseTimer = window.setTimeout(() => {
+      setFeaturesDropdownOpen(false);
+      featuresCloseTimer = null;
+    }, DESKTOP_DROPDOWN_CLOSE_DELAY_MS);
   };
 
   const setNavOpen = (open) => {
@@ -219,6 +242,44 @@ document.addEventListener("DOMContentLoaded", () => {
     setFeaturesDropdownOpen(next);
   });
 
+  // Desktop hover intent: keep menu stable while moving between trigger and panel.
+  // A short close delay makes tiny pointer gaps forgiving without feeling laggy.
+  featuresDropdown?.addEventListener("pointerenter", () => {
+    if (mqNavMobile.matches) return;
+    openFeaturesDropdown();
+  });
+
+  featuresTrigger?.addEventListener("focus", () => {
+    if (mqNavMobile.matches) return;
+    openFeaturesDropdown();
+  });
+
+  featuresMenu?.addEventListener("focusin", () => {
+    if (mqNavMobile.matches) return;
+    openFeaturesDropdown();
+  });
+
+  navLinks?.querySelectorAll(":scope > li:not(.nav-dropdown)").forEach((item) => {
+    item.addEventListener("pointerenter", () => {
+      if (mqNavMobile.matches) return;
+      clearFeaturesCloseTimer();
+      setFeaturesDropdownOpen(false);
+    });
+  });
+
+  // Desktop: close when pointer fully leaves the whole navbar region.
+  // This prevents sticky-open forever while still avoiding tiny trigger-gap closes.
+  const navbarEl = document.getElementById("navbar");
+  navbarEl?.addEventListener("pointerleave", () => {
+    if (mqNavMobile.matches) return;
+    scheduleFeaturesClose();
+  });
+
+  navbarEl?.addEventListener("pointerenter", () => {
+    if (mqNavMobile.matches) return;
+    clearFeaturesCloseTimer();
+  });
+
   featuresDropdown?.querySelectorAll(".nav-dropdown__menu a").forEach((a) => {
     a.addEventListener("click", () => {
       if (mqNavMobile.matches) setFeaturesDropdownOpen(false);
@@ -226,12 +287,22 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.addEventListener("click", (e) => {
-    if (!mqNavMobile.matches || !navLinks?.classList.contains("is-open")) return;
     const nav = document.getElementById("navbar");
-    if (nav && !nav.contains(e.target)) setNavOpen(false);
+    if (mqNavMobile.matches) {
+      if (!navLinks?.classList.contains("is-open")) return;
+      if (nav && !nav.contains(e.target)) setNavOpen(false);
+      return;
+    }
+
+    // Desktop outside click should dismiss dropdown.
+    if (nav && !nav.contains(e.target)) {
+      clearFeaturesCloseTimer();
+      setFeaturesDropdownOpen(false);
+    }
   });
 
   mqNavMobile.addEventListener("change", () => {
+    clearFeaturesCloseTimer();
     if (!mqNavMobile.matches) setNavOpen(false);
   });
 

@@ -256,6 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
    * Resuming: when the user scrolls back into the bottom band, `userHasScrolledUp` clears.
    */
   const scrollWrap = document.getElementById("gem-messages-wrap");
+  const jumpBtn = document.getElementById("gem-jump-btn");
 
   const getScrollWrap = () => scrollWrap || document.getElementById("gem-messages-wrap");
 
@@ -264,86 +265,87 @@ document.addEventListener("DOMContentLoaded", () => {
     return wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight;
   };
 
-  const isNearBottom = (wrap, threshold = SCROLL_NEAR_BOTTOM_PX) =>
+  // Increased threshold (150px) to make bottom-stickiness more forgiving
+  const isNearBottom = (wrap, threshold = 150) =>
     !!wrap && distanceFromBottom(wrap) <= threshold;
 
-  let isUserNearBottom = true;
-  /** Any upward user scroll disables follow-until-bottom; cleared when user re-enters bottom band. */
-  let userHasScrolledUp = false;
-  /** Last scrollTop for direction detection (user events only). */
-  let lastScrollTop = 0;
-  /** True while we set scrollTop programmatically (avoid mis-classifying as user scroll-down). */
   let programmaticScroll = false;
+  let autoScrollEnabled = true;
 
   if (scrollWrap) {
-    lastScrollTop = scrollWrap.scrollTop;
     scrollWrap.addEventListener(
       "scroll",
       () => {
-        const wrap = scrollWrap;
-        if (!wrap) return;
-        if (programmaticScroll) {
-          lastScrollTop = wrap.scrollTop;
-          programmaticScroll = false;
-          isUserNearBottom = isNearBottom(wrap);
-          if (isNearBottom(wrap)) {
-            userHasScrolledUp = false;
+        if (programmaticScroll) return; // Ignore our own programmatic scrolls
+        
+        const nearBottom = isNearBottom(scrollWrap);
+        
+        // If the user scrolls up manually (leaving the bottom), stop auto-scrolling
+        autoScrollEnabled = nearBottom;
+        
+        // Show the jump button if we are NOT near bottom AND there's scrollable area
+        if (jumpBtn) {
+          if (!nearBottom && scrollWrap.scrollHeight > scrollWrap.clientHeight) {
+            jumpBtn.classList.remove("hidden");
+            jumpBtn.removeAttribute("hidden");
+          } else {
+            jumpBtn.classList.add("hidden");
+            jumpBtn.setAttribute("hidden", "");
           }
-          return;
-        }
-        const st = wrap.scrollTop;
-        if (st < lastScrollTop - 0.5) {
-          userHasScrolledUp = true;
-        }
-        lastScrollTop = st;
-        isUserNearBottom = isNearBottom(wrap);
-        if (isNearBottom(wrap)) {
-          userHasScrolledUp = false;
         }
       },
-      { passive: true },
+      { passive: true }
     );
-    isUserNearBottom = isNearBottom(scrollWrap);
+  }
+
+  if (jumpBtn) {
+    jumpBtn.addEventListener("click", () => {
+      autoScrollEnabled = true;
+      scrollDown(true);
+      jumpBtn.classList.add("hidden");
+      jumpBtn.setAttribute("hidden", "");
+    });
   }
 
   const captureStickyBottom = () => {
-    const wrap = getScrollWrap();
-    if (!wrap || userHasScrolledUp) return false;
-    return isNearBottom(wrap);
+    return autoScrollEnabled;
   };
 
   const applyStickyScrollAfter = (wasNearBottom) => {
     if (!wasNearBottom) return;
     const wrap = getScrollWrap();
     if (!wrap) return;
+    
     programmaticScroll = true;
     requestAnimationFrame(() => {
       wrap.scrollTop = wrap.scrollHeight;
-      lastScrollTop = wrap.scrollTop;
-      isUserNearBottom = true;
-      queueMicrotask(() => {
-        if (programmaticScroll) programmaticScroll = false;
-      });
+      
+      // Delay resetting programmaticScroll to ignore the async scroll event it triggers
+      setTimeout(() => {
+        programmaticScroll = false;
+      }, 50);
     });
   };
 
-  /** force=true: new chat / session restore — resets follow intent and jumps. */
+  /** force=true: user explicitly clicked a jump button or started a new chat */
   const scrollDown = (force = false) => {
     const wrap = getScrollWrap();
     if (!wrap) return;
-    if (!force) {
-      if (userHasScrolledUp || !isNearBottom(wrap)) return;
-    } else {
-      userHasScrolledUp = false;
-    }
+    if (!force && !autoScrollEnabled) return;
+    
+    autoScrollEnabled = true;
     programmaticScroll = true;
+    
+    if (jumpBtn) {
+      jumpBtn.classList.add("hidden");
+      jumpBtn.setAttribute("hidden", "");
+    }
+    
     requestAnimationFrame(() => {
-      wrap.scrollTop = wrap.scrollHeight;
-      lastScrollTop = wrap.scrollTop;
-      isUserNearBottom = true;
-      queueMicrotask(() => {
-        if (programmaticScroll) programmaticScroll = false;
-      });
+      wrap.scrollTo({ top: wrap.scrollHeight, behavior: force ? 'smooth' : 'auto' });
+      setTimeout(() => {
+        programmaticScroll = false;
+      }, 100);
     });
   };
 

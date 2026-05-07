@@ -118,6 +118,7 @@ def _defect_to_dict(d: Defect, *, email: str | None = None, name: str | None = N
         "floor": d.floor,
         "flat": d.flat,
         "room": d.room,
+        "category": d.category,
         "description": d.description,
         "created_at": d.created_at.isoformat(),
     }

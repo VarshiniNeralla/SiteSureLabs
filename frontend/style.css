@@ -11,7 +11,7 @@
 }
 
 :root {
-  --font-sans: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: Inter, Roboto, "Google Sans", sans-serif;
   --font-heading: var(--font-sans);
   --font-display: var(--font-sans);
   --glass-bg: rgba(255, 255, 255, 0.55);
@@ -180,7 +180,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  min-height: 58px;
+  min-height: 52px;
   gap: 12px;
   position: relative;
 }
@@ -223,8 +223,8 @@ a {
 
 .logo-text {
   font-family: Inter, Roboto, "Google Sans", sans-serif;
-  font-weight: 700;
-  font-size: clamp(1.05rem, 2.2vw, 1.15rem);
+  font-weight: 400;
+  font-size: clamp(0.98rem, 2vw, 1.08rem);
   letter-spacing: -0.02em;
   color: #0f172a;
 }
@@ -298,40 +298,31 @@ a {
 
 .nav-links > li > a,
 .nav-dropdown__trigger {
-  font-family: Inter, Roboto, "Google Sans", sans-serif;
+  font-family: "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif;
   color: #374151;
-  padding: 8px 12px;
-  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 450;
+  line-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
   position: relative;
-  transition: color 0.18s ease;
+  white-space: nowrap;
+  text-align: center;
+  transition: all 0.15s ease-out;
 }
 
 .nav-links > li > a {
   display: inline-block;
 }
 
-.nav-links > li > a::after,
-.nav-dropdown__trigger::before {
-  content: "";
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 5px;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(147, 197, 253, 0.08) 0%, rgba(147, 197, 253, 0.85) 50%, rgba(147, 197, 253, 0.08) 100%);
-  transform: scaleX(0);
-  transform-origin: center;
-  transition: transform 0.26s ease;
-}
-
 .nav-links > li > a:hover {
+  background-color: #f1f3f4;
   color: #0f172a;
-}
-
-.nav-links > li > a:hover::after,
-.nav-links > li > a:focus-visible::after {
-  transform: scaleX(1);
 }
 
 .nav-links > li > a:focus-visible {
@@ -340,18 +331,13 @@ a {
 }
 
 .nav-dropdown {
-  position: relative;
+  position: static;
 }
 
 .nav-dropdown__trigger {
-  font: inherit;
-  font-size: inherit;
-  font-family: inherit;
   border: none;
   background: transparent;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
   gap: 6px;
 }
 
@@ -365,14 +351,10 @@ a {
   opacity: 0.75;
 }
 
-.nav-dropdown__trigger:hover {
+.nav-dropdown__trigger:hover,
+.nav-dropdown.is-open .nav-dropdown__trigger {
+  background-color: #f1f3f4;
   color: #0f172a;
-}
-
-.nav-dropdown__trigger:hover::before,
-.nav-dropdown__trigger:focus-visible::before,
-.nav-dropdown.is-open .nav-dropdown__trigger::before {
-  transform: scaleX(1);
 }
 
 .nav-dropdown__trigger:focus-visible {
@@ -380,68 +362,198 @@ a {
   outline-offset: 2px;
 }
 
-.nav-dropdown__menu {
-  list-style: none;
-  margin: 0;
-  padding: 6px;
+
+
+.nav-dropdown__menu-wrapper {
   position: absolute;
-  top: calc(100% + 4px);
+  top: 100%; /* Embedded directly below the navbar */
   left: 0;
-  min-width: 232px;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+  right: 0;
+  background: #ffffff;
+  border-radius: 0 0 24px 24px;
+  padding: 36px 0 40px 0;
+  transform: translateY(-8px);
+  transform-origin: top center;
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms ease-out,
+    visibility 220ms linear;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-6px);
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s ease,
-    visibility 0.18s;
   z-index: 60;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.05);
+  pointer-events: none;
+  border-top: 0;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-.nav-dropdown__menu li {
-  margin: 0;
-  list-style: none;
-}
-
-.nav-dropdown__menu a {
-  display: block;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: #374151;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.nav-dropdown__menu a:hover {
-  background: rgba(237, 28, 36, 0.08);
-  color: #0f172a;
-}
-
-.nav-dropdown__menu a:focus-visible {
-  outline: 2px solid var(--brand-red);
-  outline-offset: 0;
+/* Invisible bridge so pointer can travel from trigger to panel without drop-out. */
+.nav-dropdown__menu-wrapper::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12px;
+  height: 12px;
 }
 
 @media (min-width: 761px) {
-  .nav-dropdown:hover .nav-dropdown__menu,
-  .nav-dropdown:focus-within .nav-dropdown__menu {
+  .nav-dropdown:hover .nav-dropdown__menu-wrapper,
+  .nav-dropdown:focus-within .nav-dropdown__menu-wrapper,
+  .nav-dropdown.is-open .nav-dropdown__menu-wrapper {
+    transform: translateY(0);
     opacity: 1;
     visibility: visible;
-    transform: translateY(0);
+    pointer-events: auto;
   }
 
   .nav-dropdown:hover .nav-dropdown__trigger::after,
-  .nav-dropdown:focus-within .nav-dropdown__trigger::after {
+  .nav-dropdown:focus-within .nav-dropdown__trigger::after,
+  .nav-dropdown.is-open .nav-dropdown__trigger::after {
     transform: rotate(225deg) translateY(1px);
   }
+}
+
+.nav-dropdown__mega {
+  display: flex;
+  justify-content: flex-end;
+  gap: 120px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 0 28vw 0 2rem;
+  margin: 0;
+}
+
+.nav-dropdown__mega-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  flex: 1;
+  max-width: 480px;
+  padding-top: 0px;
+}
+
+.nav-dropdown__mega-right {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.nav-dropdown__heading {
+  font-family: "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.08;
+  color: #1f2937;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px 0;
+  max-width: 420px;
+}
+
+.nav-dropdown__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f3f4f6;
+  color: #1f2937;
+  min-height: 34px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  font-family: "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif;
+  font-weight: 450;
+  font-size: 14px;
+  line-height: 34px;
+  white-space: nowrap;
+  transition: all 0.15s ease-out;
+  align-self: flex-start;
+  text-decoration: none;
+}
+
+.nav-dropdown__cta:hover {
+  background-color: #e5e7eb;
+}
+
+.nav-dropdown__feature-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+}
+
+.nav-dropdown__feature-list li {
+  margin: 0;
+}
+
+.nav-dropdown__feature-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: #334155;
+  font-family: "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  text-decoration: none;
+  transition: all 0.15s ease-out;
+  group: hover;
+}
+
+.nav-dropdown__feature-item:hover {
+  background-color: #ffffff;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.02);
+}
+
+.nav-dropdown__feature-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 16px;
+  color: #9ca3af;
+  transition: color 0.2s ease;
+}
+
+.nav-dropdown__feature-item:hover .nav-dropdown__feature-icon {
+  color: #1f2937;
+}
+
+.nav-dropdown__feature-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.nav-dropdown__feature-text {
+  display: flex;
+  align-items: center;
+}
+
+.nav-dropdown__feature-title {
+  display: block;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: #1f2937;
+  letter-spacing: -0.01em;
+}
+
+.nav-dropdown__feature-arrow {
+  width: 14px;
+  height: 14px;
+  color: #9ca3af;
+  margin-left: 8px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.nav-dropdown__feature-item:hover .nav-dropdown__feature-arrow {
+  transform: translateX(2px);
+  color: #374151;
 }
 
 
@@ -466,6 +578,22 @@ a {
   padding: clamp(28px, 5vh, 48px) 5%;
   background: #ffffff;
   box-shadow: none;
+}
+
+/* ── Spatial canvas background ── */
+.hero-spatial-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-spatial-canvas {
+    display: none;
+  }
 }
 
 /* Floating icons — spread across viewport (not clustered on copy) */
@@ -603,6 +731,15 @@ a {
   text-align: center;
 }
 
+.hero-brand-mark {
+  display: block;
+  width: clamp(66px, 7.4vw, 86px);
+  height: auto;
+  margin: 0 auto 0.75rem;
+  object-fit: contain;
+  animation: heroReveal 0.75s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
 .hero-content--landing .hero-title {
   animation: heroReveal 0.75s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   animation-delay: 0.04s;
@@ -635,10 +772,10 @@ a {
 
 /* Landing hero: one clear display headline, both lines aligned */
 .hero-section--landing .hero-title {
-  font-family: Inter, Roboto, "Google Sans", sans-serif;
-  font-size: clamp(3rem, 7.5vw, 6.5rem);
-  font-weight: 400;
-  line-height: 1.02;
+  font-family: "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif;
+  font-size: 5.6rem;
+  font-weight: 450;
+  line-height: 1.1;
   letter-spacing: -0.05em;
   color: #111827;
 }
@@ -743,7 +880,7 @@ a {
 
 .hero-content--landing .hero-tagline {
   margin: 1.25rem 0 0;
-  font-family: var(--font-sans);
+  font-family: "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif;
   font-size: clamp(1.1rem, 2.3vw, 1.2rem);
   font-style: italic;
   font-weight: 200;
@@ -1266,14 +1403,20 @@ a {
 
 /* Landing primary CTAs — larger + clear hover */
 .landing-cta {
-  padding: 14px 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 32px;
+  font-family: "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif;
   font-size: 1.0625rem;
-  border-radius: 12px;
-  min-height: 48px;
+  border-radius: 9999px;
+  min-height: 44px;
   transition: background-color 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
-  background: rgba(255, 255, 255, 0.92);
-  color: #0f172a;
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #15161A;
+  color: #ffffff;
+  border: 1px solid #15161A;
+  font-weight: 500;
   box-shadow:
     0 4px 14px rgba(15, 23, 42, 0.08),
     0 2px 6px rgba(15, 23, 42, 0.04);
@@ -1281,18 +1424,18 @@ a {
 
 .landing-cta:hover {
   transform: translateY(-1px);
-  background: #ffffff;
-  border-color: var(--brand-red);
-  color: #0f172a;
+  background: #1f2937;
+  border-color: #1f2937;
+  color: #ffffff;
 }
 
 .landing-cta:active {
   transform: translateY(0);
-  background: #fff5f5;
-  border-color: var(--brand-red);
-  color: #b8151c;
+  background: #030712;
+  border-color: #030712;
+  color: #ffffff;
   box-shadow:
-    0 2px 10px rgba(237, 28, 36, 0.18),
+    0 2px 10px rgba(15, 23, 42, 0.18),
     0 1px 4px rgba(15, 23, 42, 0.06);
 }
 
@@ -3675,9 +3818,11 @@ a {
 }
 
 .glass-nav--dashboard .logo-text {
-  font-size: clamp(1.05rem, 2.2vw, 1.15rem);
-  font-weight: 700;
+  font-family: "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif;
+  font-size: clamp(0.98rem, 2vw, 1.08rem);
+  font-weight: 400;
   letter-spacing: -0.02em;
+  color: #0f172a;
 }
 
 @media (max-width: 767px) {
@@ -6612,7 +6757,7 @@ main.dashboard-main--ai-analysis .ai-live-main-actions {
   }
 
   .hero-section--landing .hero-title {
-    font-size: clamp(2.5rem, 8vw, 4rem);
+    font-size: clamp(2.8rem, 8.8vw, 4.5rem);
   }
 
   .hero-content--landing .hero-tagline {
@@ -6801,7 +6946,7 @@ main.dashboard-main--ai-analysis .ai-live-main-actions {
   }
 
   .hero-section--landing .hero-title {
-    font-size: clamp(2rem, 9vw, 3rem);
+    font-size: clamp(2.2rem, 9.4vw, 3.4rem);
   }
 
   .hero-content--landing .hero-tagline {
@@ -6988,7 +7133,7 @@ main.dashboard-main--ai-analysis .ai-live-main-actions {
   }
 
   .hero-section--landing .hero-title {
-    font-size: 1.8rem;
+    font-size: 2.05rem;
   }
 
   .landing-cta {
