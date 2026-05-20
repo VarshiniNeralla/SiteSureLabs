@@ -12,3 +12,5 @@ httpx>=0.28.0
 Pillow>=10.0.0
 pillow-heif>=0.16.0
 markdown>=3.5
+openpyxl>=3.1.5
+python-pptx>=1.0.2

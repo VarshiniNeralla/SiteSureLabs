@@ -1,12 +1,15 @@
 /* AI Analysis â€” ChatGPT-style layout (viewport column: stream + fixed dock) */
 
-/* Lock chat workspace to the viewport: only the message stream scrolls; composer stays put. */
+/* Lock chat workspace to the viewport: only the message stream scrolls; composer stays put.
+   Use small viewport height (svh) so mobile browser chrome does not thrash layout like dvh/vh mix. */
 .page--ai-chat {
   height: 100vh;
-  height: 100dvh;
+  height: 100svh;
   max-height: 100vh;
-  max-height: 100dvh;
+  max-height: 100svh;
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
   display: flex;
   flex-direction: column;
   color: #374151;
@@ -22,8 +25,19 @@ body.landing-page.dashboard-page.page--ai-chat {
   background-attachment: scroll;
 }
 
+/* Main must shrink inside the flex column so the message stream scrolls and the dock stays visible. */
+body.landing-page.page--ai-chat .landing-main.dashboard-main--cht {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+}
+
 .page--ai-chat #navbar {
   flex-shrink: 0;
+}
+
+/* Narrow viewports: one bar — hide dashboard chrome (workspace + profile move into .cht-topbar). */
+body.page--ai-chat.cht-ai-chat--unified-nav #navbar {
+  display: none !important;
 }
 
 /* Keep nav padding in line with chat gutters; tab pill width/centering is global (style.css 1fr / auto / 1fr). */
@@ -89,6 +103,12 @@ body.landing-page.dashboard-page.page--ai-chat {
   width: 100%;
 }
 
+.cht-layout > .cht {
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 0;
+}
+
 .page--ai-chat .cht {
   container-type: inline-size;
   container-name: chtcol;
@@ -138,6 +158,10 @@ body.landing-page.dashboard-page.page--ai-chat {
   background: #ffffff;
 }
 
+.page--ai-chat .cht-shell {
+  overflow: hidden;
+}
+
 .cht-topbar {
   flex-shrink: 0;
   padding: 0;
@@ -153,10 +177,31 @@ body.landing-page.dashboard-page.page--ai-chat {
   padding: 12px 20px;
   box-sizing: border-box;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px 12px;
+}
+
+.cht-topbar__trailing {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.page--ai-chat .cht-topbar__trailing .nav-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 0;
+}
+
+.page--ai-chat .cht-topbar__trailing .nav-profile {
+  position: relative;
+  margin-left: 0;
 }
 
 .cht-topbar__left {
@@ -172,6 +217,113 @@ body.landing-page.dashboard-page.page--ai-chat {
   font-weight: 500;
   color: #374151;
   min-width: 0;
+  line-height: 1.2;
+}
+
+.cht-topbar__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.cht-topbar__crumb {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  line-height: 1.2;
+}
+
+.page--ai-chat .cht-topbar__crumb {
+  color: var(--brand-red, #ed1c24);
+ 
+  letter-spacing: 0.06em;
+  font-weight: bold;
+}
+
+.page--ai-chat .cht-topbar__title {
+  font-size: clamp(12px, 2.2vw, 17px);
+  font-weight: 300;
+  letter-spacing: -0.06em;
+  color: #111827;
+}
+
+.page--ai-chat .cht-upload-card__text {
+  font-size: clamp(18px, 2.8vw, 22px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: #111827;
+}
+
+.page--ai-chat .cht-upload-card__sub {
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.page--ai-chat .cht-sidebar__group-label {
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: #64748b;
+}
+
+.page--ai-chat .cht-sidebar__new-btn {
+  font-weight: 600;
+}
+
+.page--ai-chat .cht-stage__eyebrow {
+  font-weight: 600;
+}
+
+.page--ai-chat .cht-stage__title {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.page--ai-chat .cht-stage__sub {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.page--ai-chat .insp-msg__name {
+  font-weight: 700;
+}
+
+/* Workspace drawer trigger lives in the chat topbar on mobile (see ai-analysis.js). */
+.cht-topbar__workspace-menu {
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  body.page--ai-chat.cht-ai-chat--unified-nav .cht-topbar {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+  }
+
+  body.page--ai-chat .cht-topbar .mobile-hamburger.cht-topbar__workspace-menu {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: #334155;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body.page--ai-chat .cht-topbar .mobile-hamburger.cht-topbar__workspace-menu:hover {
+    background: #f1f5f9;
+  }
+
+  body.page--ai-chat .cht-topbar .mobile-hamburger.cht-topbar__workspace-menu svg {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .cht-topbar__actions {
@@ -237,72 +389,13 @@ body.landing-page.dashboard-page.page--ai-chat {
   transform: none;
 }
 
-/* Composer Save PDF button (next to send) */
-.cht-composer__pdf {
-  flex-shrink: 0;
-  height: 36px;
-  border: 1px solid #c7dcff;
-  border-radius: 999px;
-  background: #eaf2ff;
-  color: #1558d6;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
-  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-}
-
-.cht-composer__pdf--outside {
-  min-width: 88px;
-  white-space: nowrap;
-}
-
-.cht-composer__pdf:hover:not(:disabled) {
-  border-color: #b3ceff;
-  background: #dbe9ff;
-  color: #124dbb;
-}
-
-.cht-composer__pdf:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
-/* Save PDF button accent */
-#gem-download-btn {
-  border-color: #c7dcff;
-  background: #eaf2ff;
-  color: #1558d6;
-}
-
-/* Keep Save PDF docked to the far-left edge of the page. */
-.page--ai-chat #gem-download-btn.cht-composer__pdf--outside {
-  position: fixed;
-  right: max(8px, env(safe-area-inset-right, 0px));
-  bottom: max(12px, env(safe-area-inset-bottom, 0px));
-  z-index: 40;
-}
-
-#gem-download-btn:hover:not(:disabled) {
-  border-color: #b3ceff;
-  background: #dbe9ff;
-  color: #124dbb;
-}
-
-#gem-download-btn:disabled {
-  opacity: 0.65;
-}
-
 .cht-stream {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
 }
 
 .cht-stream-inner {
@@ -330,11 +423,38 @@ body.landing-page.dashboard-page.page--ai-chat {
   display: block;
 }
 
+.cht-shell--awaiting-upload .cht-stream {
+  display: flex;
+  flex-direction: column;
+}
+
+.cht-shell--awaiting-upload .cht-stream-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .cht-shell--awaiting-upload .cht-empty {
   position: relative;
   z-index: 1;
-  min-height: min(62vh, 520px);
-  padding-top: 8vh;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  margin-bottom: 0;
+  padding: clamp(12px, 2dvw, 20px);
+  padding-top: clamp(8px, 2.5dvh, 28px);
+  box-sizing: border-box;
+}
+
+.cht-shell--awaiting-upload .cht-upload-card {
+  width: 100%;
+  max-width: min(380px, calc(100% - 4px));
+  margin-inline: auto;
+  box-sizing: border-box;
 }
 
 /* Composer + top actions stay visible but blurred until an image is attached */
@@ -347,7 +467,7 @@ body.landing-page.dashboard-page.page--ai-chat {
   transition: filter 0.28s ease, opacity 0.28s ease;
 }
 
-.cht-shell--awaiting-upload .cht-topbar__actions {
+.cht-shell--awaiting-upload .cht-topbar__trailing .dashboard-back-home {
   pointer-events: auto;
   user-select: auto;
   filter: none;
@@ -358,7 +478,7 @@ body.landing-page.dashboard-page.page--ai-chat {
 
 @media (prefers-reduced-motion: reduce) {
   .cht-shell--awaiting-upload .cht-dock,
-  .cht-shell--awaiting-upload .cht-topbar__actions {
+  .cht-shell--awaiting-upload .cht-topbar__trailing .dashboard-back-home {
     transition: none;
   }
 
@@ -377,9 +497,11 @@ body.landing-page.dashboard-page.page--ai-chat {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: min(52vh, 420px);
+  min-height: min(40dvh, 360px);
   margin-bottom: 8px;
-  padding-top: 6vh;
+  padding: clamp(12px, 2dvw, 20px);
+  padding-top: clamp(10px, 4dvh, 36px);
+  box-sizing: border-box;
 }
 
 .cht-shell--chatted .cht-empty {
@@ -524,7 +646,9 @@ body.landing-page.dashboard-page.page--ai-chat {
   padding: 0;
   border-radius: 20px;
   cursor: pointer;
-  min-width: min(92%, 380px);
+  width: min(100%, 380px);
+  max-width: 100%;
+  min-width: 0;
   outline: none;
   transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
 }
@@ -545,7 +669,7 @@ body.landing-page.dashboard-page.page--ai-chat {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  padding: 44px 48px 38px;
+  padding: clamp(28px, 6vw, 44px) clamp(20px, 5vw, 48px) clamp(24px, 5vw, 38px);
 }
 
 .cht-upload-card__icon {
@@ -1085,10 +1209,46 @@ body.landing-page.dashboard-page.page--ai-chat {
 /* â”€â”€ Dock / input bar â”€â”€ */
 
 .cht-dock {
+  position: relative;
   flex-shrink: 0;
+  z-index: 20;
   border-top: none;
   background: #ffffff;
-  padding: 10px 0 max(6px, env(safe-area-inset-bottom, 0px));
+  padding: 10px 0;
+  box-shadow: 0 -6px 28px rgba(15, 23, 42, 0.05);
+}
+
+/* ChatGPT-style: hairline above composer + safe home/gesture inset; keyboard lift via ai-analysis.js + visualViewport. */
+.page--ai-chat .cht-dock {
+  width: 100%;
+  box-sizing: border-box;
+  border-top: 1px solid #eceef1;
+  padding-bottom: max(16px, calc(12px + env(safe-area-inset-bottom, 0px)));
+  transform: translateY(calc(-1 * var(--cht-keyboard-overlap, 0px)));
+  transition: transform 0.14s ease-out;
+}
+
+/* ≤900px: same breakpoint as unified chat nav — fixed dock + JS `bottom` avoids Android Chrome shrinking innerHeight (transform overlap was often 0). */
+@media (max-width: 900px) {
+  .page--ai-chat .cht-dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transform: none;
+    transition: bottom 0.14s ease-out, box-shadow 0.14s ease-out;
+    z-index: 50;
+  }
+
+  .page--ai-chat .cht-shell {
+    padding-bottom: var(--cht-dock-placeholder, 0px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page--ai-chat .cht-dock {
+    transition: none;
+  }
 }
 
 .cht-dock-inner {
@@ -1139,8 +1299,10 @@ body.landing-page.dashboard-page.page--ai-chat {
 
 .cht-composer-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
 
 .cht-composer {
@@ -1160,15 +1322,6 @@ body.landing-page.dashboard-page.page--ai-chat {
 .cht-composer:focus-within {
   border-color: #1a73e8;
   box-shadow: 0 0 0 1px #1a73e8;
-}
-
-@media (max-width: 640px) {
-  .cht-composer-row {
-    flex-wrap: wrap;
-  }
-  .cht-composer__pdf--outside {
-    margin-left: auto;
-  }
 }
 
 .cht-composer__attach,
@@ -1634,7 +1787,7 @@ body.landing-page.dashboard-page.page--ai-chat {
 }
 
 /* While staging an image, the stream is a fixed-height flex container —
-   never scrolls. The stage sizes itself to the viewport. */
+   scroll inside the stage when the preview is tall so actions stay reachable. */
 .cht-shell--inspecting .cht-stream {
   overflow: hidden;
   display: flex;
@@ -1649,6 +1802,7 @@ body.landing-page.dashboard-page.page--ai-chat {
   display: flex;
   flex-direction: column;
   padding-block: 0;
+  overflow: hidden;
 }
 
 .cht-stage {
@@ -1657,8 +1811,13 @@ body.landing-page.dashboard-page.page--ai-chat {
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: clamp(12px, 2.5vh, 28px) clamp(16px, 4vw, 32px) clamp(14px, 2.5vh, 28px);
-  overflow: hidden;
+  padding:
+    clamp(12px, 2.5vh, 28px)
+    clamp(16px, 4vw, 32px)
+    max(28px, calc(20px + env(safe-area-inset-bottom, 0px) + 52px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   animation: cht-stage-in 0.32s cubic-bezier(0.2, 0, 0, 1) both;
 }
 
@@ -1672,13 +1831,13 @@ body.landing-page.dashboard-page.page--ai-chat {
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
-  height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   gap: 0;
+  flex: 1 0 auto;
 }
 
 .cht-stage__eyebrow {
@@ -1731,12 +1890,13 @@ body.landing-page.dashboard-page.page--ai-chat {
   color: #5f6368;
 }
 
-/* Preview flexes to fill whatever vertical space the text + actions leave. */
+/* Preview flexes; cap height on short viewports so CTA stays on-screen or scrollable. */
 .cht-stage__preview {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   width: 100%;
   max-width: 520px;
+  max-height: min(36vh, 300px);
   margin: 0 0 16px;
   padding: 0;
   border-radius: 14px;
@@ -1750,6 +1910,12 @@ body.landing-page.dashboard-page.page--ai-chat {
   align-items: center;
   justify-content: center;
   transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+@media (min-width: 641px) and (min-height: 720px) {
+  .cht-stage__preview {
+    max-height: min(48vh, 400px);
+  }
 }
 
 .cht-stage__preview:hover {
@@ -1937,7 +2103,11 @@ body.landing-page.dashboard-page.page--ai-chat {
 
 @media (max-width: 520px) {
   .cht-stage {
-    padding: 24px 14px 32px;
+    padding: 24px 14px max(32px, calc(20px + env(safe-area-inset-bottom, 0px) + 48px));
+  }
+
+  .cht-stage__preview {
+    max-height: min(32vh, 260px);
   }
 
   .cht-stage__title {
@@ -1954,4 +2124,51 @@ body.landing-page.dashboard-page.page--ai-chat {
   }
 }
 
+/* ── AI chat: tight viewports (keyboard, small phones) ── */
+
+.page--ai-chat .cht-topbar__trailing .dashboard-back-home--icon {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+@media (max-width: 520px) {
+  .page--ai-chat .cht-stream-inner {
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    padding-top: 16px;
+    padding-bottom: 28px;
+  }
+
+  .page--ai-chat .cht-topbar__inner {
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+  }
+
+  .page--ai-chat .cht-dock-inner {
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+  }
+
+  .cht-composer__input {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 380px) {
+  .cht-topbar__title {
+    font-size: 13px;
+  }
+
+  .cht-topbar__crumb {
+    font-size: 10px;
+  }
+
+  .page--ai-chat .cht-topbar__title {
+    font-size: 15px;
+  }
+
+  .page--ai-chat .cht-topbar__crumb {
+    font-size: 10px;
+  }
+}
 

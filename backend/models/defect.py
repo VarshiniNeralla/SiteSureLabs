@@ -7,6 +7,7 @@ from pydantic import Field
 class Defect(Document):
     user_id: str
     image_path: str
+    project: str = ""
     tower: str
     floor: str
     flat: str

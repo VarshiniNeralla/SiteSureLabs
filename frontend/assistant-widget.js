@@ -39,10 +39,59 @@ const DELIVERED_TICKS_SVG = `<svg class="ssl-assistant-double-tick" viewBox="0 0
   <path d="M5.5 6.5L8.5 9.5 18.5 1.5" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
+/** Cute girl peeking from behind the FAB — upper body only (legs hidden by the button). */
+const MASCOT_SVG = `
+<svg class="ssl-mascot__svg" viewBox="0 0 72 78" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <linearGradient id="ssl-mascot-dress" x1="36" y1="48" x2="36" y2="78" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#60a5fa"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="ssl-mascot-hair" x1="36" y1="4" x2="36" y2="28" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4a3728"/>
+      <stop offset="1" stop-color="#2c1f14"/>
+    </linearGradient>
+  </defs>
+  <g class="ssl-mascot__body">
+    <path d="M22 54c2 8 8 14 14 14s12-6 14-14c-2 4-8 8-14 8s-12-4-14-8z" fill="url(#ssl-mascot-dress)"/>
+    <path d="M28 56h16v4c0 2-3 4-8 4s-8-2-8-4v-4z" fill="rgba(255,255,255,0.9)"/>
+    <ellipse cx="36" cy="60" rx="2" ry="1.2" fill="#93c5fd" opacity="0.8"/>
+  </g>
+  <g class="ssl-mascot__arm ssl-mascot__arm--peek">
+    <path d="M20 50c-4 4-6 10-5 16" stroke="#fde4d6" stroke-width="2.8" stroke-linecap="round"/>
+    <circle cx="15" cy="66" r="2.8" fill="#fde4d6"/>
+  </g>
+  <g class="ssl-mascot__arm ssl-mascot__arm--wave">
+    <path d="M52 46c6-2 12 2 14 10" stroke="#fde4d6" stroke-width="2.8" stroke-linecap="round"/>
+    <circle cx="66" cy="54" r="3" fill="#fde4d6"/>
+  </g>
+  <g class="ssl-mascot__head">
+    <ellipse cx="36" cy="34" rx="14" ry="15" fill="#fde4d6"/>
+    <path class="ssl-mascot__hair-back" d="M22 28c0-12 6-20 14-20s14 8 14 20c-2-8-6-12-14-12s-12 4-14 12z" fill="url(#ssl-mascot-hair)"/>
+    <path class="ssl-mascot__pigtail ssl-mascot__pigtail--l" d="M22 26c-8 4-10 14-6 22" stroke="url(#ssl-mascot-hair)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path class="ssl-mascot__pigtail ssl-mascot__pigtail--r" d="M50 26c8 4 10 14 6 22" stroke="url(#ssl-mascot-hair)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path d="M24 18c2-6 8-10 12-10s10 4 12 10" fill="url(#ssl-mascot-hair)"/>
+    <circle cx="36" cy="16" r="3.5" fill="#f472b6" opacity="0.85"/>
+    <g class="ssl-mascot__face">
+      <ellipse class="ssl-mascot__eye ssl-mascot__eye--l" cx="30" cy="33" rx="2.4" ry="3" fill="#1e293b"/>
+      <ellipse class="ssl-mascot__eye ssl-mascot__eye--r" cx="42" cy="33" rx="2.4" ry="3" fill="#1e293b"/>
+      <circle class="ssl-mascot__eye-shine" cx="31" cy="31.5" r="0.9" fill="#fff"/>
+      <circle class="ssl-mascot__eye-shine" cx="43" cy="31.5" r="0.9" fill="#fff"/>
+      <circle cx="26" cy="37" r="2.2" fill="#fda4af" opacity="0.45"/>
+      <circle cx="46" cy="37" r="2.2" fill="#fda4af" opacity="0.45"/>
+      <path class="ssl-mascot__smile" d="M31 40c1.5 2.5 4.5 3.5 7 2.5" stroke="#d97706" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    </g>
+    <g class="ssl-mascot__blink" aria-hidden="true">
+      <path class="ssl-mascot__lid ssl-mascot__lid--l" d="M27 33q3-3 6 0" stroke="#fde4d6" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+      <path class="ssl-mascot__lid ssl-mascot__lid--r" d="M39 33q3-3 6 0" stroke="#fde4d6" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+    </g>
+  </g>
+</svg>`;
+
 const WELCOME_HTML = `
 <div class="ssl-assistant-row ssl-assistant-row--assistant" data-welcome="1">
   <div class="ssl-assistant-bubble ssl-assistant-bubble--assistant">
-    <p>Hi — I'm your <strong>AI Assistant</strong>. I can explain what SiteSureLabs does, how defect detection fits your workflow, and how to use our tools.</p>
+    <p>Hi! I'm your <strong>AI Assistant</strong>. I can explain what SiteSureLabs does, how defect detection fits your workflow, and how to use our tools.</p>
     <p style="margin-top:0.5em;margin-bottom:0">What would you like to know?</p>
   </div>
 </div>`;
@@ -122,13 +171,20 @@ export function mountLandingAssistant() {
 
   const tpl = document.createElement("template");
   tpl.innerHTML = `
-      <button type="button" class="ass-ctl ssl-assistant-launcher" id="ssl-assistant-launcher" aria-label="Open AI Assistant chat" aria-expanded="false" aria-controls="ssl-assistant-panel">
-        <span class="ssl-assistant-launcher__ripple" aria-hidden="true"></span>
-        <svg class="ssl-assistant-launcher__glyph" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M5 6a2 2 0 012-2h10a2 2 0 012 2v7a2 2 0 01-2 2h-3.5l-3.5 3v-3H7a2 2 0 01-2-2V6z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/>
-        </svg>
-        <span class="ssl-assistant-launcher__label">AI Assistant</span>
-      </button>
+      <div class="ass-ctl ssl-assistant-fab" id="ssl-assistant-fab">
+        <p class="ssl-mascot-hint" id="ssl-mascot-hint" aria-hidden="true">Hi</p>
+        <figure class="ssl-mascot" id="ssl-mascot" aria-hidden="true">${MASCOT_SVG}</figure>
+        <button type="button" class="ssl-assistant-launcher" id="ssl-assistant-launcher" aria-label="Open AI Assistant — your guide is here to help" aria-expanded="false" aria-controls="ssl-assistant-panel">
+          <span class="ssl-assistant-launcher__ripple" aria-hidden="true"></span>
+          <svg class="ssl-assistant-launcher__glyph" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M7.2 4.75h9.6c1.93 0 3.5 1.57 3.5 3.5v5.5c0 1.93-1.57 3.5-3.5 3.5h-2.65L9.25 20.2V16.75H7.2c-1.93 0-3.5-1.57-3.5-3.5V8.25c0-1.93 1.57-3.5 3.5-3.5z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/>
+            <circle cx="9.15" cy="10.35" r="0.95" fill="currentColor"/>
+            <circle cx="12" cy="10.35" r="0.95" fill="currentColor"/>
+            <circle cx="14.85" cy="10.35" r="0.95" fill="currentColor"/>
+          </svg>
+          <span class="ssl-assistant-launcher__label">Assistant</span>
+        </button>
+      </div>
 
       <div class="ass-ctl ssl-assistant-panel" id="ssl-assistant-panel" role="dialog" aria-modal="true" aria-labelledby="ssl-assistant-title" hidden>
         <header class="ssl-assistant-panel__header">
@@ -153,7 +209,7 @@ export function mountLandingAssistant() {
         <footer class="ssl-assistant-composer">
           <div class="ssl-assistant-composer__wrap">
             <label class="visually-hidden" for="ssl-assistant-input">Message</label>
-            <textarea id="ssl-assistant-input" class="ssl-assistant-input" rows="1" placeholder="Ask about defect detection…" autocomplete="off"></textarea>
+            <textarea id="ssl-assistant-input" class="ssl-assistant-input" rows="1" placeholder="Ask about defects" autocomplete="off"></textarea>
             <button type="button" class="ssl-assistant-send" id="ssl-assistant-send" aria-label="Send message">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
             </button>
@@ -174,7 +230,9 @@ export function mountLandingAssistant() {
   let welcomeShown = false;
   let streaming = false;
 
+  const fab = root.querySelector("#ssl-assistant-fab");
   const launcher = root.querySelector("#ssl-assistant-launcher");
+  const mascotHint = root.querySelector("#ssl-mascot-hint");
   const panel = root.querySelector("#ssl-assistant-panel");
   const messagesEl = root.querySelector("#ssl-assistant-messages");
   const typingEl = root.querySelector("#ssl-assistant-typing");
@@ -329,9 +387,35 @@ export function mountLandingAssistant() {
     scrollToBottom(true);
   };
 
+  const motionOk = () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let greetTimer = 0;
+  const playGreeting = () => {
+    if (!fab || !motionOk() || panel?.classList.contains("is-open")) return;
+    window.clearTimeout(greetTimer);
+    fab.classList.remove("is-greeting");
+    void fab.offsetWidth;
+    fab.classList.add("is-greeting");
+    mascotHint?.classList.add("is-visible");
+    greetTimer = window.setTimeout(() => {
+      fab.classList.remove("is-greeting");
+      mascotHint?.classList.remove("is-visible");
+    }, 2400);
+  };
+
+  const runMascotIntro = () => {
+    if (!fab) return;
+    fab.classList.add("is-intro");
+    window.setTimeout(() => fab.classList.remove("is-intro"), 1400);
+    if (motionOk()) window.setTimeout(playGreeting, 950);
+  };
+
   const openPanel = () => {
     if (!panel || !launcher) return;
     hideError();
+    fab?.classList.add("is-chat-open");
+    mascotHint?.classList.remove("is-visible");
+    fab?.classList.remove("is-greeting");
     panel.hidden = false;
     panel.classList.add("is-open");
     launcher.setAttribute("aria-expanded", "true");
@@ -344,6 +428,7 @@ export function mountLandingAssistant() {
     if (!panel || !launcher) return;
     panel.classList.remove("is-open");
     launcher.setAttribute("aria-expanded", "false");
+    fab?.classList.remove("is-chat-open");
     setTimeout(() => {
       if (!panel.classList.contains("is-open")) panel.hidden = true;
     }, 380);
@@ -362,7 +447,14 @@ export function mountLandingAssistant() {
     else openPanel();
   });
 
+  fab?.addEventListener("pointerenter", playGreeting);
+  fab?.addEventListener("focusin", (e) => {
+    if (e.target === launcher) playGreeting();
+  });
+
   minimizeBtn?.addEventListener("click", () => closePanel());
+
+  runMascotIntro();
 
   const send = async () => {
     if (streaming || !inputEl) return;

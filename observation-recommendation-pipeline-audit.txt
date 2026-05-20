@@ -1,0 +1,563 @@
+Defectra — Observation & Recommendation Pipeline Audit
+Generated: 2026-05-19
+Scope: Admin report flow (analyze-item → dashboard preview → Excel → PPTX)
+
+================================================================================
+1. WHERE OBSERVATION AND RECOMMENDATION TEXT IS GENERATED
+================================================================================
+
+Files (primary):
+  - backend/routes/admin.py
+      • analyze_report_item()           — HTTP entry: POST /api/admin/reports/analyze-item
+      • _build_report_observation_and_recommendation()
+      • Post-processing helpers (_sanitize_report_text, _compact_observation_lines, etc.)
+      • _build_report_workbook()        — Excel export
+      • _build_report_presentation()    — PPTX export
+  - backend/services/generate_client.py
+      • generate_inspection_report()    — Calls vLLM, returns full markdown string
+      • classify_construction_site_image() — Pre-gate (JSON), not observation text
+  - backend/services/inspection_markdown.py
+      • parse_inspection_sections()     — Splits markdown into sections
+  - backend/prompt.py
+      • PMO_DEFECT_INSPECTION_PROMPT
+      • build_vision_instruction_prompt()
+      • vision_prompt_with_site_context()
+  - frontend/admin/index.html
+      • analyzeReportItemWithRetry()
+      • runGenerateReportFlow()
+      • openLastGeneratedReport()       — In-browser table preview (not generation)
+
+Functions (call chain):
+  1. analyze_report_item (admin.py)
+  2. classify_construction_site_image (generate_client.py) — optional early exit
+  3. build_vision_instruction_prompt(intent="full_analysis", message="", site=...) (prompt.py)
+       NOTE: empty message short-circuits to PMO_DEFECT_INSPECTION_PROMPT + site context only
+  4. generate_inspection_report(image_bytes, mime, prompt) (generate_client.py)
+  5. _build_report_observation_and_recommendation(report_markdown) (admin.py)
+  6. JSON response { observation, recommendation, ... } to frontend
+  7. Frontend stores strings; POST /reports/generate-xlsx and /reports/generate-pptx
+     re-use the same observation/recommendation strings from step 6
+
+Pipeline flow (diagram):
+
+  [Defect image on disk]
+        │
+        ▼
+  classify_construction_site_image (vLLM, JSON, max_tokens=128)
+        │ (if false → fixed invalid_observation, empty recommendation)
+        ▼
+  build_vision_instruction_prompt (PMO markdown prompt + site context)
+        │
+        ▼
+  generate_inspection_report (vLLM, non-streaming, full markdown)
+        │
+        ▼
+  parse_inspection_sections(markdown)
+        │  extracts: key_defects[], recommended_actions[]
+        ▼
+  _build_report_observation_and_recommendation
+        │  word-cap, bullet format, line caps, filter sub-bullets
+        ▼
+  API JSON → frontend lastReportPreviewRows / analyzed[] entries
+        │
+        ├─► Dashboard HTML table (escapeHtml, full stored strings)
+        ├─► Excel (_build_report_workbook via openpyxl)
+        └─► PPTX (_build_report_presentation via python-pptx, extra char caps)
+
+Observation and Recommendation are NOT separate LLM calls. One vision completion
+produces markdown; both fields are derived by parsing and compressing that markdown.
+
+================================================================================
+2. WHICH MODEL GENERATES THE REPORT TEXT
+================================================================================
+
+Model name (configured):
+  - Environment: VLLM_MODEL
+  - Default in backend/config.py: "gemma4-31b"
+  - .env.example placeholder: "your-model-name"
+
+Gemma version:
+  - Code references served name "gemma4-31b" only (not a specific Gemma 2/3 build tag).
+  - Actual weights/version depend on what is deployed behind vLLM (--served-model-name).
+
+API / provider:
+  - vLLM OpenAI-compatible HTTP API
+  - URL: {VLLM_BASE_URL}/v1/chat/completions (default base http://127.0.0.1:8000)
+  - Optional Bearer token: VLLM_API_KEY
+  - Implementation: backend/services/generate_client.py (httpx POST, not Google Gemini API)
+
+Report analysis settings (generate_inspection_report):
+  - temperature: VLLM_TEMPERATURE (default 0.3)
+  - max_tokens: VLLM_MAX_TOKENS (default 20000)
+  - stream: false (full response waited synchronously)
+
+Construction gate (separate call, not report body):
+  - Same vllm_model, temperature=0.0, max_tokens=128
+
+================================================================================
+3. POST-PROCESSING AFTER MODEL GENERATION
+================================================================================
+
+Yes — extensive post-processing in backend/routes/admin.py (before API response).
+
+Markdown parsing (inspection_markdown.py):
+  - Regex split on ^## headings
+  - key_defects: bullet lines from "## Key Defects" (up to 40 items)
+  - recommended_actions: lines from "## Recommended Actions" (up to 24 items)
+
+Sanitization (_sanitize_report_text):
+  - strip()
+  - Remove fenced code blocks (```...```)
+  - Strip **bold**, __bold__, `code`
+  - Remove # heading markers per line
+  - Convert -/*/+ and numbered lists to "• " prefix
+  - Collapse 3+ newlines to 2
+  - Remove stray "**"
+  - rstrip() each line
+
+Phrase truncation (_truncate_report_phrase):
+  - Strip list prefixes and noise labels (Immediate:, Action:, etc.)
+  - Split on explanation clauses (due to, because, repair, etc.) — keeps first segment only
+  - Word limit: split to first N words (7 for observations, 9–10 for recommendations)
+
+Line compaction:
+  - _compact_observation_lines: max 4 lines, skip Evidence/Where/Significance sub-bullets
+  - _compact_recommendation_lines: max 4 lines
+  - _clean_bulleted_lines: dedupe, prefix "• ", max_lines cap
+  - Invalid image path: single line truncated to 220 chars
+
+PPTX-only (export time, not analyze-item):
+  - _format_pptx_bullet_field: max_chars=68 per line, ellipsis "…"
+  - _pptx_trim for location/category/date fields (28–64 chars)
+
+Excel export (_build_report_workbook):
+  - Re-runs _clean_bulleted_lines on observation/recommendation (max_lines=4)
+  - No per-character cell slicing
+
+Bullet formatting:
+  - Final observation/recommendation strings use Unicode bullet "• " per line
+
+JSON parsing:
+  - Only for construction relevance classifier, not for observation/recommendation
+
+Markdown cleanup:
+  - Yes (see _sanitize_report_text); output fields are plain text with bullets, not markdown
+
+================================================================================
+4. HARD LIMITS ON OBSERVATION AND RECOMMENDATION
+================================================================================
+
+At analyze-item (_build_report_observation_and_recommendation):
+
+  Observations:
+  - Max 7 words per defect phrase (_truncate_report_phrase max_words=7)
+  - Max 4 defect lines from model; if only 1 line kept, max_obs=2 lines in output
+  - Otherwise max 4 bulleted lines
+  - Sub-bullets containing Evidence:/Where:/Significance: filtered out
+  - Fallback: "• No defect observed"
+
+  Recommendations:
+  - Max 9 words per action phrase
+  - Max 4 bulleted lines
+  - Fallback template: Verify on site / Rectify defects / Re-inspect area (3 lines)
+
+  Invalid image:
+  - Fixed string (no recommendation)
+  - If malformed invalid text: 220 char slice in _normalize_report_bullet_lines
+
+PPTX export (_format_pptx_bullet_field):
+  - Observation: max_lines=3, max_chars=68 per line
+  - Recommendation: max_lines=4, max_chars=68 per line
+  - Table row heights: obs_h/rec_h capped at 0.78 inches (fixed table_h=2.36")
+  - word_wrap=True on cells; no overflow:hidden in API (physical clip risk if text exceeds cell)
+
+Excel export:
+  - Column width I/J = 60 (characters, openpyxl units)
+  - wrap_text=True; row height computed from estimated wrap (~62 chars/line)
+  - No substring on cell values (full post-processed strings written)
+
+Frontend preview (.report-excel-table):
+  - td columns 9–10: min-width 220px, white-space: pre-wrap (no max-height on cells)
+  - Parent .report-excel-sheet: max-height min(66vh, 620px), overflow: auto (scroll, not clip text)
+
+Database:
+  - Defect model has NO observation/recommendation fields — not stored in MongoDB
+
+Token limits:
+  - LLM output capped by VLLM_MAX_TOKENS (20000 default) on full markdown only
+  - Observation/recommendation fields are word/line limited after parsing, not token-limited directly
+
+================================================================================
+5. EXACT PROMPTS FOR OBSERVATION vs RECOMMENDATION
+================================================================================
+
+There are NO separate prompts for Observation or Recommendation.
+
+Single prompt path for admin reports (message is empty):
+
+  build_vision_instruction_prompt(
+    intent="full_analysis",
+    message="",
+    site={ description, location, issue_type }
+  )
+
+Because message is empty, prompt.py returns:
+
+  vision_prompt_with_site_context(
+    base_prompt=PMO_DEFECT_INSPECTION_PROMPT,
+    ...
+  )
+
+Which is: full PMO_DEFECT_INSPECTION_PROMPT text (backend/prompt.py lines ~31–121)
+plus SITE_CONTEXT_PREFIX and optional:
+  - Description: {defect.description}
+  - Location: Tower X, Floor Y, Flat Z, Room W
+  - Suspected issue: {defect.category}
+or "(No additional context provided)"
+
+The model is instructed to output markdown sections including:
+  ## Summary
+  ## Key Defects        ← source for Observation (after compaction)
+  ## Severity Assessment
+  ## Priority Ranking
+  ## Recommended Actions ← source for Recommendation (after compaction)
+
+Observation generation prompt: N/A (derived from ## Key Defects)
+Recommendation generation prompt: N/A (derived from ## Recommended Actions)
+
+================================================================================
+6. OUTPUT FORMAT
+================================================================================
+
+LLM raw output:
+  - Markdown (## sections, bullets, optional tables per PMO prompt)
+
+After pipeline (API fields observation / recommendation):
+  - Plain text
+  - Multiline with "• " bullet prefix per line
+  - Not HTML, not JSON schema, not a structured object in the API
+
+Frontend display:
+  - HTML table cells with escaped plain text (escapeHtml)
+  - white-space: pre-wrap preserves newlines
+
+Excel:
+  - Plain string in cells with literal bullet characters and newlines
+
+PPTX:
+  - Plain text lines in table cells (multiline paragraphs in python-pptx)
+
+================================================================================
+7. AT WHICH STAGE TRUNCATION FIRST APPEARS
+================================================================================
+
+Order of stages:
+
+  1. Raw LLM markdown — may be long (up to max_tokens); NOT word-truncated in code
+  2. parse_inspection_sections — caps list sizes (40 defects, 24 actions), not char trim
+  3. _build_report_observation_and_recommendation — FIRST intentional truncation:
+       • 7-word (obs) / 9-word (rec) phrases
+       • max line counts
+       • explanation-clause splitting
+  4. Backend JSON response — observation/recommendation already shortened
+  5. Database — N/A (not persisted)
+  6. Excel — re-bullets only; no additional char cut (full shortened text)
+  7. PPT — additional 68-char-per-line cut + 3-line obs cap + fixed max row height
+  8. Frontend rendering — scroll container; generally shows full API strings (no slice)
+
+Conclusion:
+  - Truncation is primarily a GENERATION/PIPELINE issue at step 3.
+  - PPT adds a second truncation layer at step 7.
+  - Excel and dashboard preview show the step-3 strings (unless PPT-specific export).
+
+================================================================================
+8. IS FULL GENERATED TEXT IN LOGS BEFORE RENDERING?
+================================================================================
+
+No.
+
+  - report_markdown is not logged in analyze_report_item.
+  - observation/recommendation are not logged.
+  - generate_client.py logs errors/warnings only (HTTP failures, empty content, classifier parse).
+
+Therefore:
+  - Cannot confirm truncation via logs today.
+  - If UI/PPT looks shorter than expected, it is NOT provable from logs without adding logging.
+  - Truncation is by design in _build_report_observation_and_recommendation (and PPTX export),
+    not merely a rendering CSS issue.
+
+================================================================================
+9. LIBRARIES FOR EXCEL AND PPT
+================================================================================
+
+Excel:
+  - openpyxl (Workbook, styles, XLImage for thumbnails)
+  - PIL/Pillow for image thumbnails
+
+PowerPoint:
+  - python-pptx (Presentation, tables, shapes, text frames)
+  - PIL/Pillow for slide images
+
+================================================================================
+10. PPT TEXT CONTAINERS — FIXED SIZE?
+================================================================================
+
+Per card (3 cards per slide):
+  - Fixed card width: 3.58"
+  - Fixed image area height: 2.92"
+  - Table position: table_top fixed; table_h = 2.36" (fixed overall table height)
+  - Observation row height: min(0.78", 0.26 + line_count * 0.13) — partial dynamic
+  - Recommendation row height: same formula
+  - Cap 0.78" per obs/rec row — text can overflow visually inside cell if content is long
+
+Cell settings (_set_pptx_cell):
+  - word_wrap = True
+  - vertical_anchor = TOP for Observation/Recommendation
+  - No auto-fit font scaling
+  - No explicit overflow:hidden in python-pptx API
+  - Margins fixed (0.07" left/right, 0.04" top/bottom)
+
+Meta fields use _pptx_trim with char limits (64/42/28).
+
+================================================================================
+11. HOW PPT CARDS ARE GENERATED
+================================================================================
+
+Method: Direct python-pptx programmatic layout (NOT HTML-to-PPT, NOT canvas, NOT screenshot).
+
+Per slide (up to 3 defects):
+  - Blank slide layout
+  - Rectangle border shape for image frame
+  - add_picture() for JPEG thumbnail (PIL-resized)
+  - Rounded rectangle observation number badge
+  - add_table(5 rows × 2 cols): Location, Category, Reporting date, Observation, Recommendation
+  - Footer textbox "SiteSureLabs"
+
+================================================================================
+12. DYNAMIC RESIZE BY TEXT LENGTH?
+================================================================================
+
+Excel:
+  - Yes — row height: max(24pt, text_height_pt, image_height_pt)
+  - text_height_pt from _estimate_wrapped_line_count (62 chars per line)
+  - Column widths fixed (Observation/Recommendation cols width 60)
+
+PPT:
+  - Partial — obs/rec row heights grow with line count but capped at 0.78"
+  - Overall table height fixed at 2.36" — does not expand slide layout
+  - Per-line char truncation at 68 chars before line count
+
+================================================================================
+13. CSS AFFECTING OVERFLOW (FRONTEND)
+================================================================================
+
+Report Excel viewer (frontend/admin/index.html):
+
+  .report-excel-sheet {
+    overflow: auto;
+    max-height: min(66vh, 620px);
+  }
+  .report-excel-table td:nth-child(9),
+  .report-excel-table td:nth-child(10) {
+    min-width: 220px;
+    white-space: pre-wrap;    /* wraps, does not hide */
+  }
+
+No text-overflow: ellipsis on observation/recommendation columns.
+No max-height on individual observation/recommendation cells.
+Parent scrolls if table is tall — content is not silently clipped at cell level.
+
+Other admin UI areas use overflow:hidden + text-overflow:ellipsis on unrelated
+elements (user names, cards, etc.) — not on report observation/recommendation fields.
+
+================================================================================
+14. SUMMARIZATION / COMPRESSION BEFORE EXPORT?
+================================================================================
+
+Yes — mandatory compression layer:
+
+  _build_report_observation_and_recommendation:
+    - Extracts bullets from long markdown sections
+    - 7-word observation phrases, 9-word recommendation phrases
+    - Drops structural sub-bullets (Evidence/Where/Significance)
+    - Dedupes lines
+    - Limits line count
+
+This runs BEFORE data reaches frontend/Excel/PPT.
+PPT applies additional per-line 68-character truncation.
+
+There is no separate LLM summarization step — rule-based compression only.
+
+================================================================================
+15. SAME CONTENT FOR DASHBOARD, EXCEL, PPT?
+================================================================================
+
+Source of truth:
+  - One analyze-item call per image → { observation, recommendation }
+  - Frontend stores in lastReportPreviewRows and sends same strings in reportPayload.entries
+    to both generate-xlsx and generate-pptx
+
+Dashboard preview (openLastGeneratedReport):
+  - Uses lastReportPreviewRows (API strings) — same as analyze step
+
+Excel:
+  - Uses entry.observation / entry.recommendation from payload
+  - Light reformat via _clean_bulleted_lines only
+
+PPT:
+  - Same payload strings, then _format_pptx_bullet_field (stricter caps)
+
+Separate prompts:
+  - No — single PMO vision prompt per image at analyze time only.
+  - Export endpoints do not call the LLM again.
+
+================================================================================
+16. MAXIMUM SAFE CONTENT LENGTH BEFORE LAYOUT BREAKS
+================================================================================
+
+Practical limits (after analyze-item, before PPT re-trim):
+
+  Observations:
+  - Up to 4 lines (or 2 if only one defect phrase)
+  - ~7 words per line → ~28 words total max typical
+  - Example max-ish: 4 × (~7×6 chars) ≈ 170 chars + bullet prefixes/newlines
+
+  Recommendations:
+  - Up to 4 lines × ~9 words ≈ 36 words
+  - Similar order ~200 chars with bullets
+
+PPT safe display (harder limit):
+  - 3 observation lines × 68 chars ≈ 204 chars display (with ellipsis per line)
+  - 4 recommendation lines × 68 chars ≈ 272 chars
+  - Row height cap 0.78" may clip visually if wrapped lines exceed cell — risk above ~3–4 short lines
+
+Excel:
+  - Accepts full post-processed strings; layout breaks unlikely unless extremely long
+    invalid-image message (220 char cap in one path)
+
+================================================================================
+17. ASYNC STREAMING / PARTIAL TEXT CAPTURE?
+================================================================================
+
+Report analyze-item: NO streaming.
+  - generate_inspection_report uses stream=False
+  - Waits for complete choices[0].message.content
+
+Other product areas (AI Analysis chat) use stream_inspection_report_deltas — NOT used
+for admin report generation.
+
+Risk of partial capture in report flow: Low (non-streaming full JSON body).
+
+================================================================================
+18. SENTENCE COMPLETION VALIDATION BEFORE RENDERING?
+================================================================================
+
+No.
+
+  - No check for incomplete endings (. … truncated bullets)
+  - No validation that last word is complete
+  - Truncation is intentional via word-count split (_truncate_report_phrase), which can
+    end mid-thought (also splits on "because", "due to", etc.)
+
+================================================================================
+19. PPT AND EXCEL — SAME FORMATTING ENGINE?
+================================================================================
+
+No — separate pipelines in admin.py:
+
+  _build_report_workbook  — openpyxl, wrap_text, dynamic row height
+  _build_report_presentation — python-pptx, fixed table geometry, char-limited bullets
+
+Shared helpers:
+  _sanitize_report_text, _clean_bulleted_lines, _normalize_report_bullet_lines
+
+PPT-only:
+  _format_pptx_bullet_field, _pptx_trim, _set_pptx_cell, slide layout constants
+
+================================================================================
+20. EXAMPLE: SAME ENTRY — RAW LLM vs EXCEL vs PPT
+================================================================================
+
+NOTE: Live raw LLM output is not stored or logged in this codebase. Below is a
+REALISTIC ILLUSTRATION of how one defect would flow through the actual code paths.
+
+--- A) Illustrative raw LLM markdown (what generate_inspection_report returns) ---
+
+## Summary
+Tower 3 slab edge shows exposed reinforcement and inadequate cover near the balcony
+drop. Priority is weather protection and cover restoration before handover.
+
+## Key Defects
+- **Exposed rebar at slab edge**
+  - **Evidence:** Rust-stained bars visible without concrete cover at the outer lip.
+  - **Where:** Along the upper-right slab perimeter above the balcony guard.
+  - **Significance:** Corrosion risk and durability loss at a structural edge.
+- **Spalling at corner**
+  - **Evidence:** Flaked concrete patch roughly 15 cm wide with aggregate exposed.
+  - **Where:** Lower-left corner at column interface.
+  - **Significance:** Localized cover loss; monitor for progression.
+
+## Severity Assessment
+Overall severity: Medium — visible durability defects at an occupied edge.
+
+## Priority Ranking
+1. Protect exposed rebar from rain
+2. Repair spall and restore cover
+
+## Recommended Actions
+1. **Immediate:** Cover exposed steel with approved mortar or corrosion inhibitor today.
+2. Chip loose material, clean rebar, and apply repair mortar to specified cover depth.
+3. Re-inspect after 7 days for bond and color match.
+
+--- B) API observation / recommendation (after _build_report_observation_and_recommendation) ---
+
+observation:
+• Exposed rebar at slab edge
+• Spalling at corner
+
+recommendation:
+• Cover exposed steel with approved mortar
+• Chip loose material clean rebar
+• Re inspect after 7 days for bond
+
+(Phrases shortened to 7/9 words; Evidence/Where/Significance lines removed; bullets added.)
+
+--- C) Excel cell values (column I / J, same strings, wrap_text) ---
+
+Observation cell:
+• Exposed rebar at slab edge
+• Spalling at corner
+
+Recommendation cell:
+• Cover exposed steel with approved mortar
+• Chip loose material clean rebar
+• Re inspect after 7 days for bond
+
+(Row height auto-increased from _estimate_wrapped_line_count; columns width 60.)
+
+--- D) PPTX Observation / Recommendation cells (_format_pptx_bullet_field) ---
+
+If a line exceeded 68 characters it would become:
+  "• Long text fragment that would exceed sixty eight characters in the slide ta…"
+
+For the example above (short lines), PPTX text matches Excel content.
+Observation row uses max_lines=3 (4th defect line would be dropped).
+Table obs/rec row height ≤ 0.78" regardless of wrap.
+
+================================================================================
+QUICK REFERENCE — KEY FILE LOCATIONS
+================================================================================
+
+  backend/routes/admin.py:206-404   post-processing & _build_report_observation_and_recommendation
+  backend/routes/admin.py:589-707   PPTX builder
+  backend/routes/admin.py:710-845   Excel builder
+  backend/routes/admin.py:1099-1173 analyze_report_item
+  backend/services/generate_client.py:241-288  generate_inspection_report
+  backend/services/inspection_markdown.py:13-80  parse_inspection_sections
+  backend/prompt.py:31-121          PMO_DEFECT_INSPECTION_PROMPT
+  backend/config.py:78-82           VLLM_MODEL, VLLM_MAX_TOKENS defaults
+  frontend/admin/index.html:6240-6669  report generation UI flow
+
+================================================================================
+END OF AUDIT
+================================================================================

@@ -71,9 +71,9 @@ class Settings:
             jwt_secret=os.getenv("JWT_SECRET", "change-me-in-production"),
             jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
             jwt_expiry_hours=int(os.getenv("JWT_EXPIRY_HOURS", "24")),
-            # Default admin
-            admin_email=os.getenv("ADMIN_EMAIL", "admin@gmail.com"),
-            admin_password=os.getenv("ADMIN_PASSWORD", "amin"),
+            # Bootstrap admin (synced to MongoDB on startup — see main._seed_admin)
+            admin_email=os.getenv("ADMIN_EMAIL", "admin@gmail.com").strip().lower(),
+            admin_password=os.getenv("ADMIN_PASSWORD", "admin@123"),
             # vLLM
             vllm_base_url=os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8000").rstrip("/"),
             vllm_model=os.getenv("VLLM_MODEL", "gemma4-31b"),

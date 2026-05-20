@@ -26,7 +26,7 @@ from config import get_settings
 
 from db import init_db
 from models import Defect, User
-from utils.security import hash_password
+from utils.security import hash_password, verify_password
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,17 +46,61 @@ _cors_allow_credentials = "*" not in _cors_origins
 
 
 async def _seed_admin() -> None:
+    """Sync bootstrap admin from ADMIN_EMAIL / ADMIN_PASSWORD into MongoDB on startup."""
     cfg = get_settings()
-    existing = await User.find_one(User.email == cfg.admin_email)
-    if existing:
+    email = cfg.admin_email
+    password = cfg.admin_password
+    if not email:
+        logger.warning("ADMIN_EMAIL is empty; skipping bootstrap admin sync")
         return
+    if not password:
+        logger.warning("ADMIN_PASSWORD is empty; skipping bootstrap admin sync")
+        return
+
+    existing = await User.find_one(User.email == email)
+    if existing:
+        changed = False
+        if existing.role != "admin":
+            existing.role = "admin"
+            changed = True
+        if existing.is_disabled:
+            existing.is_disabled = False
+            changed = True
+        if not verify_password(password, existing.password):
+            existing.password = hash_password(password)
+            changed = True
+            logger.info("Bootstrap admin password synced from ADMIN_PASSWORD for %s", email)
+        if changed:
+            await existing.save()
+        return
+
+    admins = await User.find(User.role == "admin").to_list()
+    if len(admins) == 1 and admins[0].email != email:
+        legacy = admins[0]
+        if await User.find_one(User.email == email):
+            logger.error(
+                "Cannot migrate bootstrap admin to %s: that email is already registered.",
+                email,
+            )
+            return
+        logger.info(
+            "Bootstrap admin email migrated from %s to %s (ADMIN_EMAIL)",
+            legacy.email,
+            email,
+        )
+        legacy.email = email
+        legacy.password = hash_password(password)
+        legacy.is_disabled = False
+        await legacy.save()
+        return
+
     user = User(
-        email=cfg.admin_email,
-        password=hash_password(cfg.admin_password),
+        email=email,
+        password=hash_password(password),
         role="admin",
     )
     await user.insert()
-    logger.info("Default admin created  →  %s", cfg.admin_email)
+    logger.info("Bootstrap admin created → %s", email)
 
 
 async def _migrate_image_paths() -> None:

@@ -1,9 +1,23 @@
 const TOKEN_KEY = "defectra_token";
 const USER_KEY = "defectra_user";
+/** Set when the session started from /admin/login/ (not standard / sign-in). */
+const ADMIN_LOGIN_KEY = "defectra_admin_login";
 
 export function saveAuth(token, user) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+export function markAdminLoginSession() {
+  localStorage.setItem(ADMIN_LOGIN_KEY, "1");
+}
+
+export function clearAdminLoginSession() {
+  localStorage.removeItem(ADMIN_LOGIN_KEY);
+}
+
+export function isAdminLoginSession() {
+  return localStorage.getItem(ADMIN_LOGIN_KEY) === "1";
 }
 
 export function getToken() {
@@ -18,6 +32,7 @@ export function getUser() {
 export function clearAuth() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  clearAdminLoginSession();
 }
 
 export function requireAuth() {

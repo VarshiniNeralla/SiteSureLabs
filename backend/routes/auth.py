@@ -52,11 +52,19 @@ class LoginRequest(BaseModel):
 async def register(body: RegisterRequest):
     if not body.password or len(body.password) < 4:
         raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
-    if not body.name or len(body.name.strip()) < 2:
+    name = " ".join(body.name.split())
+    if not name or len(name) < 2:
         raise HTTPException(status_code=400, detail="Full name must be at least 2 characters")
+    if len(name) > PROFILE_NAME_MAX_LENGTH:
+        raise HTTPException(status_code=400, detail="Full name is too long")
+    if not re.fullmatch(r"[A-Za-z]+(?: [A-Za-z]+)*", name):
+        raise HTTPException(
+            status_code=400,
+            detail="Full name can only contain letters and spaces",
+        )
     mobile = body.mobile.strip()
-    if not re.fullmatch(r"\+?[0-9][0-9\s\-]{7,14}", mobile):
-        raise HTTPException(status_code=400, detail="Enter a valid mobile number")
+    if not re.fullmatch(r"[6789]\d{9}", mobile):
+        raise HTTPException(status_code=400, detail="Enter a valid number")
 
     email_key = _normalize_email(body.email)
     existing = await User.find_one(User.email == email_key)
@@ -66,7 +74,7 @@ async def register(body: RegisterRequest):
     user = User(
         email=email_key,
         password=hash_password(body.password),
-        name=body.name.strip(),
+        name=name,
         mobile=mobile,
     )
     await user.insert()

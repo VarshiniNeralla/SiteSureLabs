@@ -31,16 +31,27 @@ document.addEventListener("DOMContentLoaded", () => {
   const cameraCancelBtn = document.getElementById("camera-cancel-btn");
   const cameraModalCloseBtn = document.getElementById("camera-modal-close");
 
+  const selProject = document.getElementById("sel-project");
+  const projectFieldWrap = document.getElementById("project-field-wrap");
+  const projectLockedHint = document.getElementById("project-locked-hint");
+  const btnEditProject = document.getElementById("btn-edit-project");
   const selTower = document.getElementById("sel-tower");
   const selFloor = document.getElementById("sel-floor");
   const selFlat  = document.getElementById("sel-flat");
   const selRoom  = document.getElementById("sel-room");
+  const roomOtherWrap = document.getElementById("room-other-wrap");
+  const roomOtherDesc = document.getElementById("room-other-desc");
+  const categoryOtherWrap = document.getElementById("category-other-wrap");
+  const categoryOtherDesc = document.getElementById("category-other-desc");
   const selCategory = document.getElementById("sel-category");
-  const selDescription = document.getElementById("sel-description");
+  const ROOM_OTHERS = "Others";
+  const CATEGORY_OTHERS = "Others";
   const uploadProgressEl = document.getElementById("upload-progress");
   const uploadProgressFill = document.getElementById("upload-progress-fill");
   const uploadProgressLabel = document.getElementById("upload-progress-label");
   const collectionChipBtn = document.getElementById("btn-open-collection");
+  const collectionBackBtn = document.getElementById("btn-back-from-collection");
+  const collectionBackLabel = document.getElementById("btn-back-from-collection-label");
   const collectionCountBadgeEl = document.getElementById("collection-count-badge");
   const collectionListEl = document.getElementById("collection-list");
   const collectionEmptyEl = document.getElementById("collection-empty");
@@ -48,6 +59,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const clearCollectionBtn = document.getElementById("btn-clear-collection");
   const backToCaptureBtn = document.getElementById("btn-back-to-capture");
   const collectionToastEl = document.getElementById("collection-toast");
+  const collectionEditModal = document.getElementById("collection-edit-modal");
+  const collectionEditProject = document.getElementById("collection-edit-project");
+  const collectionEditTower = document.getElementById("collection-edit-tower");
+  const collectionEditFloor = document.getElementById("collection-edit-floor");
+  const collectionEditFlat = document.getElementById("collection-edit-flat");
+  const collectionEditRoom = document.getElementById("collection-edit-room");
+  const collectionEditRoomOtherWrap = document.getElementById("collection-edit-room-other-wrap");
+  const collectionEditRoomOther = document.getElementById("collection-edit-room-other");
+  const collectionEditCategory = document.getElementById("collection-edit-category");
+  const collectionEditCategoryOtherWrap = document.getElementById("collection-edit-category-other-wrap");
+  const collectionEditCategoryOther = document.getElementById("collection-edit-category-other");
+  const collectionRemoveModal = document.getElementById("collection-remove-modal");
 
   let selectedFile = null;
   let previewUrl   = "";
@@ -63,7 +86,19 @@ document.addEventListener("DOMContentLoaded", () => {
     return `liveInspectionCollectionV2:${userScope}`;
   }
   const COLLECTION_STORAGE_KEY = buildUserCollectionStorageKey();
+  const DRAFT_STORAGE_KEY = `liveInspectionDraftV2:${String(user?.user_id || user?.email || "anonymous").replace(/[^\w.-]/g, "_")}`;
+  const PROJECT_STORAGE_KEY = `liveInspectionProject:${String(user?.user_id || user?.email || "anonymous").replace(/[^\w.-]/g, "_")}`;
+  const PROJECT_EDIT_USED_KEY = `liveInspectionProjectEditUsed:${String(user?.user_id || user?.email || "anonymous").replace(/[^\w.-]/g, "_")}`;
+  const PROJECT_LOCKED_HINT_DEFAULT =
+    "Project is set for this session. You can edit the project name once if needed.";
+  const PROJECT_LOCKED_HINT_EDITING =
+    "Choose the correct project, then confirm your selection. This is your only project change.";
   let collectionItems = [];
+  let editingCollectionIdx = null;
+  let pendingRemoveIdx = null;
+  let projectEditMode = false;
+  /** True only when collection was opened from the details form mid-entry (not after items exist). */
+  let collectionBackTargetsDetails = false;
 
   /* ═══════════════════════════════════════════════
      Rotating tips
@@ -95,25 +130,281 @@ document.addEventListener("DOMContentLoaded", () => {
 
   startTips();
 
+  function getLockedProject() {
+    try {
+      return String(localStorage.getItem(PROJECT_STORAGE_KEY) || "").trim();
+    } catch {
+      return "";
+    }
+  }
+
+  function setLockedProject(name) {
+    const value = String(name || "").trim();
+    if (!value) return;
+    try {
+      localStorage.setItem(PROJECT_STORAGE_KEY, value);
+    } catch {
+      /* ignore quota errors */
+    }
+  }
+
+  function isProjectEditUsed() {
+    try {
+      return localStorage.getItem(PROJECT_EDIT_USED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function markProjectEditUsed() {
+    try {
+      localStorage.setItem(PROJECT_EDIT_USED_KEY, "1");
+    } catch {
+      /* ignore quota errors */
+    }
+  }
+
+  function getSessionProject() {
+    return getLockedProject() || String(selProject?.value || "").trim();
+  }
+
+  function applyProjectFieldState() {
+    const locked = getLockedProject();
+    if (!selProject) return;
+    if (locked) {
+      selProject.value = locked;
+      if (!projectEditMode) {
+        selProject.disabled = true;
+        projectFieldWrap?.classList.add("insp-field--locked");
+      }
+      if (projectLockedHint) {
+        projectLockedHint.hidden = false;
+        if (!projectEditMode) {
+          projectLockedHint.textContent = PROJECT_LOCKED_HINT_DEFAULT;
+        }
+      }
+      if (btnEditProject) {
+        btnEditProject.hidden = projectEditMode || isProjectEditUsed();
+      }
+    } else {
+      projectEditMode = false;
+      selProject.disabled = false;
+      projectFieldWrap?.classList.remove("insp-field--locked");
+      if (projectLockedHint) projectLockedHint.hidden = true;
+      if (btnEditProject) btnEditProject.hidden = true;
+    }
+  }
+
+  applyProjectFieldState();
+
+  btnEditProject?.addEventListener("click", () => {
+    if (!getLockedProject() || isProjectEditUsed() || projectEditMode) return;
+    projectEditMode = true;
+    selProject.disabled = false;
+    projectFieldWrap?.classList.remove("insp-field--locked");
+    if (projectLockedHint) {
+      projectLockedHint.hidden = false;
+      projectLockedHint.textContent = PROJECT_LOCKED_HINT_EDITING;
+    }
+    if (btnEditProject) btnEditProject.hidden = true;
+    selProject?.focus();
+  });
+
+  function finishProjectEdit() {
+    const value = selProject?.value.trim();
+    if (!value || !projectEditMode) return;
+    setLockedProject(value);
+    markProjectEditUsed();
+    projectEditMode = false;
+    applyProjectFieldState();
+    validateForm();
+    scheduleDraftSave();
+  }
+
+  selProject?.addEventListener("change", () => {
+    const value = selProject.value.trim();
+    if (!value) {
+      validateForm();
+      scheduleDraftSave();
+      return;
+    }
+    if (projectEditMode) {
+      finishProjectEdit();
+      return;
+    }
+    if (!getLockedProject()) {
+      setLockedProject(value);
+      applyProjectFieldState();
+    }
+    validateForm();
+    scheduleDraftSave();
+  });
+
+  selProject?.addEventListener("blur", () => {
+    if (projectEditMode && selProject?.value.trim()) {
+      finishProjectEdit();
+    }
+  });
+
   /* ═══════════════════════════════════════════════
      Populate selects
      ═══════════════════════════════════════════════ */
-  for (let i = 0; i <= 25; i++) {
-    const o = document.createElement("option");
-    o.value = i === 0 ? "Ground" : String(i);
-    o.textContent = i === 0 ? "Ground" : String(i);
-    selFloor.appendChild(o);
-  }
-  for (let i = 1; i <= 16; i++) {
+  for (let i = 1; i <= 60; i++) {
     const o = document.createElement("option");
     o.value = String(i);
     o.textContent = String(i);
+    selFloor.appendChild(o);
+  }
+  const FLAT_OPTIONS = [
+    ...Array.from({ length: 10 }, (_, i) => {
+      const n = String(i + 1);
+      return { value: n, label: n };
+    }),
+    { value: "Lift Lobby", label: "Lift Lobby" },
+    { value: "Staircase 1", label: "Staircase 1" },
+    { value: "Staircase 2", label: "Staircase 2" },
+  ];
+  for (const opt of FLAT_OPTIONS) {
+    const o = document.createElement("option");
+    o.value = opt.value;
+    o.textContent = opt.label;
     selFlat.appendChild(o);
   }
+
+  function cloneSelectOptions(source, target) {
+    if (!source || !target) return;
+    target.innerHTML = Array.from(source.options)
+      .map((option) => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.textContent || option.value)}</option>`)
+      .join("");
+  }
+
+  cloneSelectOptions(selTower, collectionEditTower);
+  cloneSelectOptions(selFloor, collectionEditFloor);
+  cloneSelectOptions(selFlat, collectionEditFlat);
+  cloneSelectOptions(selRoom, collectionEditRoom);
+  cloneSelectOptions(selCategory, collectionEditCategory);
+
+  function roomOtherDetail(itemOrRoomOther, maybeDescription) {
+    if (itemOrRoomOther && typeof itemOrRoomOther === "object") {
+      const item = itemOrRoomOther;
+      return String(item.room_other || "").trim()
+        || (item.room === ROOM_OTHERS ? String(item.description || "").trim() : "");
+    }
+    return String(itemOrRoomOther || maybeDescription || "").trim();
+  }
+
+  function formatRoomLabel(room, roomOther) {
+    const base = String(room || "").trim() || "Room";
+    const detail = roomOtherDetail(roomOther);
+    if (base === ROOM_OTHERS && detail) return `${ROOM_OTHERS} — ${detail}`;
+    return base;
+  }
+
+  function categoryOtherDetail(itemOrCategoryOther, maybeDescription) {
+    if (itemOrCategoryOther && typeof itemOrCategoryOther === "object") {
+      const item = itemOrCategoryOther;
+      return String(item.category_other || "").trim();
+    }
+    return String(itemOrCategoryOther || maybeDescription || "").trim();
+  }
+
+  function formatCategoryLabel(category, categoryOther) {
+    const base = String(category || "").trim() || "Category";
+    const detail = categoryOtherDetail(categoryOther);
+    if (base === CATEGORY_OTHERS && detail) return `${CATEGORY_OTHERS} — ${detail}`;
+    return base;
+  }
+
+  function syncOtherDetailField(selectEl, wrapEl, inputEl, othersValue, selectedValue, detailValue) {
+    if (!selectEl || !wrapEl || !inputEl) return;
+    const isOthers = String(selectedValue ?? selectEl.value) === othersValue;
+    wrapEl.hidden = !isOthers;
+    if (isOthers) {
+      inputEl.value = String(detailValue ?? inputEl.value ?? "").trim();
+    } else {
+      inputEl.value = "";
+    }
+  }
+
+  function syncRoomOtherField(selectEl, wrapEl, inputEl, roomValue, roomOtherValue) {
+    syncOtherDetailField(selectEl, wrapEl, inputEl, ROOM_OTHERS, roomValue, roomOtherValue);
+  }
+
+  function syncCategoryOtherField(selectEl, wrapEl, inputEl, categoryValue, categoryOtherValue) {
+    syncOtherDetailField(selectEl, wrapEl, inputEl, CATEGORY_OTHERS, categoryValue, categoryOtherValue);
+  }
+
+  function readOptionalDetailInput(inputEl) {
+    return String(inputEl?.value || "").trim();
+  }
+
+  function buildUploadDescription(item) {
+    const roomPart = item.room === ROOM_OTHERS ? roomOtherDetail(item) : "";
+    const categoryPart = item.category === CATEGORY_OTHERS ? categoryOtherDetail(item) : "";
+    const parts = [];
+    if (roomPart) parts.push(`Room: ${roomPart}`);
+    if (categoryPart) parts.push(`Category: ${categoryPart}`);
+    if (parts.length) return parts.join(" · ");
+    return String(item.description || "").trim();
+  }
+
+  function toggleFormRoomOther() {
+    syncRoomOtherField(selRoom, roomOtherWrap, roomOtherDesc, selRoom.value, null);
+  }
+
+  function toggleFormCategoryOther() {
+    syncCategoryOtherField(selCategory, categoryOtherWrap, categoryOtherDesc, selCategory.value, null);
+  }
+
+  function toggleCollectionEditRoomOther(roomOtherValue) {
+    syncRoomOtherField(
+      collectionEditRoom,
+      collectionEditRoomOtherWrap,
+      collectionEditRoomOther,
+      collectionEditRoom?.value,
+      roomOtherValue,
+    );
+  }
+
+  function toggleCollectionEditCategoryOther(categoryOtherValue) {
+    syncCategoryOtherField(
+      collectionEditCategory,
+      collectionEditCategoryOtherWrap,
+      collectionEditCategoryOther,
+      collectionEditCategory?.value,
+      categoryOtherValue,
+    );
+  }
+
+  selRoom?.addEventListener("change", () => {
+    toggleFormRoomOther();
+    validateForm();
+    scheduleDraftSave();
+  });
+  selCategory?.addEventListener("change", () => {
+    toggleFormCategoryOther();
+    validateForm();
+    scheduleDraftSave();
+  });
+  collectionEditRoom?.addEventListener("change", () => {
+    toggleCollectionEditRoomOther("");
+  });
+  collectionEditCategory?.addEventListener("change", () => {
+    toggleCollectionEditCategoryOther("");
+  });
 
   /* ═══════════════════════════════════════════════
      Step state machine
      ═══════════════════════════════════════════════ */
+  const inspShell = document.querySelector(".insp-shell");
+  const liveSecondaryStack = document.getElementById("live-secondary-stack");
+
+  function syncLiveLayout(stepId) {
+    const onCollection = stepId === "step-success";
+    inspShell?.classList.toggle("live-shell--collection", onCollection);
+    if (liveSecondaryStack) liveSecondaryStack.hidden = onCollection;
+  }
+
   function goTo(stepId) {
     panels.forEach((id) => {
       document.getElementById(id).classList.remove("step-panel--active");
@@ -121,9 +412,12 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById(stepId).classList.add("step-panel--active");
     alertEl.className = "insp-alert";
     updateStepBar(stepId);
+    syncLiveLayout(stepId);
+    renderUploads();
 
     if (stepId === "step-capture") startTips();
     else stopTips();
+    scheduleDraftSave();
   }
 
   function updateStepBar(stepId) {
@@ -175,11 +469,15 @@ document.addEventListener("DOMContentLoaded", () => {
       .replaceAll("'", "&#39;");
   }
 
-  function showCollectionToast(text) {
+  function showCollectionToast(text, tone = "") {
     if (!collectionToastEl) return;
     collectionToastEl.textContent = text;
+    collectionToastEl.classList.toggle("collection-toast--success", tone === "success");
     collectionToastEl.classList.add("collection-toast--show");
-    window.setTimeout(() => collectionToastEl.classList.remove("collection-toast--show"), 1300);
+    window.setTimeout(() => {
+      collectionToastEl.classList.remove("collection-toast--show");
+      collectionToastEl.classList.remove("collection-toast--success");
+    }, 1300);
   }
 
   async function fileToDataUrl(file) {
@@ -208,6 +506,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch {
       // Ignore storage quota issues; collection still works in-memory.
     }
+    scheduleDraftSave();
   }
 
   function loadCollectionFromStorage() {
@@ -225,6 +524,161 @@ document.addEventListener("DOMContentLoaded", () => {
       collectionItems = [];
     }
   }
+
+  let draftSaveTimer = null;
+  let draftSaveInFlight = false;
+
+  function getActiveStepId() {
+    return panels.find((id) => document.getElementById(id)?.classList.contains("step-panel--active")) || "step-capture";
+  }
+
+  function clearDraftFromStorage() {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function collectDraftFormFields() {
+    return {
+      project: String(selProject?.value || "").trim(),
+      tower: String(selTower?.value || "").trim(),
+      floor: String(selFloor?.value || "").trim(),
+      flat: String(selFlat?.value || "").trim(),
+      room: String(selRoom?.value || "").trim(),
+      room_other: readOptionalDetailInput(roomOtherDesc),
+      category: String(selCategory?.value || "").trim(),
+      category_other: readOptionalDetailInput(categoryOtherDesc),
+    };
+  }
+
+  function applyDraftFormFields(draft) {
+    if (!draft || typeof draft !== "object") return;
+    if (selProject && draft.project) selProject.value = draft.project;
+    if (selTower && draft.tower) selTower.value = draft.tower;
+    if (selFloor && draft.floor) selFloor.value = draft.floor;
+    if (selFlat && draft.flat) selFlat.value = draft.flat;
+    if (selRoom && draft.room) selRoom.value = draft.room;
+    if (selCategory && draft.category) selCategory.value = draft.category;
+    if (roomOtherDesc && draft.room_other) roomOtherDesc.value = draft.room_other;
+    if (categoryOtherDesc && draft.category_other) categoryOtherDesc.value = draft.category_other;
+    applyProjectFieldState();
+    toggleFormRoomOther();
+    toggleFormCategoryOther();
+  }
+
+  function persistDraftPayload(payload) {
+    try {
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+      return true;
+    } catch {
+      if (payload.imageDataUrl) {
+        try {
+          localStorage.setItem(
+            DRAFT_STORAGE_KEY,
+            JSON.stringify({ ...payload, imageDataUrl: "", imagePersistFailed: true }),
+          );
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    }
+  }
+
+  async function saveDraftToStorage() {
+    if (draftSaveInFlight) return;
+    draftSaveInFlight = true;
+    try {
+      let imageDataUrl = "";
+      if (selectedFile) {
+        try {
+          imageDataUrl = await fileToDataUrl(selectedFile);
+        } catch {
+          imageDataUrl = "";
+        }
+      }
+
+      const activeStep = getActiveStepId();
+      const payload = {
+        version: 1,
+        activeStep,
+        imageDataUrl,
+        fileName: selectedFile?.name || "",
+        ...collectDraftFormFields(),
+        collectionBackTargetsDetails,
+        updatedAt: new Date().toISOString(),
+      };
+      persistDraftPayload(payload);
+    } finally {
+      draftSaveInFlight = false;
+    }
+  }
+
+  function scheduleDraftSave() {
+    if (draftSaveTimer) window.clearTimeout(draftSaveTimer);
+    draftSaveTimer = window.setTimeout(() => {
+      void saveDraftToStorage();
+    }, 350);
+  }
+
+  async function restoreDraftFromStorage() {
+    let draft;
+    try {
+      const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!raw) return false;
+      draft = JSON.parse(raw);
+    } catch {
+      return false;
+    }
+    if (!draft || typeof draft !== "object" || draft.version !== 1) return false;
+
+    applyDraftFormFields(draft);
+    collectionBackTargetsDetails = Boolean(draft.collectionBackTargetsDetails);
+
+    if (draft.imageDataUrl) {
+      try {
+        selectedFile = dataUrlToFile(draft.imageDataUrl, draft.fileName || `restored-${Date.now()}.jpg`);
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        previewUrl = URL.createObjectURL(selectedFile);
+        previewImg.src = previewUrl;
+        if (formThumb) formThumb.src = previewUrl;
+        statusEl.textContent = draft.imagePersistFailed
+          ? "Image could not be fully restored — please re-select the photo."
+          : "Image restored ✓";
+        statusEl.className = draft.imagePersistFailed
+          ? "capture-status capture-status--error"
+          : "capture-status capture-status--ready";
+      } catch {
+        resetFile();
+      }
+    }
+
+    let step = panels.includes(draft.activeStep) ? draft.activeStep : "step-capture";
+    if ((step === "step-preview" || step === "step-form") && !selectedFile) {
+      step = collectionItems.length > 0 ? "step-success" : "step-capture";
+    }
+    if (step === "step-form" && selectedFile) {
+      if (formThumb) formThumb.src = previewUrl;
+    }
+
+    goTo(step);
+    if (step === "step-form") validateForm();
+    updateCollectionBackButton();
+    const hasFormData = Boolean(
+      draft.tower || draft.floor || draft.flat || draft.room || draft.category || draft.imageDataUrl,
+    );
+    if (hasFormData || collectionItems.length > 0) {
+      showCollectionToast("Restored your in-progress inspection", "success");
+    }
+    return true;
+  }
+
+  window.addEventListener("beforeunload", () => {
+    void saveDraftToStorage();
+  });
 
   /* ═══════════════════════════════════════════════
      Step 1: Capture
@@ -269,6 +723,7 @@ document.addEventListener("DOMContentLoaded", () => {
       statusEl.className = "capture-status capture-status--ready";
 
       goTo("step-preview");
+      scheduleDraftSave();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setCaptureError(msg || "Could not process this image.");
@@ -408,12 +863,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("btn-take-photo").addEventListener("click", () => {
     if (isMobileLikeDevice()) {
+      // Force direct camera intent on mobile while keeping lighter image formats.
+      cameraIn.setAttribute("accept", "image/jpeg,image/png,image/webp");
+      cameraIn.setAttribute("capture", "environment");
       cameraIn.click();
       return;
     }
     openDesktopCameraModal();
   });
-  document.getElementById("btn-upload-image").addEventListener("click", () => imageIn.click());
+  document.getElementById("btn-upload-image").addEventListener("click", () => {
+    imageIn.removeAttribute("capture");
+    imageIn.click();
+  });
 
   cameraCaptureBtn?.addEventListener("click", captureDesktopFrame);
   cameraCancelBtn?.addEventListener("click", closeDesktopCameraModal);
@@ -425,7 +886,11 @@ document.addEventListener("DOMContentLoaded", () => {
   cameraIn.addEventListener("change", async () => {
     const f = cameraIn.files && cameraIn.files[0];
     cameraIn.value = "";
-    await processPickedFile(f);
+    try {
+      await processPickedFile(f);
+    } catch {
+      setCaptureError("Camera capture failed on this device. Use Upload Image as fallback.");
+    }
   });
   imageIn.addEventListener("change", async () => {
     const f = imageIn.files && imageIn.files[0];
@@ -444,11 +909,15 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-retake").addEventListener("click", () => {
     resetFile();
     goTo("step-capture");
+    scheduleDraftSave();
   });
 
   document.getElementById("btn-continue").addEventListener("click", () => {
     formThumb.src = previewUrl;
     goTo("step-form");
+    applyProjectFieldState();
+    toggleFormRoomOther();
+    toggleFormCategoryOther();
     validateForm();
   });
 
@@ -458,11 +927,18 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-back-to-preview").addEventListener("click", () => goTo("step-preview"));
 
   function validateForm() {
-    const filled = selTower.value && selFloor.value && selFlat.value && selRoom.value && selCategory.value && selectedFile;
+    const projectOk = Boolean(getSessionProject());
+    const filled = projectOk && selTower.value && selFloor.value && selFlat.value && selRoom.value && selCategory.value && selectedFile;
     submitBtn.disabled = !filled;
   }
 
-  [selTower, selFloor, selFlat, selRoom, selCategory].forEach((sel) => sel.addEventListener("change", validateForm));
+  function onFormFieldChange() {
+    validateForm();
+    scheduleDraftSave();
+  }
+  [selProject, selTower, selFloor, selFlat, selCategory].forEach((sel) => sel?.addEventListener("change", onFormFieldChange));
+  roomOtherDesc?.addEventListener("input", onFormFieldChange);
+  categoryOtherDesc?.addEventListener("input", onFormFieldChange);
 
   function showAlert(msg) {
     alertEl.textContent = msg;
@@ -482,6 +958,7 @@ document.addEventListener("DOMContentLoaded", () => {
       submitAllBtn.textContent = `Submit All (${n})`;
       submitAllBtn.disabled = n === 0;
     }
+    if (clearCollectionBtn) clearCollectionBtn.disabled = n === 0;
   }
 
   function renderCollectionList() {
@@ -489,88 +966,181 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCollectionIndicator();
     if (!collectionItems.length) {
       collectionListEl.innerHTML = "";
-      collectionEmptyEl.style.display = "block";
+      collectionEmptyEl.hidden = false;
+      if (document.getElementById("step-success")?.classList.contains("step-panel--active")) {
+        updateCollectionBackButton();
+      }
       return;
     }
-    collectionEmptyEl.style.display = "none";
+    collectionEmptyEl.hidden = true;
     collectionListEl.innerHTML = collectionItems.map((item, idx) => `
       <article class="collection-item" data-idx="${idx}">
         <div class="collection-item__top">
-          <img class="collection-item__img" src="${escapeHtml(item.preview_url || item.image_data_url || "")}" alt="Collection item ${idx + 1}">
+          <button type="button" class="collection-item__img-wrap" data-preview="${idx}" aria-label="Preview collection image ${idx + 1}">
+            <img class="collection-item__img" src="${escapeHtml(item.preview_url || item.image_data_url || "")}" alt="Collection item ${idx + 1}">
+          </button>
           <div class="collection-item__summary">
-            <p class="collection-item__title">${escapeHtml(item.tower || "Tower")} • Floor ${escapeHtml(item.floor || "-")}</p>
-            <p class="collection-item__line">Flat ${escapeHtml(item.flat || "-")} • ${escapeHtml(item.room || "Room")}</p>
-            <p class="collection-item__line">Category: ${escapeHtml(item.category || "-")}</p>
-            <p class="collection-item__line">${escapeHtml(item.description || "No description")}</p>
-            <div class="collection-item__actions">
-              <button type="button" class="collection-item__edit" data-edit="${idx}">Edit</button>
+            <div class="collection-item__meta">
+              <p class="collection-item__line collection-item__line--primary">${escapeHtml(item.project || getLockedProject() || "—")} · ${escapeHtml(item.tower || "—")} · Floor ${escapeHtml(item.floor || "—")}</p>
+              <p class="collection-item__line">Flat ${escapeHtml(item.flat || "—")} · ${escapeHtml(formatRoomLabel(item.room, roomOtherDetail(item)) || "—")} · ${escapeHtml(formatCategoryLabel(item.category, categoryOtherDetail(item)) || "—")}</p>
             </div>
-            <div class="collection-item__edit-panel" data-panel="${idx}" hidden>
-              <div class="collection-item__meta">
-                <input data-field="tower" value="${escapeHtml(item.tower)}" placeholder="Tower">
-                <input data-field="floor" value="${escapeHtml(item.floor)}" placeholder="Floor">
-                <input data-field="flat" value="${escapeHtml(item.flat)}" placeholder="Flat">
-                <input data-field="room" value="${escapeHtml(item.room)}" placeholder="Room">
-                <input data-field="category" value="${escapeHtml(item.category || "")}" placeholder="Category">
-                <textarea data-field="description" placeholder="Description">${escapeHtml(item.description || "")}</textarea>
-              </div>
+            <div class="collection-item__actions">
+              <button type="button" class="collection-item__edit" data-edit="${idx}" aria-expanded="false">Edit</button>
+              <button type="button" class="collection-item__remove" data-remove="${idx}" aria-label="Remove collection item ${idx + 1}">Remove</button>
             </div>
           </div>
-          <button type="button" class="collection-item__remove" data-remove="${idx}">Remove</button>
         </div>
       </article>
     `).join("");
+    if (document.getElementById("step-success")?.classList.contains("step-panel--active")) {
+      updateCollectionBackButton();
+    }
   }
 
-  collectionListEl?.addEventListener("input", (e) => {
-    const target = e.target;
-    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return;
-    const card = target.closest(".collection-item");
-    if (!card) return;
-    const idx = Number(card.getAttribute("data-idx"));
-    const field = target.getAttribute("data-field");
-    if (!Number.isInteger(idx) || !field || !collectionItems[idx]) return;
-    collectionItems[idx][field] = target.value;
+  function openCollectionEditModal(idx) {
+    const item = collectionItems[idx];
+    if (!item || !collectionEditModal) return;
+    editingCollectionIdx = idx;
+    if (collectionEditProject) {
+      collectionEditProject.textContent = item.project || getLockedProject() || "—";
+    }
+    setSelectValue(collectionEditTower, item.tower || "");
+    setSelectValue(collectionEditFloor, item.floor || "");
+    setSelectValue(collectionEditFlat, item.flat || "");
+    setSelectValue(collectionEditRoom, item.room || "");
+    toggleCollectionEditRoomOther(roomOtherDetail(item));
+    setSelectValue(collectionEditCategory, item.category || "");
+    toggleCollectionEditCategoryOther(categoryOtherDetail(item));
+    collectionEditModal.classList.add("collection-modal--open");
+    document.body.style.overflow = "hidden";
+    window.setTimeout(() => collectionEditTower?.focus(), 0);
+  }
+
+  function setSelectValue(select, value) {
+    if (!select) return;
+    const normalized = String(value || "");
+    select.value = Array.from(select.options).some((option) => option.value === normalized)
+      ? normalized
+      : "";
+  }
+
+  function closeCollectionEditModal() {
+    collectionEditModal?.classList.remove("collection-modal--open");
+    editingCollectionIdx = null;
+    if (collectionEditRoomOther) collectionEditRoomOther.value = "";
+    collectionEditRoomOtherWrap && (collectionEditRoomOtherWrap.hidden = true);
+    if (collectionEditCategoryOther) collectionEditCategoryOther.value = "";
+    collectionEditCategoryOtherWrap && (collectionEditCategoryOtherWrap.hidden = true);
+    document.body.style.overflow = "";
+  }
+
+  function saveCollectionEditModal() {
+    if (!Number.isInteger(editingCollectionIdx) || !collectionItems[editingCollectionIdx]) return;
+    const editRoom = collectionEditRoom.value.trim();
+    const editCategory = collectionEditCategory.value.trim();
+    const editRoomOther = editRoom === ROOM_OTHERS ? readOptionalDetailInput(collectionEditRoomOther) : "";
+    const editCategoryOther = editCategory === CATEGORY_OTHERS ? readOptionalDetailInput(collectionEditCategoryOther) : "";
+    const updated = {
+      ...collectionItems[editingCollectionIdx],
+      project: collectionItems[editingCollectionIdx].project || getLockedProject() || "",
+      tower: collectionEditTower.value.trim(),
+      floor: collectionEditFloor.value.trim(),
+      flat: collectionEditFlat.value.trim(),
+      room: editRoom,
+      room_other: editRoomOther,
+      category: editCategory,
+      category_other: editCategoryOther,
+    };
+    collectionItems[editingCollectionIdx] = {
+      ...updated,
+      description: buildUploadDescription(updated),
+    };
     saveCollectionToStorage();
-  });
+    renderCollectionList();
+    closeCollectionEditModal();
+    showCollectionToast("✓ Successfully changed", "success");
+  }
+
+  function openRemoveConfirmModal(idx) {
+    if (!collectionItems[idx] || !collectionRemoveModal) return;
+    pendingRemoveIdx = idx;
+    collectionRemoveModal.classList.add("collection-modal--open");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeRemoveConfirmModal() {
+    collectionRemoveModal?.classList.remove("collection-modal--open");
+    pendingRemoveIdx = null;
+    document.body.style.overflow = "";
+  }
+
+  function confirmRemoveCollectionItem() {
+    if (!Number.isInteger(pendingRemoveIdx) || !collectionItems[pendingRemoveIdx]) return;
+    collectionItems.splice(pendingRemoveIdx, 1);
+    saveCollectionToStorage();
+    renderCollectionList();
+    closeRemoveConfirmModal();
+  }
 
   collectionListEl?.addEventListener("click", (e) => {
     const target = e.target;
     if (!(target instanceof HTMLElement)) return;
-    const editIdx = Number(target.getAttribute("data-edit"));
-    if (Number.isInteger(editIdx)) {
-      const panel = collectionListEl.querySelector(`[data-panel="${editIdx}"]`);
-      if (panel) panel.hidden = !panel.hidden;
+    const previewButton = target.closest("[data-preview]");
+    if (previewButton instanceof HTMLElement) {
+      const previewIdx = Number(previewButton.getAttribute("data-preview"));
+      const item = collectionItems[previewIdx];
+      const src = item?.preview_url || item?.image_data_url || "";
+      if (src) {
+        const meta = `${item.project || getLockedProject() || "Project"} • ${item.tower || "Tower"} • Floor ${item.floor || "-"} • Flat ${item.flat || "-"}`;
+        openLightbox(src, meta);
+      }
       return;
     }
-    const idx = Number(target.getAttribute("data-remove"));
+    const editButton = target.closest("[data-edit]");
+    if (editButton instanceof HTMLElement) {
+      const editIdx = Number(editButton.getAttribute("data-edit"));
+      openCollectionEditModal(editIdx);
+      return;
+    }
+    const removeButton = target.closest("[data-remove]");
+    if (!(removeButton instanceof HTMLElement)) return;
+    const idx = Number(removeButton.getAttribute("data-remove"));
     if (!Number.isInteger(idx)) return;
-    collectionItems.splice(idx, 1);
-    saveCollectionToStorage();
-    renderCollectionList();
+    openRemoveConfirmModal(idx);
   });
 
   submitBtn.addEventListener("click", async () => {
     if (!selectedFile) { showAlert("No image selected."); return; }
-    if (!selTower.value || !selFloor.value || !selFlat.value || !selRoom.value || !selCategory.value) {
-      showAlert("Please fill all location fields including category.");
+    const project = getSessionProject();
+    if (!project || !selTower.value || !selFloor.value || !selFlat.value || !selRoom.value || !selCategory.value) {
+      showAlert("Please select project and fill all location fields including category.");
       return;
+    }
+    if (!getLockedProject()) {
+      setLockedProject(project);
+      applyProjectFieldState();
     }
     submitBtn.disabled = true;
     submitText.innerHTML = '<span class="btn-spinner"></span> Adding...';
     try {
       const imageDataUrl = await fileToDataUrl(selectedFile);
-      collectionItems.push({
+      const draft = {
         id: `col-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         preview_url: imageDataUrl,
         image_data_url: imageDataUrl,
         file_name: selectedFile.name || `capture-${Date.now()}.jpg`,
+        project,
         tower: selTower.value,
         floor: selFloor.value,
         flat: selFlat.value,
         room: selRoom.value,
+        room_other: selRoom.value === ROOM_OTHERS ? readOptionalDetailInput(roomOtherDesc) : "",
         category: selCategory.value,
-        description: selDescription.value.trim(),
+        category_other: selCategory.value === CATEGORY_OTHERS ? readOptionalDetailInput(categoryOtherDesc) : "",
+      };
+      collectionItems.push({
+        ...draft,
+        description: buildUploadDescription(draft),
       });
       saveCollectionToStorage();
       renderCollectionList();
@@ -592,13 +1162,15 @@ document.addEventListener("DOMContentLoaded", () => {
     setUploadProgress(true, 0, "Submitting collection...");
     try {
       const fd = new FormData();
+      const sessionProject = getLockedProject();
       fd.append("items_json", JSON.stringify(collectionItems.map((item) => ({
+        project: item.project || sessionProject || "",
         tower: item.tower || "",
         floor: item.floor || "",
         flat: item.flat || "",
         room: item.room || "",
         category: item.category || "",
-        description: item.description || "",
+        description: buildUploadDescription(item),
       }))));
       for (const item of collectionItems) {
         fd.append("images", dataUrlToFile(item.image_data_url, item.file_name));
@@ -623,7 +1195,7 @@ document.addEventListener("DOMContentLoaded", () => {
       saveCollectionToStorage();
       renderCollectionList();
       fullReset();
-      showCollectionToast(`Submitted successfully (${data.success_count || 0})`);
+      showCollectionToast(`✓ Submitted successfully (${data.success_count || 0})`, "success");
       goTo("step-capture");
       loadUploads();
     } catch (err) {
@@ -634,10 +1206,47 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  collectionChipBtn?.addEventListener("click", () => {
+  function shouldCollectionBackToDetails() {
+    return collectionBackTargetsDetails;
+  }
+
+  function updateCollectionBackButton() {
+    const label = shouldCollectionBackToDetails() ? "Back to details" : "Back to capture";
+    if (collectionBackLabel) collectionBackLabel.textContent = label;
+    if (collectionBackBtn) collectionBackBtn.setAttribute("aria-label", label);
+  }
+
+  function openCollectionView() {
+    const activePanel = panels.find((id) =>
+      document.getElementById(id)?.classList.contains("step-panel--active"),
+    );
+    collectionBackTargetsDetails =
+      activePanel === "step-form" && Boolean(selectedFile || previewUrl);
     renderCollectionList();
+    updateCollectionBackButton();
     goTo("step-success");
+  }
+
+  function leaveCollectionView() {
+    if (shouldCollectionBackToDetails()) {
+      goTo("step-form");
+      applyProjectFieldState();
+      toggleFormRoomOther();
+      toggleFormCategoryOther();
+      validateForm();
+      return;
+    }
+    goTo("step-capture");
+  }
+
+  collectionChipBtn?.addEventListener("click", () => {
+    if (document.getElementById("step-success")?.classList.contains("step-panel--active")) {
+      leaveCollectionView();
+      return;
+    }
+    openCollectionView();
   });
+  collectionBackBtn?.addEventListener("click", leaveCollectionView);
   backToCaptureBtn?.addEventListener("click", () => goTo("step-capture"));
   clearCollectionBtn?.addEventListener("click", () => {
     collectionItems = [];
@@ -645,6 +1254,18 @@ document.addEventListener("DOMContentLoaded", () => {
     renderCollectionList();
   });
   submitAllBtn?.addEventListener("click", submitCollectionBatch);
+  document.getElementById("collection-edit-close")?.addEventListener("click", closeCollectionEditModal);
+  document.getElementById("collection-edit-cancel")?.addEventListener("click", closeCollectionEditModal);
+  document.getElementById("collection-edit-save")?.addEventListener("click", saveCollectionEditModal);
+  collectionEditModal?.addEventListener("click", (e) => {
+    if (e.target === collectionEditModal) closeCollectionEditModal();
+  });
+  document.getElementById("collection-remove-close")?.addEventListener("click", closeRemoveConfirmModal);
+  document.getElementById("collection-remove-cancel")?.addEventListener("click", closeRemoveConfirmModal);
+  document.getElementById("collection-remove-confirm")?.addEventListener("click", confirmRemoveCollectionItem);
+  collectionRemoveModal?.addEventListener("click", (e) => {
+    if (e.target === collectionRemoveModal) closeRemoveConfirmModal();
+  });
 
   /* ═══════════════════════════════════════════════
      Reset helpers
@@ -657,13 +1278,19 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function fullReset() {
+    clearDraftFromStorage();
     resetFile();
+    if (!getLockedProject() && selProject) selProject.value = "";
+    applyProjectFieldState();
     selTower.value = "";
     selFloor.value = "";
     selFlat.value  = "";
     selRoom.value  = "";
+    if (roomOtherDesc) roomOtherDesc.value = "";
+    toggleFormRoomOther();
     selCategory.value = "";
-    selDescription.value = "";
+    if (categoryOtherDesc) categoryOtherDesc.value = "";
+    toggleFormCategoryOther();
     submitBtn.disabled = true;
   }
 
@@ -692,6 +1319,18 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && cameraModal?.classList.contains("camera-modal--open")) {
       closeDesktopCameraModal();
+      return;
+    }
+    if (e.key === "Escape" && collectionEditModal?.classList.contains("collection-modal--open")) {
+      closeCollectionEditModal();
+      return;
+    }
+    if (e.key === "Escape" && collectionRemoveModal?.classList.contains("collection-modal--open")) {
+      closeRemoveConfirmModal();
+      return;
+    }
+    if (e.key === "Escape" && document.getElementById("step-success")?.classList.contains("step-panel--active")) {
+      leaveCollectionView();
       return;
     }
     if (e.key === "Escape" && lightbox?.classList.contains("lightbox--open")) closeLightbox();
@@ -731,6 +1370,14 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderUploads() {
     const grid  = uploadsGrid;
     const empty = document.getElementById("uploads-empty");
+    const onCollection = document.getElementById("step-success")?.classList.contains("step-panel--active");
+
+    if (onCollection) {
+      recentVisible = false;
+      activityBar.style.display = "none";
+      recentSection.style.display = "none";
+      return;
+    }
 
     if (allUploadItems.length === 0) {
       activityBar.style.display = "none";
@@ -763,7 +1410,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="insp-item">
         <img src="${normalizeImageSrc(d.image_path)}" alt="Defect" loading="lazy">
         <div class="meta">
-          <strong>${d.tower}</strong> &middot; Floor ${d.floor} &middot; Flat ${d.flat}<br>
+          ${d.project ? `<strong>${escapeHtml(d.project)}</strong> &middot; ` : ""}<strong>${escapeHtml(d.tower)}</strong> &middot; Floor ${escapeHtml(d.floor)} &middot; Flat ${escapeHtml(d.flat)}<br>
           ${d.room}<br>
           ${d.category ? `Category: ${d.category}<br>` : ""}
           ${d.description ? `<em>${d.description}</em><br>` : ""}
@@ -801,7 +1448,15 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (err) { console.error("Failed to load uploads:", err); }
   }
 
+  updateCollectionBackButton();
   loadCollectionFromStorage();
   renderCollectionList();
+  void (async () => {
+    const restored = await restoreDraftFromStorage();
+    if (!restored && collectionItems.length > 0) {
+      goTo("step-success");
+      updateCollectionBackButton();
+    }
+  })();
   loadUploads();
 });

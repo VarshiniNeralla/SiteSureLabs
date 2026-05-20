@@ -6,44 +6,11 @@
   <title>SiteSureLabs — Register</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Tangerine:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/shared/styles.css" />
   <style>
     .auth-card.auth-card--register {
       max-width: 420px;
-    }
-    .auth-card--register,
-    .auth-card--register label,
-    .auth-card--register input,
-    .auth-card--register button,
-    .auth-card--register p,
-    .auth-card--register a,
-    .auth-card--register span {
-      font-family: Roboto, Arial, sans-serif;
-    }
-    .auth-card--register .brand-logo {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.65rem;
-      margin-bottom: 0.7rem;
-    }
-    .auth-card--register .brand-logo img {
-      width: 56px;
-      height: 56px;
-      object-fit: contain;
-    }
-    .auth-card--register .brand-logo span {
-      font-size: 1.75rem;
-      line-height: 1;
-      font-weight: 700;
-      color: #0f172a;
-      letter-spacing: -0.01em;
-    }
-    .auth-card--register .subtitle {
-      font-size: 0.9rem;
-      color: #64748b;
-      margin-bottom: 1.6rem;
     }
     .register-steps {
       display: flex;
@@ -72,15 +39,24 @@
     }
     .register-nav .btn { flex: 1; }
     .register-nav .btn:only-child { flex: 0 0 100%; }
+    .auth-card--register .field-hint {
+      display: block;
+      margin-top: 0.35rem;
+      font-size: var(--auth-size-field-error);
+      color: #64748b;
+      line-height: 1.35;
+    }
   </style>
 </head>
 <body class="auth-page">
   <div class="auth-card auth-card--register">
+    <div class="auth-header">
     <div class="brand-logo">
-      <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="56" height="56" decoding="async" />
-      <span>SiteSureLabs</span>
+      <img src="/assets/new_logo.png" alt="SiteSureLabs" width="56" height="56" decoding="async" />
+      <span class="logo-text">SiteSureLabs</span>
     </div>
     <p class="subtitle">Create a new account</p>
+    </div>
     <div class="register-steps" aria-hidden="true">
       <span class="register-steps__dot active" id="step-dot-1"></span>
       <span class="register-steps__dot" id="step-dot-2"></span>
@@ -88,25 +64,28 @@
 
     <div id="alert" class="alert"></div>
 
-    <form id="registerForm" autocomplete="on">
+    <form id="registerForm" autocomplete="on" novalidate>
       <div class="register-slide active" id="register-slide-1">
         <div class="form-group">
           <label for="email">Email</label>
-          <input id="email" type="email" placeholder="Enter your mail" required autocomplete="email" />
+          <input id="email" type="email" placeholder="Enter your mail" required autocomplete="email" aria-describedby="email-error" />
+          <span id="email-error" class="field-error" role="alert"></span>
         </div>
         <div class="form-group">
           <label for="password">Password</label>
           <div class="password-field-wrap">
-            <input id="password" type="password" placeholder="At least 4 characters" required minlength="4" autocomplete="new-password" />
+            <input id="password" type="password" placeholder="At least 4 characters" required minlength="4" autocomplete="new-password" aria-describedby="password-error" />
             <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password" aria-pressed="false"></button>
           </div>
+          <span id="password-error" class="field-error" role="alert"></span>
         </div>
         <div class="form-group">
           <label for="confirm">Confirm Password</label>
           <div class="password-field-wrap">
-            <input id="confirm" type="password" placeholder="Re-enter password" required minlength="4" autocomplete="new-password" />
+            <input id="confirm" type="password" placeholder="Re-enter password" required minlength="4" autocomplete="new-password" aria-describedby="confirm-error" />
             <button type="button" class="password-toggle" id="confirm-toggle" aria-label="Show password" aria-pressed="false"></button>
           </div>
+          <span id="confirm-error" class="field-error" role="alert"></span>
         </div>
         <div class="register-nav">
           <button type="button" class="btn btn-primary btn-full" id="nextStepBtn">Next</button>
@@ -116,11 +95,30 @@
       <div class="register-slide" id="register-slide-2">
         <div class="form-group">
           <label for="fullName">Full Name</label>
-          <input id="fullName" type="text" placeholder="Enter your full name" required autocomplete="name" />
+          <input
+            id="fullName"
+            type="text"
+            maxlength="80"
+            placeholder="Enter your full name"
+            required
+            autocomplete="name"
+            aria-describedby="fullName-error"
+          />
+          <span id="fullName-error" class="field-error" role="alert"></span>
         </div>
         <div class="form-group">
           <label for="mobile">Mobile Number</label>
-          <input id="mobile" type="tel" placeholder="+91 XXXXX XXXXX" required autocomplete="tel" />
+          <input
+            id="mobile"
+            type="tel"
+            inputmode="numeric"
+            maxlength="10"
+            placeholder="Enter your mobile number"
+            required
+            autocomplete="tel"
+            aria-describedby="mobile-error"
+          />
+          <span id="mobile-error" class="field-error" role="alert"></span>
         </div>
         <div class="register-nav">
           <button type="button" class="btn btn-outline" id="backStepBtn">Back</button>
@@ -153,6 +151,101 @@
     wirePasswordToggle(document.getElementById("password"), document.getElementById("password-toggle"));
     wirePasswordToggle(document.getElementById("confirm"), document.getElementById("confirm-toggle"));
 
+    const MOBILE_RE = /^[6789]\d{9}$/;
+    const NAME_RE = /^[A-Za-z]+(?: [A-Za-z]+)*$/;
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const confirmInput = document.getElementById("confirm");
+    const mobileInput = document.getElementById("mobile");
+    const fullNameInput = document.getElementById("fullName");
+    const emailErrorEl = document.getElementById("email-error");
+    const passwordErrorEl = document.getElementById("password-error");
+    const confirmErrorEl = document.getElementById("confirm-error");
+    const mobileErrorEl = document.getElementById("mobile-error");
+    const fullNameErrorEl = document.getElementById("fullName-error");
+    const emailGroup = emailInput.closest(".form-group");
+    const passwordGroup = passwordInput.closest(".form-group");
+    const confirmGroup = confirmInput.closest(".form-group");
+    const mobileGroup = mobileInput.closest(".form-group");
+    const fullNameGroup = fullNameInput.closest(".form-group");
+
+    function setFieldError(inputEl, errorEl, groupEl, msg) {
+      if (msg) {
+        errorEl.textContent = msg;
+        errorEl.classList.add("visible");
+        groupEl?.classList.add("has-error");
+        inputEl.setAttribute("aria-invalid", "true");
+      } else {
+        errorEl.textContent = "";
+        errorEl.classList.remove("visible");
+        groupEl?.classList.remove("has-error");
+        inputEl.removeAttribute("aria-invalid");
+      }
+    }
+
+    function hideAlert() {
+      alertEl.className = "alert";
+      alertEl.textContent = "";
+    }
+
+    function clearStep1FieldErrors() {
+      setFieldError(emailInput, emailErrorEl, emailGroup, "");
+      setFieldError(passwordInput, passwordErrorEl, passwordGroup, "");
+      setFieldError(confirmInput, confirmErrorEl, confirmGroup, "");
+    }
+
+    function clearStep2FieldErrors() {
+      setFieldError(mobileInput, mobileErrorEl, mobileGroup, "");
+      setFieldError(fullNameInput, fullNameErrorEl, fullNameGroup, "");
+    }
+
+    function clearAllFieldErrors() {
+      clearStep1FieldErrors();
+      clearStep2FieldErrors();
+    }
+
+    function sanitizeFullNameInput() {
+      fullNameInput.value = fullNameInput.value.replace(/[^A-Za-z ]/g, "");
+    }
+
+    fullNameInput.addEventListener("input", () => {
+      sanitizeFullNameInput();
+      if (NAME_RE.test(fullNameInput.value.trim().replace(/\s+/g, " "))) {
+        setFieldError(fullNameInput, fullNameErrorEl, fullNameGroup, "");
+      }
+    });
+    fullNameInput.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const pasted = (e.clipboardData?.getData("text") || "").replace(/[^A-Za-z ]/g, "");
+      const start = fullNameInput.selectionStart ?? fullNameInput.value.length;
+      const end = fullNameInput.selectionEnd ?? fullNameInput.value.length;
+      fullNameInput.value = (fullNameInput.value.slice(0, start) + pasted + fullNameInput.value.slice(end))
+        .replace(/[^A-Za-z ]/g, "")
+        .slice(0, 80);
+    });
+
+    function sanitizeMobileInput() {
+      mobileInput.value = mobileInput.value.replace(/\D/g, "").slice(0, 10);
+    }
+
+    mobileInput.addEventListener("input", () => {
+      sanitizeMobileInput();
+      if (MOBILE_RE.test(mobileInput.value)) {
+        setFieldError(mobileInput, mobileErrorEl, mobileGroup, "");
+      }
+    });
+    mobileInput.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const pasted = (e.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, 10);
+      const start = mobileInput.selectionStart ?? mobileInput.value.length;
+      const end = mobileInput.selectionEnd ?? mobileInput.value.length;
+      const merged = (mobileInput.value.slice(0, start) + pasted + mobileInput.value.slice(end))
+        .replace(/\D/g, "")
+        .slice(0, 10);
+      mobileInput.value = merged;
+    });
+
     function showAlert(msg, type) {
       alertEl.textContent = msg;
       alertEl.className = `alert alert-${type} show`;
@@ -167,53 +260,108 @@
       return "Registration failed";
     }
 
-    function goToStep(step) {
+    function goToStep(step, { clearErrors = false } = {}) {
       const isStep2 = step === 2;
       slide1.classList.toggle("active", !isStep2);
       slide2.classList.toggle("active", isStep2);
       dot1.classList.toggle("active", !isStep2);
       dot2.classList.toggle("active", isStep2);
-      alertEl.className = "alert";
+      if (clearErrors) {
+        hideAlert();
+        clearAllFieldErrors();
+      }
     }
 
     function validateStep1() {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
-      const confirm = document.getElementById("confirm").value;
-      if (!email) { showAlert("Email is required", "error"); return false; }
-      if (password.length < 4) { showAlert("Password must be at least 4 characters", "error"); return false; }
-      if (password !== confirm) { showAlert("Passwords do not match", "error"); return false; }
-      return true;
+      hideAlert();
+      clearStep1FieldErrors();
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      const confirm = confirmInput.value;
+      let valid = true;
+
+      if (!email) {
+        setFieldError(emailInput, emailErrorEl, emailGroup, "Email is required");
+        valid = false;
+      } else if (!EMAIL_RE.test(email)) {
+        setFieldError(emailInput, emailErrorEl, emailGroup, "Enter a valid email address");
+        valid = false;
+      }
+      if (password.length < 4) {
+        setFieldError(passwordInput, passwordErrorEl, passwordGroup, "Password must be at least 4 characters");
+        valid = false;
+      }
+      if (password !== confirm) {
+        setFieldError(confirmInput, confirmErrorEl, confirmGroup, "Passwords do not match");
+        valid = false;
+      }
+
+      if (!valid) {
+        if (!email) emailInput.focus();
+        else if (!EMAIL_RE.test(email)) emailInput.focus();
+        else if (password.length < 4) passwordInput.focus();
+        else confirmInput.focus();
+      }
+      return valid;
     }
 
-    nextStepBtn.addEventListener("click", () => {
-      if (validateStep1()) goToStep(2);
+    [emailInput, passwordInput, confirmInput].forEach((input) => {
+      input.addEventListener("input", () => {
+        const id = input.id;
+        if (id === "email" && input.value.trim() && EMAIL_RE.test(input.value.trim())) {
+          setFieldError(emailInput, emailErrorEl, emailGroup, "");
+        } else if (id === "password" && input.value.length >= 4) {
+          setFieldError(passwordInput, passwordErrorEl, passwordGroup, "");
+        } else if (id === "confirm" && input.value === passwordInput.value) {
+          setFieldError(confirmInput, confirmErrorEl, confirmGroup, "");
+        }
+      });
     });
-    backStepBtn.addEventListener("click", () => goToStep(1));
+
+    nextStepBtn.addEventListener("click", () => {
+      if (validateStep1()) goToStep(2, { clearErrors: true });
+    });
+    backStepBtn.addEventListener("click", () => goToStep(1, { clearErrors: true }));
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      alertEl.className = "alert";
 
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value;
       const confirm = document.getElementById("confirm").value;
-      const name = document.getElementById("fullName").value.trim();
-      const mobile = document.getElementById("mobile").value.trim();
+      const name = fullNameInput.value.trim().replace(/\s+/g, " ");
+      const mobile = mobileInput.value.trim();
 
-      if (password !== confirm) {
-        showAlert("Passwords do not match", "error");
+      hideAlert();
+
+      if (!validateStep1()) {
         goToStep(1);
         return;
       }
+
+      clearStep2FieldErrors();
+
+      slide1.classList.remove("active");
+      slide2.classList.add("active");
+      dot1.classList.remove("active");
+      dot2.classList.add("active");
+
       if (!name || name.length < 2) {
-        showAlert("Full name is required", "error");
-        goToStep(2);
+        const msg = "Full name is required (at least 2 letters)";
+        setFieldError(fullNameInput, fullNameErrorEl, fullNameGroup, msg);
+        fullNameInput.focus();
         return;
       }
-      if (!/^\+?[0-9][0-9\s-]{7,14}$/.test(mobile)) {
-        showAlert("Enter a valid mobile number", "error");
-        goToStep(2);
+      if (!NAME_RE.test(name)) {
+        const msg = "Full name can only contain letters and spaces";
+        setFieldError(fullNameInput, fullNameErrorEl, fullNameGroup, msg);
+        fullNameInput.focus();
+        return;
+      }
+      if (!MOBILE_RE.test(mobile)) {
+        setFieldError(mobileInput, mobileErrorEl, mobileGroup, "Enter a valid number");
+        mobileInput.focus();
         return;
       }
 
@@ -229,7 +377,27 @@
         const data = await res.json();
 
         if (!res.ok) {
-          showAlert(formatApiDetail(data), "error");
+          const detail = formatApiDetail(data);
+          hideAlert();
+          clearAllFieldErrors();
+          const lower = detail.toLowerCase();
+          if (lower.includes("email")) {
+            goToStep(1);
+            setFieldError(emailInput, emailErrorEl, emailGroup, detail);
+            emailInput.focus();
+          } else if (lower.includes("password")) {
+            goToStep(1);
+            setFieldError(passwordInput, passwordErrorEl, passwordGroup, detail);
+            passwordInput.focus();
+          } else if (lower.includes("name")) {
+            setFieldError(fullNameInput, fullNameErrorEl, fullNameGroup, detail);
+            fullNameInput.focus();
+          } else if (lower.includes("number") || lower.includes("mobile")) {
+            setFieldError(mobileInput, mobileErrorEl, mobileGroup, detail);
+            mobileInput.focus();
+          } else {
+            showAlert(detail, "error");
+          }
           return;
         }
 

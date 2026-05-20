@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Live Inspection - SiteSureLabs</title>
   <meta name="description" content="Upload defect images with site metadata for construction inspection.">
-  <link rel="icon" type="image/png" href="/MyHomeLogo/MyHomeLogo.png">
+  <link rel="icon" type="image/png" href="/assets/new_logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../style.css">
   <link rel="stylesheet" href="/shared/styles.css">
   <style>
@@ -17,8 +18,17 @@
        ═══════════════════════════════════════ */
 
     /* ── Layout shell ── */
-    .insp-shell{max-width:560px;margin:0 auto;padding:8px 16px 0}
-    #live-inspection{padding-bottom:0}
+    .insp-shell{
+      max-width:560px;margin:0 auto;padding:6px 12px 8px;
+      display:flex;flex-direction:column;gap:14px;
+    }
+    #live-inspection{padding-bottom:max(20px,env(safe-area-inset-bottom,0))}
+    .live-workflow-card{margin-bottom:0}
+    .live-secondary-stack{display:flex;flex-direction:column;gap:12px}
+    .live-secondary-stack[hidden]{display:none!important}
+    .live-shell--collection .live-workflow-card{margin-bottom:0}
+    .live-shell--collection .collection-toast{bottom:max(22px,env(safe-area-inset-bottom,0))}
+    .collection-empty p{margin:0;max-width:22rem}
 
     /* ── Main card with depth ── */
     .insp-card{
@@ -29,9 +39,11 @@
         0 1px 3px rgba(15,23,42,.04),
         0 4px 16px rgba(37,99,235,.05),
         inset 0 1px 0 rgba(255,255,255,.8);
-      padding:24px 20px;
-      margin-bottom:16px;
-      transition:box-shadow .3s ease
+      padding:18px 14px 20px;
+      margin-bottom:0;
+      transition:box-shadow .3s ease;
+      position:relative;
+      z-index:0;
     }
     .insp-card--recent{
       padding:18px 16px;
@@ -46,18 +58,31 @@
       display:flex;
       align-items:flex-start;
       gap:0;
-      margin-bottom:30px;
-      padding:2px 4px 0;
+      margin-bottom:20px;
+      padding:0 2px 0;
     }
     .dashboard-page-back-link-row--live{
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-      position:sticky;top:40px;z-index:45;
-      background:transparent;
-      margin:-28px 0 18px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:nowrap;
+      width:100%;
+      min-height:44px;
+      padding:4px 8px;
+      margin:0 0 12px;
+      position:relative;
+      z-index:2;
+      background:linear-gradient(180deg,rgba(255,255,255,.92) 0%,rgba(248,250,252,.55) 100%);
+      border-radius:14px;
+      border:1px solid rgba(226,232,240,.85);
+      box-shadow:0 1px 0 rgba(255,255,255,.9) inset;
     }
     .collection-chip{
       display:inline-flex;align-items:center;justify-content:center;
       min-height:38px;padding:8px 14px;border-radius:12px;
+      flex-shrink:0;
+      max-width:min(200px,calc(100% - 52px));
       border:1px solid rgba(148,163,184,.34);
       background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(248,250,252,.94));
       color:#1f2937;font-size:.78rem;font-weight:700;font-family:Montserrat,sans-serif;
@@ -117,13 +142,16 @@
     @keyframes dotPulse{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.8);opacity:0}}
 
     /* ── Step 1: Capture ── */
-    .capture-heading{text-align:center;margin-bottom:8px}
-    .capture-heading h2{font-size:1.15rem;font-weight:700;color:#0f172a;font-family:Montserrat,sans-serif;margin:0 0 6px}
-    .capture-heading p{font-size:.82rem;color:#64748b;margin:0}
+    #step-capture{
+      font-family:"Google Sans Flex","Google Sans",Inter,Roboto,sans-serif;
+    }
+    .capture-heading{text-align:center;margin-bottom:6px}
+    .capture-heading h2{font-size:1.05rem;font-weight:700;color:#0f172a;font-family:inherit;margin:0 0 4px;letter-spacing:-.02em}
+    .capture-heading p{font-size:.78rem;color:#64748b;margin:0;line-height:1.4}
 
     /* rotating tip */
-    .capture-tip{text-align:center;margin-bottom:12px;min-height:20px}
-    .capture-tip span{display:inline-flex;align-items:center;gap:5px;font-size:.73rem;color:#3b82f6;font-weight:500;font-family:Montserrat,sans-serif;background:#eff6ff;padding:4px 12px;border-radius:999px;animation:tipIn .4s ease both}
+    .capture-tip{text-align:center;margin-bottom:10px;min-height:20px}
+    .capture-tip span{display:inline-flex;align-items:center;gap:5px;font-size:.73rem;color:#3b82f6;font-weight:450;font-family:inherit;background:#eff6ff;padding:4px 12px;border-radius:999px;animation:tipIn .4s ease both}
     .capture-tip span svg{flex-shrink:0;opacity:.7}
     @keyframes tipIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
@@ -131,7 +159,7 @@
     .capture-source{
       margin:0 auto;
       max-width:100%;
-      padding:14px 12px 12px;
+      padding:12px 10px 10px;
       border-radius:16px;
       background:linear-gradient(180deg,rgba(248,250,252,.92) 0%,rgba(241,245,249,.55) 100%);
       border:1px solid rgba(226,232,240,.95);
@@ -154,7 +182,7 @@
       transform:translateY(-1px);
     }
 
-    .capture-actions{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:stretch;gap:8px}
+    .capture-actions{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:8px}
     .capture-actions .btn-capture{
       flex:1;min-width:0;
       min-height:44px;padding:10px 10px;border-radius:11px;font-size:.8rem;font-weight:600;
@@ -176,7 +204,7 @@
     .capture-actions .btn-capture__text-full{display:inline}
     .capture-actions .btn-capture__text-short{display:none}
 
-    .btn-capture{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:12px 16px;border-radius:12px;font-size:.92rem;font-weight:600;font-family:Montserrat,sans-serif;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);border:none;position:relative;-webkit-tap-highlight-color:transparent}
+    .btn-capture{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:12px 16px;border-radius:12px;font-size:.92rem;font-weight:450;font-family:inherit;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);border:none;position:relative;-webkit-tap-highlight-color:transparent}
     .btn-capture:active{transform:scale(.98)}
     .btn-capture--primary{background:linear-gradient(135deg,#1a73e8 0%,#1765cc 100%);color:#fff;box-shadow:0 4px 14px rgba(26,115,232,.3);min-height:52px;font-size:.95rem}
     .btn-capture--primary:hover{box-shadow:0 8px 24px rgba(26,115,232,.38);transform:translateY(-1px)}
@@ -186,7 +214,7 @@
     .btn-capture__hint{display:block;font-size:.68rem;font-weight:400;opacity:.75;margin-top:1px}
 
     /* status line */
-    .capture-status{text-align:center;margin-top:12px;font-size:.74rem;font-family:Montserrat,sans-serif;transition:color .2s}
+    .capture-status{text-align:center;margin-top:12px;font-size:.74rem;font-family:inherit;transition:color .2s}
     .capture-status--empty{color:#94a3b8}
     .capture-status--ready{color:#16a34a;font-weight:600}
     .capture-status--error{color:#dc2626;font-weight:600}
@@ -200,7 +228,7 @@
     .upload-progress__label{display:block;margin-top:6px;font-size:.72rem;color:#64748b;font-family:Montserrat,sans-serif;text-align:center}
 
     /* format hint */
-    .capture-formats{text-align:center;margin-top:6px;font-size:.65rem;color:#94a3b8;font-family:Montserrat,sans-serif;letter-spacing:.01em;line-height:1.35;max-width:32rem;margin-left:auto;margin-right:auto}
+    .capture-formats{text-align:center;margin-top:6px;font-size:.65rem;color:#94a3b8;font-family:inherit;letter-spacing:.01em;line-height:1.35;max-width:32rem;margin-left:auto;margin-right:auto}
 
     @media(max-width:380px){
       .capture-actions .btn-capture{font-size:.74rem;padding:9px 6px}
@@ -218,15 +246,41 @@
     .preview-actions .btn-capture{flex:1}
 
     /* ── Step 3: Form ── */
-    .form-heading{margin-bottom:20px}
+    .form-heading-row{display:flex;align-items:flex-start;gap:12px;margin-bottom:18px}
+    .form-heading{flex:1;min-width:0;margin:0}
     .form-heading h2{font-size:1.05rem;font-weight:700;color:#0f172a;font-family:Montserrat,sans-serif;margin:0 0 4px}
     .form-heading p{font-size:.8rem;color:#64748b;margin:0}
-    .form-thumb{width:56px;height:56px;border-radius:10px;object-fit:cover;border:1px solid #e2e8f0;float:right;margin:0 0 8px 12px}
+    .form-thumb{width:56px;height:56px;border-radius:10px;object-fit:cover;border:1px solid #e2e8f0;flex-shrink:0;margin:0}
+    .insp-location-grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:14px;
+      margin-bottom:16px;
+    }
+    .insp-location-grid .insp-field--span-full{grid-column:1/-1}
+    @media (min-width:400px){
+      .insp-location-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    }
     .insp-row{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px}
     .insp-field label{display:block;font-size:.78rem;font-weight:600;color:#334155;margin-bottom:6px;font-family:Montserrat,sans-serif}
-    .insp-field select,.insp-field textarea{width:100%;min-height:44px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:.9rem;color:#1e293b;background:#fff;transition:border-color .15s,box-shadow .15s;font-family:inherit}
+    .insp-field select,.insp-field textarea,.insp-field input[type="text"]{width:100%;min-height:44px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:.9rem;color:#1e293b;background:#fff;transition:border-color .15s,box-shadow .15s;font-family:inherit}
     .insp-field select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
-    .insp-field select:focus,.insp-field textarea:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+    .insp-field select:focus,.insp-field textarea:focus,.insp-field input[type="text"]:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+    .insp-field__optional{font-weight:500;color:#94a3b8}
+    .insp-field--locked select{background:#f1f5f9;color:#334155;cursor:not-allowed;opacity:1}
+    .insp-field__label-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+    .insp-field__label-row label{margin-bottom:0}
+    .project-edit-link{
+      flex-shrink:0;border:0;background:none;padding:0;
+      font-size:.74rem;font-weight:600;color:#2563eb;font-family:Montserrat,sans-serif;
+      cursor:pointer;text-decoration:underline;text-underline-offset:2px;
+    }
+    .project-edit-link:hover{color:#1d4ed8}
+    .project-edit-link:focus-visible{outline:2px solid rgba(37,99,235,.35);outline-offset:2px;border-radius:4px}
+    .project-edit-link[hidden]{display:none!important}
+    .insp-field__locked-hint{font-size:.72rem;color:#64748b;margin:6px 0 0;line-height:1.35}
+    .collection-modal__readonly{margin:0;padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:.9rem;color:#1e293b;font-weight:600}
+    .insp-field--room-other[hidden],.insp-field--category-other[hidden],.collection-modal__field--room-other[hidden],.collection-modal__field--category-other[hidden]{display:none!important}
     .insp-field textarea{min-height:96px;resize:vertical;line-height:1.45}
     .desc-field__head{display:flex;align-items:center;justify-content:flex-start;gap:8px}
     .desc-field__input-wrap{position:relative}
@@ -295,34 +349,188 @@
     .btn-another svg{width:16px;height:16px;opacity:.9}
     .btn-another:hover{background:#f6faff;border-color:#8ab4f8;color:#1a73e8;transform:translateY(-1px);box-shadow:0 8px 18px rgba(26,115,232,.18)}
     .btn-another:active{transform:translateY(0)}
-    .collection-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
-    .collection-panel-head h3{margin:0;font-size:1rem;font-weight:700;color:#0f172a;font-family:Montserrat,sans-serif}
-    .collection-list{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
-    .collection-empty{text-align:center;padding:22px 12px;border:1px dashed #dbe4f0;border-radius:12px;color:#64748b;font-size:.84rem}
-    .collection-item{border:1px solid #e2e8f0;border-radius:12px;padding:10px;background:#fff}
-    .collection-item__top{display:flex;gap:10px;align-items:flex-start}
-    .collection-item__img{width:62px;height:62px;border-radius:10px;object-fit:cover;border:1px solid #dbe4f0;flex-shrink:0}
-    .collection-item__meta{flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-    .collection-item__meta input,.collection-item__meta select,.collection-item__meta textarea{width:100%;min-height:36px;padding:7px 9px;border:1px solid #dbe4f0;border-radius:9px;font-size:.79rem;color:#1e293b;background:#fff;font-family:Montserrat,sans-serif}
-    .collection-item__meta textarea{grid-column:1/-1;min-height:58px;resize:vertical}
-    .collection-item__remove{border:none;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;border-radius:9px;font-size:.73rem;font-weight:600;padding:7px 9px;cursor:pointer;flex-shrink:0}
-    .collection-item__summary{flex:1;min-width:0}
-    .collection-item__title{font-size:.84rem;font-weight:700;color:#0f172a;font-family:Montserrat,sans-serif;margin:0 0 3px}
-    .collection-item__line{font-size:.74rem;color:#64748b;font-family:Montserrat,sans-serif;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .collection-item__actions{display:flex;gap:8px;margin-top:8px}
-    .collection-item__edit{border:1px solid #dbe4f0;background:#f8fafc;color:#334155;border-radius:8px;font-size:.72rem;font-weight:600;padding:6px 9px;cursor:pointer}
-    .collection-item__edit-panel[hidden]{display:none!important}
-    .collection-actions{display:flex;gap:10px}
-    .collection-actions .btn-capture{flex:1}
-    .collection-actions .btn-capture--primary{min-height:46px;font-size:.86rem}
-    .collection-clear{display:inline-block;margin-top:10px;border:none;background:none;color:#64748b;font-size:.78rem;font-family:Montserrat,sans-serif;cursor:pointer;padding:2px 4px}
+    #step-success.step-panel--active{display:flex;flex-direction:column;min-height:min(52vh,420px)}
+    .btn-back--collection{margin-bottom:12px}
+    .collection-panel{
+      display:flex;flex-direction:column;flex:1;min-height:0;gap:0;
+      font-family:"Google Sans Flex","Google Sans",Inter,Roboto,sans-serif;
+    }
+    .collection-panel-head{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      margin-bottom:14px;padding-bottom:12px;
+      border-bottom:1px solid rgba(226,232,240,.9);
+    }
+    .collection-panel-head h3{
+      margin:0;flex:1;min-width:0;
+      font-size:1.02rem;font-weight:700;color:#0f172a;font-family:inherit;letter-spacing:-.01em;
+    }
+    .collection-add-more{
+      display:inline-flex;align-items:center;justify-content:center;gap:5px;
+      flex-shrink:0;min-height:28px;padding:4px 9px 4px 5px;
+      border-radius:8px;border:1px solid rgba(203,213,225,.75);
+      background:rgba(248,250,252,.95);
+      color:#475569;font-family:inherit;font-size:.72rem;font-weight:500;
+      letter-spacing:.01em;cursor:pointer;white-space:nowrap;
+      transition:background .15s,border-color .15s,color .15s;
+      box-shadow:none;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .collection-add-more__icon{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:18px;height:18px;border-radius:6px;flex-shrink:0;
+      background:rgba(226,232,240,.55);
+      color:#64748b;border:none;
+    }
+    .collection-add-more__icon svg{display:block;width:11px;height:11px}
+    .collection-add-more__label{line-height:1.15}
+    .collection-add-more:hover{
+      border-color:rgba(148,163,184,.85);
+      background:#f1f5f9;
+      color:#334155;
+    }
+    .collection-add-more:hover .collection-add-more__icon{
+      background:rgba(203,213,225,.5);
+      color:#475569;
+    }
+    .collection-add-more:active{background:#e2e8f0}
+    .collection-add-more:focus-visible{
+      outline:none;
+      border-color:rgba(148,163,184,.9);
+      box-shadow:0 0 0 2px rgba(148,163,184,.28);
+    }
+    .collection-panel-body{flex:1;display:flex;flex-direction:column;gap:12px;min-height:0;overflow:auto}
+    .collection-list{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      align-items:stretch;
+    }
+    .collection-list:empty{display:none}
+    .collection-empty{
+      flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;padding:28px 16px;min-height:160px;
+      border:1px dashed #cbd5e1;border-radius:14px;
+      background:linear-gradient(180deg,#f8fafc 0%,#fff 100%);
+      color:#64748b;font-size:.86rem;line-height:1.5;
+    }
+    .collection-empty[hidden]{display:none!important}
+    .collection-empty__icon{
+      width:44px;height:44px;margin-bottom:10px;border-radius:12px;
+      display:flex;align-items:center;justify-content:center;
+      background:#eff6ff;color:#3b82f6;
+    }
+    .collection-panel-foot{
+      margin-top:auto;padding-top:16px;border-top:1px solid rgba(226,232,240,.9);
+      display:flex;flex-direction:column;gap:10px;flex-shrink:0;
+    }
+    .collection-item{
+      font-family:"Google Sans Flex","Google Sans",Inter,Roboto,sans-serif;
+      border:1px solid rgba(203,213,225,.82);
+      border-radius:14px;
+      padding:6px;
+      background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);
+      box-shadow:0 8px 22px rgba(15,23,42,.06),0 1px 0 rgba(255,255,255,.92) inset;
+      min-width:0;
+      min-height:0;
+    }
+    .collection-item__top{display:flex;flex-direction:column;height:100%}
+    .collection-item__img-wrap{
+      position:relative;width:100%;height:76px;
+      border:0;padding:0;border-radius:10px;overflow:hidden;background:#e2e8f0;
+      cursor:zoom-in;display:block;
+    }
+    .collection-item__img{width:100%;height:100%;object-fit:cover;display:block}
+    .collection-item__img-wrap::after{content:"";position:absolute;inset:0;border:1px solid rgba(255,255,255,.72);border-radius:inherit;pointer-events:none}
+    .collection-item__summary{
+      min-width:0;padding:6px 4px 4px;display:flex;flex-direction:column;flex:1;gap:6px;
+    }
+    .collection-item__meta{
+      margin:0;display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;
+    }
+    .collection-item__line{
+      margin:0;font-size:.62rem;font-weight:450;line-height:1.35;
+      color:#64748b;font-family:inherit;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    }
+    .collection-item__line--primary{
+      font-size:.64rem;font-weight:600;color:#0f172a;
+    }
+    .collection-item__actions{display:grid;grid-template-columns:1fr 1fr;gap:4px;align-items:center;margin-top:auto;padding-top:0}
+    .collection-item__edit,.collection-item__remove{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-height:26px;padding:4px 5px;border-radius:999px;
+      font-size:.58rem;font-weight:500;font-family:inherit;
+      cursor:pointer;transition:background .18s,border-color .18s,transform .12s,box-shadow .18s;
+      white-space:nowrap;
+    }
+    .collection-item__edit{border:1px solid #c7d2fe;background:#eef2ff;color:#3730a3}
+    .collection-item__edit:hover{background:#e0e7ff;border-color:#a5b4fc;box-shadow:0 4px 12px rgba(79,70,229,.14)}
+    .collection-item__remove{border:1px solid #fecdd3;background:#fff1f2;color:#be123c}
+    .collection-item__remove:hover{background:#ffe4e6;border-color:#fda4af;box-shadow:0 4px 12px rgba(225,29,72,.12)}
+    .collection-item__edit:active,.collection-item__remove:active{transform:scale(.97)}
+    .collection-modal{
+      position:fixed;inset:0;z-index:1250;display:none;align-items:center;justify-content:center;
+      padding:18px;background:rgba(15,23,42,.55);backdrop-filter:blur(5px);
+      font-family:"Google Sans Flex","Google Sans",Inter,Roboto,sans-serif;
+    }
+    .collection-modal--open{display:flex}
+    .collection-modal__card{
+      width:min(100%,420px);max-height:min(88vh,640px);overflow:auto;
+      border-radius:20px;background:#fff;border:1px solid rgba(226,232,240,.9);
+      box-shadow:0 18px 46px rgba(15,23,42,.18);
+      animation:collectionModalIn .18s cubic-bezier(.2,0,0,1) both;
+    }
+    @keyframes collectionModalIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+    .collection-modal__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 18px 10px}
+    .collection-modal__title-row{display:flex;align-items:center;gap:10px}
+    .collection-modal__icon{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:999px;flex-shrink:0}
+    .collection-modal__icon--danger{background:#fff1f2;color:#dc2626;border:1px solid #ffe4e6}
+    .collection-modal__icon svg{width:18px;height:18px}
+    .collection-modal__title{margin:0;font-size:1rem;font-weight:700;color:#0f172a;letter-spacing:-.01em}
+    .collection-modal__subtitle{margin:4px 0 0;font-size:.78rem;color:#64748b;line-height:1.4}
+    .collection-modal__close{border:0;background:#f8fafc;color:#475569;border-radius:999px;width:34px;height:34px;font-size:1.25rem;line-height:1;cursor:pointer;flex-shrink:0}
+    .collection-modal__body{padding:8px 18px 18px}
+    .collection-modal__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .collection-modal__field{display:flex;flex-direction:column;gap:5px}
+    .collection-modal__field--full{grid-column:1/-1}
+    .collection-modal__field label{font-size:.68rem;font-weight:450;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+    .collection-modal__field input,
+    .collection-modal__field select{
+      width:100%;min-height:42px;padding:9px 11px;border:1px solid #dbe4f0;border-radius:12px;
+      background:#fff;color:#0f172a;font:inherit;font-size:.86rem;transition:border-color .15s,box-shadow .15s;
+    }
+    .collection-modal__field select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+    .collection-modal__field input:focus,
+    .collection-modal__field select:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.18)}
+    .collection-modal__actions{display:flex;gap:10px;justify-content:flex-end;padding:0 18px 18px}
+    .collection-modal__btn{min-height:40px;border-radius:999px;padding:9px 16px;border:1px solid #dbe4f0;background:#fff;color:#334155;font:inherit;font-size:.86rem;cursor:pointer}
+    .collection-modal__btn--primary{background:#1a73e8;border-color:#1a73e8;color:#fff}
+    .collection-modal__btn--danger{background:#dc2626;border-color:#dc2626;color:#fff}
+    .collection-modal__warning{margin:0;color:#475569;font-size:.9rem;line-height:1.55}
+    .collection-modal__card--danger{width:min(100%,380px);border-radius:18px}
+    .collection-modal__card--danger .collection-modal__head{padding:16px 16px 8px}
+    .collection-modal__card--danger .collection-modal__body{padding:4px 16px 16px}
+    .collection-modal__card--danger .collection-modal__actions{padding:0 16px 16px;justify-content:flex-end}
+    .collection-modal__card--danger .collection-modal__warning{font-size:.86rem;color:#64748b;line-height:1.45}
+    .collection-modal__btn:hover{background:#f8fafc;border-color:#cbd5e1}
+    .collection-modal__btn--danger:hover{background:#b91c1c;border-color:#b91c1c}
+    .collection-actions{display:flex;flex-direction:column;gap:0;font-family:inherit}
+    .collection-actions .btn-capture{font-family:inherit;font-weight:600;width:100%}
+    .collection-actions .btn-capture--primary{min-height:48px;font-size:.9rem;border-radius:12px}
+    .collection-clear{
+      display:block;width:100%;margin:0;border:none;background:none;
+      color:#64748b;font-size:.78rem;font-family:inherit;font-weight:500;
+      cursor:pointer;padding:8px 4px;text-align:center;
+    }
     .collection-clear:hover{color:#334155;text-decoration:underline}
+    .collection-clear:disabled{opacity:.45;cursor:not-allowed}
     .collection-toast{
       position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(10px);
       background:#0f172a;color:#fff;padding:10px 14px;border-radius:10px;
       font-size:.82rem;font-family:Montserrat,sans-serif;opacity:0;pointer-events:none;
       transition:opacity .2s ease,transform .2s ease;z-index:1300;
     }
+    .collection-toast--success{background:#16a34a;color:#fff}
     .collection-toast--show{opacity:.94;transform:translateX(-50%) translateY(0)}
 
     /* ── Alert ── */
@@ -345,14 +553,15 @@
 
     /* ── Activity summary (replaces show-recent-uploads) ── */
     .activity-bar{
-      display:flex;align-items:center;gap:14px;width:100%;
-      padding:14px 16px;border-radius:16px;
+      display:flex;align-items:center;gap:12px;width:100%;
+      padding:12px 14px;border-radius:16px;
       background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);
       border:1px solid rgba(148,163,184,.25);
-      box-shadow:0 8px 22px rgba(15,23,42,.06),0 1px 0 rgba(255,255,255,.9) inset;
-      margin-bottom:14px;cursor:pointer;transition:all .2s;min-height:54px
+      box-shadow:0 4px 16px rgba(15,23,42,.05),0 1px 0 rgba(255,255,255,.9) inset;
+      margin-bottom:0;cursor:pointer;transition:border-color .2s,box-shadow .2s;min-height:52px
     }
-    .activity-bar:hover{box-shadow:0 12px 24px rgba(26,115,232,.12);border-color:rgba(138,180,248,.7);transform:translateY(-1px)}
+    .activity-bar:hover{transform:none}
+    .activity-bar:hover{box-shadow:0 8px 20px rgba(26,115,232,.1);border-color:rgba(138,180,248,.65)}
     .activity-bar__thumbs{display:flex;gap:0;flex-shrink:0;padding-left:3px}
     .activity-bar__thumbs img{width:36px;height:36px;border-radius:10px;object-fit:cover;border:2px solid #fff;box-shadow:0 2px 6px rgba(15,23,42,.12);margin-left:-10px}
     .activity-bar__thumbs img:first-child{margin-left:0}
@@ -404,14 +613,21 @@
       .capture-actions .btn-capture__text-full{display:inline!important}
       .capture-actions .btn-capture__text-short{display:none!important}
       .preview-actions{flex-direction:row;gap:10px}
+      .insp-location-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px}
       .insp-row{grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
       .insp-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
       .insp-item img{height:140px}
-      .collection-item__meta{grid-template-columns:repeat(4,minmax(0,1fr))}
-      .collection-item__meta textarea{grid-column:1/-1}
-      .dashboard-page-back-link-row--live{top:44px;margin:-28px 0 18px}
+      .collection-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+      .dashboard-page-back-link-row--live{
+        margin:0 0 16px;
+        padding:4px 10px 6px;
+        gap:12px;
+      }
+      .capture-heading h2{font-size:1.2rem}
+      .capture-heading p{font-size:.84rem}
     }
     @media(max-width:640px){
+      .dashboard-page-back-link-row--live{padding:4px 8px}
       .success-wrap h2{font-size:1.45rem}
       .success-wrap p{font-size:.9rem;margin-bottom:16px}
       .success-icon{width:64px;height:64px;margin-bottom:14px}
@@ -420,6 +636,35 @@
       .activity-bar__thumbs img{width:32px;height:32px;border-radius:9px}
       .activity-bar__text{font-size:.82rem}
       .activity-bar__arrow{width:26px;height:26px;padding:5px}
+      .collection-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+    @media(max-width:480px){
+      .insp-shell{padding:4px 10px 0}
+      .dashboard-page-back-link-row--live{margin:0 0 8px;padding:4px 6px;gap:8px;border-radius:12px}
+      .collection-chip{font-size:.7rem;padding:6px 9px;min-height:34px;max-width:min(168px,calc(100% - 46px))}
+      .collection-chip__badge{margin-left:5px;min-width:18px;height:18px;font-size:.6rem;padding:0 5px}
+      .step-bar{margin-bottom:14px}
+      .step-bar__dot{width:27px;height:27px;font-size:.66rem}
+      .step-bar__line{margin-top:12px}
+      .step-bar__label{font-size:.62rem}
+      .insp-card{padding:14px 11px 16px;border-radius:15px;margin-bottom:12px}
+      .capture-heading h2{font-size:1rem}
+      .capture-heading p{font-size:.74rem}
+      .capture-source{padding:10px 8px 8px;border-radius:14px}
+      .capture-visual{width:56px;height:56px;margin-bottom:8px}
+      .capture-visual svg{width:22px;height:22px}
+      .capture-actions .btn-capture{min-height:42px;padding:8px 8px;font-size:.76rem;border-radius:10px}
+    }
+    @media(max-width:430px){
+      .collection-list{grid-template-columns:1fr;gap:10px}
+      .collection-item{padding:7px;border-radius:16px;min-height:0}
+      .collection-item__img-wrap{height:86px}
+      .collection-item__img-wrap{border-radius:13px}
+      .collection-item__actions{grid-template-columns:1fr;gap:5px}
+      .collection-item__edit,.collection-item__remove{min-height:31px;padding:6px 8px;font-size:.66rem}
+      .collection-modal__grid{grid-template-columns:1fr}
+      .collection-modal__actions{flex-direction:column-reverse}
+      .collection-modal__btn{width:100%}
     }
     @media (prefers-reduced-motion: reduce){
       .capture-visual{transition:none}
@@ -439,14 +684,17 @@
     <section class="landing-section" id="live-inspection">
       <div class="insp-shell">
         <div class="dashboard-page-back-link-row dashboard-page-back-link-row--live">
-          <a href="/" class="dashboard-page-back-link" aria-label="Home">← Home</a>
+          <!-- <a href="/" class="dashboard-back-home dashboard-back-home--icon" aria-label="Back to home" title="Home">
+            <svg class="dashboard-back-home__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M4 10.5 12 3.5l8 7V20a1.5 1.5 0 0 1-1.5 1.5H16A1.5 1.5 0 0 1 14.5 20v-5.25a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1V20A1.5 1.5 0 0 1 8 21.5H5.5A1.5 1.5 0 0 1 4 20v-9.5Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/>
+            </svg>
+          </a> -->
           <button type="button" class="collection-chip" id="btn-open-collection" aria-label="Open collection">
             Collection
             <span class="collection-chip__badge" id="collection-count-badge">0</span>
           </button>
         </div>
-        <div class="insp-card">
-          <!-- Step indicator with labels -->
+        <div class="insp-card live-workflow-card">
           <div class="step-bar" id="step-bar">
             <div class="step-bar__step step-bar__step--active" data-step="1">
               <span class="step-bar__dot step-bar__dot--active" data-step="1">1</span>
@@ -483,7 +731,7 @@
                 </svg>
               </div>
 
-              <input type="file" id="camera-input" accept="image/*,image/heic,image/heif,.heic,.heif" capture="environment" hidden />
+              <input type="file" id="camera-input" accept="image/jpeg,image/png,image/webp" hidden />
               <input type="file" id="image-input" accept="image/*,image/heic,image/heif,.heic,.heif" hidden />
               <div class="capture-actions">
                 <button type="button" class="btn-capture btn-capture--primary" id="btn-take-photo" aria-label="Take photo with camera">
@@ -525,24 +773,59 @@
           <div class="step-panel" id="step-form">
             <button type="button" class="btn-back" id="btn-back-to-preview">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-              Back
+              
             </button>
-            <img class="form-thumb" id="form-thumb" alt="" />
-            <div class="form-heading">
-              <h2>Add location details</h2>
-              <p>Tell us where this defect was found</p>
+            <div class="form-heading-row">
+              <div class="form-heading">
+                <h2>Add location details</h2>
+                <p>Tell us where this defect was found</p>
+              </div>
+              <img class="form-thumb" id="form-thumb" alt="" />
             </div>
-            <div class="insp-row">
+            <div class="insp-location-grid">
+              <div class="insp-field insp-field--span-full" id="project-field-wrap">
+                <div class="insp-field__label-row">
+                  <label for="sel-project">Project</label>
+                  <button type="button" class="project-edit-link" id="btn-edit-project" hidden>Edit project</button>
+                </div>
+                <select id="sel-project" aria-describedby="project-locked-hint">
+                  <option value="">Select project</option>
+                  <option>Grava</option>
+                  <option>Udyan</option>
+                  <option>Vyoma</option>
+                  <option>Vipina</option>
+                </select>
+                <p class="insp-field__locked-hint" id="project-locked-hint" hidden>Project is set for this session. You can edit the project name once if needed.</p>
+              </div>
               <div class="insp-field">
                 <label for="sel-tower">Tower</label>
-                <select id="sel-tower"><option value="">Select tower</option><option>Tower A</option><option>Tower B</option><option>Tower C</option><option>Tower D</option><option>Tower E</option></select>
+                <select id="sel-tower"><option value="">Select tower</option>
+                  <option>Tower 1</option>
+                  <option>Tower 2</option>
+                  <option>Tower 3</option>
+                  <option>Tower 4</option>
+                  <option>Tower 5</option>
+                  <option>Tower 6</option>
+                  <option>Tower 7</option>
+                  <option>Tower 8</option>
+                  <option>Tower 9</option>
+                  <option>Tower 10</option>
+                  <option>Tower 11</option>
+                  <option>Tower 12</option>
+                  <option>Club House</option>
+                  <option>External Development</option>
+                  <option>Basement 1</option>
+                  <option>Basement 2</option>
+                  <option>Basement 3</option>
+                  <option>Basement 4</option>
+                  <option>Terrace</option>
+                  <option>LMR + OHT</option>
+                </select>
               </div>
               <div class="insp-field">
                 <label for="sel-floor">Floor</label>
                 <select id="sel-floor"><option value="">Select floor</option></select>
               </div>
-            </div>
-            <div class="insp-row">
               <div class="insp-field">
                 <label for="sel-flat">Flat</label>
                 <select id="sel-flat"><option value="">Select flat</option></select>
@@ -551,31 +834,36 @@
                 <label for="sel-room">Room</label>
                 <select id="sel-room">
                   <option value="">Select room</option>
-                  <option>Living Room</option><option>Master Bedroom</option><option>Bedroom 2</option><option>Bedroom 3</option>
-                  <option>Kitchen</option><option>Bathroom 1</option><option>Bathroom 2</option><option>Balcony</option>
-                  <option>Hall</option><option>Lobby</option><option>Terrace</option>
+                  <option>Living Room</option>
+                  <option>Master Bedroom</option>
+                  <option>Bedroom 2</option>
+                  <option>Bedroom 3</option>
+                  <option>Bedroom 4</option>
+                  <option>Kitchen</option>
+                  <option>Bathroom</option>
+                  <option>Balcony</option>
+                  <option>Utility Area</option>
+                  <option>Others</option>
                 </select>
               </div>
-            </div>
-            <div class="insp-row">
-              <div class="insp-field">
+              <div class="insp-field insp-field--span-full insp-field--room-other" id="room-other-wrap" hidden>
+                <label for="room-other-desc">Room description <span class="insp-field__optional">(optional)</span></label>
+                <input type="text" id="room-other-desc" maxlength="120" placeholder="e.g. Store room, corridor, plant room" autocomplete="off" />
+              </div>
+              <div class="insp-field insp-field--span-full">
                 <label for="sel-category">Category</label>
                 <select id="sel-category">
                   <option value="">Select category</option>
                   <option value="Civil">Civil</option>
                   <option value="Finishing">Finishing</option>
                   <option value="MEP">MEP</option>
+                  <option value="Others">Others</option>
                 </select>
               </div>
-            </div>
-            <div class="insp-field">
-              <div class="desc-field__head">
-                <label for="sel-description">Description</label>
+              <div class="insp-field insp-field--span-full insp-field--category-other" id="category-other-wrap" hidden>
+                <label for="category-other-desc">Category description <span class="insp-field__optional">(optional)</span></label>
+                <input type="text" id="category-other-desc" maxlength="120" placeholder="e.g. Waterproofing, painting touch-up" autocomplete="off" />
               </div>
-              <div class="desc-field__input-wrap">
-                <textarea id="sel-description" placeholder="Describe the defect in your own words"></textarea>
-              </div>
-              <div class="desc-help">Include visible damage and context to help reviewers.</div>
             </div>
             <div class="upload-progress" id="upload-progress" hidden>
               <div class="upload-progress__track" aria-hidden="true"><div class="upload-progress__fill" id="upload-progress-fill"></div></div>
@@ -588,32 +876,55 @@
 
           <!-- Step 4: Collection -->
           <div class="step-panel" id="step-success">
-            <div class="collection-panel-head">
-              <h3>Your Collection</h3>
-              <button type="button" class="btn-back" id="btn-back-to-capture">← Add more</button>
+            <button type="button" class="btn-back btn-back--collection" id="btn-back-from-collection" aria-label="Leave collection">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+              <span id="btn-back-from-collection-label">Back to capture</span>
+            </button>
+            <div class="collection-panel">
+              <div class="collection-panel-head">
+                <h3>Your Collection</h3>
+                <button type="button" class="collection-add-more" id="btn-back-to-capture" aria-label="Add more images to collection">
+                  <span class="collection-add-more__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                  </span>
+                  <span class="collection-add-more__label">Add more</span>
+                </button>
+              </div>
+              <div class="collection-panel-body">
+                <div class="collection-list" id="collection-list" role="list"></div>
+                <div class="collection-empty" id="collection-empty">
+                  <span class="collection-empty__icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                  </span>
+                  <p>No items yet. Capture or upload images, then add them here.</p>
+                </div>
+              </div>
+              <div class="collection-panel-foot">
+                <div class="collection-actions">
+                  <button type="button" class="btn-capture btn-capture--primary" id="btn-submit-all" disabled>Submit All (0)</button>
+                </div>
+                <button type="button" class="collection-clear" id="btn-clear-collection" disabled>Clear collection</button>
+              </div>
             </div>
-            <div class="collection-list" id="collection-list"></div>
-            <div class="collection-empty" id="collection-empty">No items yet. Add images to your collection first.</div>
-            <div class="collection-actions">
-              <button type="button" class="btn-capture btn-capture--primary" id="btn-submit-all" disabled>Submit All (0)</button>
-            </div>
-            <button type="button" class="collection-clear" id="btn-clear-collection">Clear collection</button>
           </div>
         </div>
 
-        <!-- Activity bar (collapsed by default) -->
-        <div class="activity-bar" id="activity-bar" role="button" tabindex="0" style="display:none">
-          <div class="activity-bar__thumbs" id="activity-thumbs"></div>
-          <div class="activity-bar__text" id="activity-text"></div>
-          <svg class="activity-bar__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-        <div class="insp-card insp-card--recent" id="recent-section" style="display:none">
-          <div class="recent-header">
-            <h3>Recent Uploads</h3>
-            <button type="button" class="recent-toggle" id="toggle-all" style="display:none"></button>
+        <div class="live-secondary-stack" id="live-secondary-stack">
+          <div class="activity-bar" id="activity-bar" role="button" tabindex="0" style="display:none" aria-label="Show past uploads">
+            <div class="activity-bar__thumbs" id="activity-thumbs"></div>
+            <div class="activity-bar__text" id="activity-text"></div>
+            <svg class="activity-bar__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="insp-grid" id="uploads-grid"></div>
-          <div class="insp-empty" id="uploads-empty" style="display:none">No inspections uploaded yet.</div>
+          <div class="insp-card insp-card--recent" id="recent-section" style="display:none">
+            <div class="recent-header">
+              <h3>Past uploads</h3>
+              <button type="button" class="recent-toggle" id="toggle-all" style="display:none">Hide</button>
+            </div>
+            <div class="insp-grid" id="uploads-grid"></div>
+            <div class="insp-empty" id="uploads-empty" style="display:none">No inspections uploaded yet.</div>
+          </div>
         </div>
       </div>
     </section>
@@ -645,6 +956,83 @@
     </div>
   </div>
   <div class="collection-toast" id="collection-toast">Added to Collection</div>
+
+  <div class="collection-modal" id="collection-edit-modal" role="dialog" aria-modal="true" aria-labelledby="collection-edit-title">
+    <div class="collection-modal__card">
+      <div class="collection-modal__head">
+        <div>
+          <h3 class="collection-modal__title" id="collection-edit-title">Edit collection item</h3>
+          <p class="collection-modal__subtitle">Update the details for this image.</p>
+        </div>
+        <button type="button" class="collection-modal__close" id="collection-edit-close" aria-label="Close edit dialog">&times;</button>
+      </div>
+      <div class="collection-modal__body">
+        <div class="collection-modal__grid">
+          <div class="collection-modal__field collection-modal__field--full">
+            <label>Project</label>
+            <p class="collection-modal__readonly" id="collection-edit-project">—</p>
+          </div>
+          <div class="collection-modal__field">
+            <label for="collection-edit-tower">Tower</label>
+            <select id="collection-edit-tower"></select>
+          </div>
+          <div class="collection-modal__field">
+            <label for="collection-edit-floor">Floor</label>
+            <select id="collection-edit-floor"></select>
+          </div>
+          <div class="collection-modal__field">
+            <label for="collection-edit-flat">Flat</label>
+            <select id="collection-edit-flat"></select>
+          </div>
+          <div class="collection-modal__field">
+            <label for="collection-edit-room">Room</label>
+            <select id="collection-edit-room"></select>
+          </div>
+          <div class="collection-modal__field collection-modal__field--full collection-modal__field--room-other" id="collection-edit-room-other-wrap" hidden>
+            <label for="collection-edit-room-other">Room description <span class="insp-field__optional">(optional)</span></label>
+            <input type="text" id="collection-edit-room-other" maxlength="120" placeholder="e.g. Store room, corridor, plant room" autocomplete="off" />
+          </div>
+          <div class="collection-modal__field collection-modal__field--full">
+            <label for="collection-edit-category">Category</label>
+            <select id="collection-edit-category"></select>
+          </div>
+          <div class="collection-modal__field collection-modal__field--full collection-modal__field--category-other" id="collection-edit-category-other-wrap" hidden>
+            <label for="collection-edit-category-other">Category description <span class="insp-field__optional">(optional)</span></label>
+            <input type="text" id="collection-edit-category-other" maxlength="120" placeholder="e.g. Waterproofing, painting touch-up" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+      <div class="collection-modal__actions">
+        <button type="button" class="collection-modal__btn" id="collection-edit-cancel">Cancel</button>
+        <button type="button" class="collection-modal__btn collection-modal__btn--primary" id="collection-edit-save">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="collection-modal" id="collection-remove-modal" role="dialog" aria-modal="true" aria-labelledby="collection-remove-title">
+    <div class="collection-modal__card collection-modal__card--danger">
+      <div class="collection-modal__head">
+        <div>
+          <div class="collection-modal__title-row">
+            <span class="collection-modal__icon collection-modal__icon--danger" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 9v4"/>
+                <path d="M12 17h.01"/>
+                <path d="M10.3 4.2 2.8 17.1A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.9L13.7 4.2a2 2 0 0 0-3.4 0Z"/>
+              </svg>
+            </span>
+            <h3 class="collection-modal__title" id="collection-remove-title">Delete image?</h3>
+          </div>
+          <p class="collection-modal__subtitle">This item will be removed from your collection.</p>
+        </div>
+        <button type="button" class="collection-modal__close" id="collection-remove-close" aria-label="Close delete confirmation">&times;</button>
+      </div>
+      <div class="collection-modal__actions">
+        <button type="button" class="collection-modal__btn" id="collection-remove-cancel">Cancel</button>
+        <button type="button" class="collection-modal__btn collection-modal__btn--danger" id="collection-remove-confirm">Delete</button>
+      </div>
+    </div>
+  </div>
 
   <!-- footer injected by shared/components/dashboard-footer.js -->
 

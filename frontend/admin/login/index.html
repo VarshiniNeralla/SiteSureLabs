@@ -4,50 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SiteSureLabs — Admin sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Tangerine:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/shared/styles.css" />
   <style>
     .auth-card--admin {
       max-width: 420px;
     }
-    .auth-card--admin .brand-logo {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 0.35rem;
-    }
-    .auth-card--admin .brand-logo img {
-      width: 56px;
-      height: 56px;
-      object-fit: contain;
-    }
-    .auth-card--admin .brand-title {
-      margin: 0;
-      text-align: center;
-      font-size: 1.72rem;
-      line-height: 1.06;
-      letter-spacing: -0.012em;
-      font-weight: 700;
-      color: #0f172a;
-      font-family: Inter, Roboto, Arial, sans-serif;
-    }
-    .auth-card--admin .brand-subtitle {
-      margin: 0.3rem 0 1.35rem;
-      text-align: center;
-      color: #334155;
-      font-size: 0.92rem;
-      font-weight: 600;
-      letter-spacing: 0.005em;
-      font-family: Inter, Roboto, Arial, sans-serif;
-    }
   </style>
 </head>
 <body class="auth-page">
   <div class="auth-card auth-card--admin">
-    <div class="brand-logo">
-      <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="56" height="56" decoding="async" />
+    <div class="auth-header">
+      <div class="brand-logo">
+        <img src="/assets/new_logo.png" alt="SiteSureLabs" width="56" height="56" decoding="async" />
+        <span class="logo-text">SiteSureLabs</span>
+      </div>
+      <p class="brand-subtitle">Administrator sign in</p>
     </div>
-    <h1 class="brand-title">SiteSureLabs</h1>
-    <p class="brand-subtitle">Administrator sign in</p>
 
     <div id="alert" class="alert"></div>
 
@@ -70,16 +45,17 @@
       </button>
     </form>
 
-    <p class="auth-link"><a href="/">← Standard user sign in</a></p>
+    <p class="auth-link">Not an admin? <a href="/">User sign in</a></p>
   </div>
 
   <script type="module">
-    import { saveAuth, getUser } from "/shared/auth.js";
+    import { saveAuth, getUser, markAdminLoginSession } from "/shared/auth.js";
     import { wirePasswordToggle } from "/shared/password-toggle.js";
     import { formatApiDetail } from "/shared/format-api-detail.js";
 
     const user = getUser();
     if (user && user.role === "admin") {
+      markAdminLoginSession();
       window.location.href = "/";
     }
 
@@ -183,6 +159,7 @@
           name: data.name || null,
           profile_photo: data.profile_photo || null,
         });
+        markAdminLoginSession();
 
         window.location.href = "/";
       } catch {

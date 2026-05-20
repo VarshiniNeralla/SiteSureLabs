@@ -5,7 +5,6 @@
 
 import { marked } from "marked";
 
-import { downloadInspectionPdfFromApi } from "./lib/inspection-pdf-api.js";
 import { isHeicLike, normalizeImageFileForUpload } from "./heic-utils.js";
 
 marked.setOptions({ breaks: true, gfm: true });
@@ -162,10 +161,48 @@ function compressImageDataUrl(dataUrl, maxSide = 1280, quality = 0.82) {
   });
 }
 
+/** ≤900px: single chrome — workspace drawer + profile live in the chat topbar; #navbar hidden via CSS. */
+const CHT_AI_NAV_UNIFIED_MQ = window.matchMedia("(max-width: 900px)");
+
+function syncAiChatUnifiedNavChrome() {
+  const nav = document.getElementById("navbar");
+  const navContainer = nav?.querySelector(".nav-container");
+  const logo = nav?.querySelector(".logo-container");
+  const openBtn = document.getElementById("drawer-open-btn");
+  const navActions = nav?.querySelector(".nav-actions");
+  const topbarLeft = document.querySelector(".cht-topbar__left");
+  const trailing = document.getElementById("cht-topbar-trailing");
+  const sidebarToggle = document.getElementById("sidebar-toggle-btn");
+
+  if (!nav || !navContainer || !openBtn || !topbarLeft || !trailing) return;
+
+  if (CHT_AI_NAV_UNIFIED_MQ.matches) {
+    document.body.classList.add("cht-ai-chat--unified-nav");
+    if (sidebarToggle && !topbarLeft.contains(openBtn)) {
+      openBtn.classList.add("cht-topbar__workspace-menu");
+      topbarLeft.insertBefore(openBtn, sidebarToggle);
+    }
+    if (navActions && !trailing.contains(navActions)) {
+      trailing.appendChild(navActions);
+    }
+  } else {
+    document.body.classList.remove("cht-ai-chat--unified-nav");
+    openBtn.classList.remove("cht-topbar__workspace-menu");
+    if (logo && openBtn.parentElement !== navContainer) {
+      navContainer.insertBefore(openBtn, logo);
+    }
+    if (navActions && navActions.parentElement !== navContainer) {
+      navContainer.appendChild(navActions);
+    }
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  syncAiChatUnifiedNavChrome();
+  queueMicrotask(() => syncAiChatUnifiedNavChrome());
+
   const shell = document.getElementById("cht-shell");
   const dockEl = shell?.querySelector(".cht-dock");
-  const topbarActionsEl = shell?.querySelector(".cht-topbar__actions");
   const emptyState = document.getElementById("gem-empty-state");
   const messagesEl = document.getElementById("gem-messages");
   const workspaceError = document.getElementById("workspace-error");
@@ -178,7 +215,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const pendingImg = document.getElementById("gem-pending-img");
   const pendingRemove = document.getElementById("gem-pending-remove");
   const photoReadyHint = document.getElementById("gem-photo-ready-hint");
-  const downloadBtn = document.getElementById("gem-download-btn");
 
   // Inspection stage (analysis-first UI). Shown between "image attached" and "first AI report".
   const stageEl = document.getElementById("cht-stage");
@@ -349,6 +385,96 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
+  /**
+   * Virtual keyboard: lift composer above keys.
+   * Android Chrome often shrinks `window.innerHeight` with the keyboard, so `innerHeight - visualViewport.height` is ~0
+   * and a transform-only fix fails. We capture a layout baseline on focus/touch and use `position:fixed` + `bottom` ≤900px.
+   */
+  let dockVvRaf = 0;
+  let vvLayoutBaselinePx = 0;
+
+  const isDockMobileFixedLayout = () => CHT_AI_NAV_UNIFIED_MQ.matches;
+
+  const syncDockPlaceholder = () => {
+    if (!shell || !dockEl) return;
+    if (!isDockMobileFixedLayout() || shell.classList.contains("cht-shell--inspecting")) {
+      shell.style.setProperty("--cht-dock-placeholder", "0px");
+      return;
+    }
+    const h = Math.ceil(dockEl.getBoundingClientRect().height || dockEl.offsetHeight || 0);
+    shell.style.setProperty("--cht-dock-placeholder", `${Math.max(h, 1)}px`);
+  };
+
+  const scheduleSyncDockPlaceholder = () => {
+    requestAnimationFrame(() => syncDockPlaceholder());
+  };
+
+  const syncDockVisualViewport = () => {
+    if (!dockEl) return;
+    const vv = window.visualViewport;
+    if (!vv) {
+      dockEl.style.removeProperty("--cht-keyboard-overlap");
+      dockEl.style.removeProperty("bottom");
+      vvLayoutBaselinePx = 0;
+      return;
+    }
+
+    const docEl = document.documentElement;
+    const clientH = docEl && docEl.clientHeight > 0 ? docEl.clientHeight : 0;
+    const layoutRef =
+      vvLayoutBaselinePx > 0
+        ? vvLayoutBaselinePx
+        : Math.max(window.innerHeight, clientH, vv.offsetTop + vv.height);
+    const overlap = Math.max(0, layoutRef - vv.height - vv.offsetTop);
+    const px = Math.round(overlap * 100) / 100;
+
+    const mobileFixed = isDockMobileFixedLayout();
+
+    if (px <= 1) {
+      dockEl.style.removeProperty("--cht-keyboard-overlap");
+      if (mobileFixed) dockEl.style.removeProperty("bottom");
+    } else if (mobileFixed) {
+      dockEl.style.removeProperty("--cht-keyboard-overlap");
+      dockEl.style.bottom = `${px}px`;
+    } else {
+      dockEl.style.removeProperty("bottom");
+      dockEl.style.setProperty("--cht-keyboard-overlap", `${px}px`);
+    }
+  };
+
+  const scheduleSyncDockVisualViewport = () => {
+    if (dockVvRaf) return;
+    dockVvRaf = requestAnimationFrame(() => {
+      dockVvRaf = 0;
+      syncDockVisualViewport();
+      syncDockPlaceholder();
+    });
+  };
+
+  if (typeof window !== "undefined" && window.visualViewport) {
+    window.visualViewport.addEventListener("resize", scheduleSyncDockVisualViewport);
+    window.visualViewport.addEventListener("scroll", scheduleSyncDockVisualViewport);
+  }
+  window.addEventListener("resize", scheduleSyncDockVisualViewport);
+  window.addEventListener("orientationchange", () => {
+    vvLayoutBaselinePx = 0;
+    setTimeout(scheduleSyncDockVisualViewport, 200);
+  });
+
+  CHT_AI_NAV_UNIFIED_MQ.addEventListener("change", () => {
+    syncAiChatUnifiedNavChrome();
+    vvLayoutBaselinePx = 0;
+    dockEl?.style.removeProperty("bottom");
+    dockEl?.style.removeProperty("--cht-keyboard-overlap");
+    scheduleSyncDockVisualViewport();
+    scheduleSyncDockPlaceholder();
+  });
+
+  if (typeof ResizeObserver !== "undefined" && dockEl && shell) {
+    const dockRo = new ResizeObserver(() => scheduleSyncDockPlaceholder());
+    dockRo.observe(dockEl);
+  }
+
   /** Keep textarea compact at start, then grow to 5 lines max. */
   const COMPOSER_LINES_MIN = 1;
   const COMPOSER_LINES_MAX = 5;
@@ -366,6 +492,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inputEl.style.height = "auto";
     const sh = inputEl.scrollHeight;
     inputEl.style.height = `${Math.min(maxPx, Math.max(minPx, sh))}px`;
+    scheduleSyncDockPlaceholder();
   };
 
   /**
@@ -404,11 +531,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (chatting) dockEl.removeAttribute("inert");
       else dockEl.setAttribute("inert", "");
     }
-    if (topbarActionsEl) {
-      if (chatting) topbarActionsEl.removeAttribute("inert");
-      else topbarActionsEl.setAttribute("inert", "");
-    }
-
     // Stage loading/actions toggle.
     if (stageActions && stageLoading) {
       const showLoading = flowState === "analyzing";
@@ -431,10 +553,21 @@ document.addEventListener("DOMContentLoaded", () => {
       photoReadyHint.setAttribute("hidden", "");
     }
 
+    scheduleSyncDockVisualViewport();
+
     if (chatting) {
       requestAnimationFrame(() => {
-        inputEl?.focus();
+        /* Auto-focus jumps the viewport on mobile (keyboard + dynamic toolbars). Only focus on fine pointers. */
+        const coarse = window.matchMedia("(pointer: coarse)").matches;
+        if (inputEl && !coarse) {
+          try {
+            inputEl.focus({ preventScroll: true });
+          } catch {
+            inputEl.focus();
+          }
+        }
         syncComposerHeight();
+        scheduleSyncDockVisualViewport();
       });
     }
   }
@@ -642,7 +775,6 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const refreshToolbar = () => {
-    if (downloadBtn) downloadBtn.disabled = !transcript.length;
     if (attachBtn) {
       attachBtn.disabled = false;
       attachBtn.title = "Attach site photo (replaces current analysis when you send)";
@@ -939,58 +1071,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  /**
-   * Copy user photos from the live thread into transcript when storage stripped `image`
-   * or MIME checks differed (e.g. AVIF preview in DOM).
-   */
-  const hydrateUserImagesFromDomForPdf = async () => {
-    if (!messagesEl) return;
-    const rows = [...messagesEl.querySelectorAll(".insp-msg--user")];
-    const imgs = rows.map((row) => row.querySelector(".insp-msg__body img"));
-    let ui = 0;
-    for (const t of transcript) {
-      if (t.role !== "user") continue;
-      let domSrc = imgs[ui]?.getAttribute("src") || imgs[ui]?.src || "";
-      ui += 1;
-      if (domSrc.startsWith("blob:")) {
-        try {
-          const b = await fetch(domSrc).then((r) => r.blob());
-          domSrc = await readBlobAsDataUrl(b);
-        } catch {
-          continue;
-        }
-      }
-      if (!domSrc.startsWith("data:image/")) continue;
-      if (t.image && (isSafeStoredImageDataUrl(t.image) || isRenderableRasterDataUrl(t.image)))
-        continue;
-      if (
-        isSafeStoredImageDataUrl(domSrc) ||
-        isRenderableRasterDataUrl(domSrc) ||
-        domSrc.length > 400
-      ) {
-        t.image = domSrc;
-      }
-    }
-  };
-
-  const downloadMd = async () => {
-    if (!transcript.length) return;
-    if (downloadBtn) downloadBtn.disabled = true;
-    try {
-      await hydrateUserImagesFromDomForPdf();
-      await downloadInspectionPdfFromApi({
-        apiBase: apiBase(),
-        sessionId,
-        transcript,
-      });
-    } catch (e) {
-      console.error("PDF export failed", e);
-      showError(`Couldn't export PDF — ${String(e?.message || e)}`);
-    } finally {
-      if (downloadBtn) downloadBtn.disabled = !transcript.length;
-    }
-  };
-
   // ── Sidebar / session persistence ──────────────────────────────────────────
 
   const SESSIONS_KEY = "defectra_ai_sessions_v1";
@@ -1252,15 +1332,34 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   sendBtn?.addEventListener("click", () => void send());
+
+  const captureKeyboardLayoutBaseline = () => {
+    const vv = window.visualViewport;
+    vvLayoutBaselinePx = Math.max(
+      window.innerHeight,
+      document.documentElement?.clientHeight || 0,
+      vv ? vv.offsetTop + vv.height : 0,
+    );
+  };
+
+  inputEl?.addEventListener("touchstart", captureKeyboardLayoutBaseline, { passive: true });
   inputEl?.addEventListener("input", () => syncComposerHeight());
-  inputEl?.addEventListener("focus", () => syncComposerHeight());
+  inputEl?.addEventListener("focus", () => {
+    captureKeyboardLayoutBaseline();
+    syncComposerHeight();
+    scheduleSyncDockVisualViewport();
+  });
+  inputEl?.addEventListener("blur", () => {
+    vvLayoutBaselinePx = 0;
+    scheduleSyncDockVisualViewport();
+    scheduleSyncDockPlaceholder();
+  });
   inputEl?.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void send();
     }
   });
-  downloadBtn?.addEventListener("click", () => downloadMd());
 
   messagesEl?.addEventListener("click", (e) => {
     const img = e.target.closest(".insp-msg__img--clickable");
@@ -1274,7 +1373,10 @@ document.addEventListener("DOMContentLoaded", () => {
   void bootstrap().then(() => renderSidebar());
   refreshToolbar();
   refreshSendButton();
-  requestAnimationFrame(() => syncComposerHeight());
+  requestAnimationFrame(() => {
+    syncComposerHeight();
+    scheduleSyncDockVisualViewport();
+  });
 });
 
 

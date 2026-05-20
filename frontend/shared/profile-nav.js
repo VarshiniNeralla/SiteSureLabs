@@ -66,8 +66,11 @@ const EDIT_CAMERA_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="n
   <circle cx="12" cy="13" r="4"/>
 </svg>`;
 
-/** Longest codes first for prefix match */
+const DEFAULT_COUNTRY_CODE = "+91";
+
+/** Longest codes first for prefix match (India listed first for default UI). */
 const COUNTRY_CODES = [
+  { code: "+91", label: "India (+91)" },
   { code: "+971", label: "UAE (+971)" },
   { code: "+966", label: "Saudi Arabia (+966)" },
   { code: "+61", label: "Australia (+61)" },
@@ -78,7 +81,6 @@ const COUNTRY_CODES = [
   { code: "+55", label: "Brazil (+55)" },
   { code: "+52", label: "Mexico (+52)" },
   { code: "+44", label: "UK (+44)" },
-  { code: "+91", label: "India (+91)" },
   { code: "+65", label: "Singapore (+65)" },
   { code: "+1", label: "US / Canada (+1)" },
 ];
@@ -107,18 +109,26 @@ function escHtml(s) {
 /** @param {string|undefined|null} full */
 function splitMobile(full) {
   const compact = (full || "").trim().replace(/\s/g, "");
-  if (!compact) return { code: "+91", national: "" };
+  if (!compact) return { code: DEFAULT_COUNTRY_CODE, national: "" };
   const sorted = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length);
   for (const { code } of sorted) {
-    if (compact.startsWith(code))
-      return { code, national: compact.slice(code.length) };
+    if (compact.startsWith(code)) {
+      return { code, national: compact.slice(code.length).replace(/\D/g, "") };
+    }
   }
-  if (compact.startsWith("+")) return { code: "", national: compact };
-  return { code: "+91", national: compact };
+  if (compact.startsWith("+")) {
+    const digits = compact.replace(/\D/g, "");
+    return { code: DEFAULT_COUNTRY_CODE, national: digits };
+  }
+  const digits = compact.replace(/\D/g, "");
+  if (digits.startsWith("91") && digits.length > PROFILE_MOBILE_MAX_LENGTH) {
+    return { code: DEFAULT_COUNTRY_CODE, national: digits.slice(2, 2 + PROFILE_MOBILE_MAX_LENGTH) };
+  }
+  return { code: DEFAULT_COUNTRY_CODE, national: digits };
 }
 
 function countryOptionsHtml(selectedCode) {
-  const sel = selectedCode || "+91";
+  const sel = selectedCode || DEFAULT_COUNTRY_CODE;
   const known = COUNTRY_CODES.some((c) => c.code === sel);
   const lead = known
     ? ""
@@ -795,12 +805,24 @@ function avatarButtonClass(userLike) {
   return userLike?.profile_photo ? "nav-avatar-btn nav-avatar-btn--image" : "nav-avatar-btn";
 }
 
+function ensureDefaultCountryCode() {
+  const countryEl = document.getElementById("pf-country");
+  if (!countryEl) return;
+  const current = String(countryEl.value || "").trim();
+  const hasValid = current && [...countryEl.options].some((o) => o.value === current);
+  if (!hasValid && [...countryEl.options].some((o) => o.value === DEFAULT_COUNTRY_CODE)) {
+    countryEl.value = DEFAULT_COUNTRY_CODE;
+  }
+}
+
 function bindProfileInputGuards() {
   const nameEl = document.getElementById("pf-name");
   const ageEl = document.getElementById("pf-age");
   const mobileEl = document.getElementById("pf-mobile");
   const siteEl = document.getElementById("pf-site");
   const locationEl = document.getElementById("pf-location");
+
+  ensureDefaultCountryCode();
 
   mobileEl?.addEventListener("input", () => {
     const next = keepDigits(mobileEl.value, PROFILE_MOBILE_MAX_LENGTH);
@@ -849,7 +871,7 @@ function renderProfileForm(data) {
     data.role === "admin" ? "pn-profile-badge pn-profile-badge--admin" : "pn-profile-badge pn-profile-badge--user";
   const avatar = avatarHtml(data);
   const { code: mobileCode, national: mobileNational } = splitMobile(data.mobile);
-  const countryValue = mobileCode || "+91";
+  const countryValue = mobileCode || DEFAULT_COUNTRY_CODE;
   return `
     <div class="pn-profile-premium">
       <div class="pn-profile-hero">
@@ -996,7 +1018,7 @@ async function loadAndShowProfile() {
       saveBtn.disabled = true;
       saveBtn.textContent = "Saving…";
 
-      const cc = document.getElementById("pf-country").value || "+91";
+      const cc = document.getElementById("pf-country").value || DEFAULT_COUNTRY_CODE;
       const digits = keepDigits(document.getElementById("pf-mobile").value, PROFILE_MOBILE_MAX_LENGTH);
       const combinedMobile = digits ? `${cc}${digits}` : "";
       const name = document.getElementById("pf-name").value.trim();
@@ -1087,7 +1109,7 @@ async function loadAndShowProfile() {
         const countryEl = document.getElementById("pf-country");
         const mobileEl = document.getElementById("pf-mobile");
         if (countryEl && mobileEl) {
-          const ccode = syncM.code || "+91";
+          const ccode = syncM.code || DEFAULT_COUNTRY_CODE;
           if ([...countryEl.options].some((o) => o.value === ccode)) countryEl.value = ccode;
           else {
             const o = document.createElement("option");

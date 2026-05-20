@@ -79,7 +79,7 @@ export function mountDashboardNav(activeTab) {
       <button class="mobile-hamburger" id="drawer-open-btn"
         aria-label="Open navigation menu" aria-expanded="false">${HAMBURGER_SVG}</button>
       <a href="/" class="logo-container logo-container--nav">
-        <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="40" height="40"
+        <img src="/assets/new_logo.png" alt="" width="40" height="40"
           class="logo-img" decoding="async">
         <span class="logo-text">SiteSureLabs</span>
       </a>
@@ -112,7 +112,7 @@ export function mountDashboardNav(activeTab) {
     <aside class="drawer-panel" role="dialog" aria-label="Navigation menu">
       <div class="drawer-panel__header">
         <a href="/" class="logo-container logo-container--nav">
-          <img src="/MyHomeLogo/MyHomeLogo.png" alt="" width="40" height="40"
+          <img src="/assets/new_logo.png" alt="" width="40" height="40"
             class="logo-img" decoding="async">
           <span class="logo-text">SiteSureLabs</span>
         </a>

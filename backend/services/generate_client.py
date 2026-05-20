@@ -12,7 +12,12 @@ from typing import Any
 import httpx
 
 from config import get_settings
-from prompt import CONSTRUCTION_RELEVANCE_CLASSIFIER_PROMPT, PMO_DEFECT_INSPECTION_PROMPT
+from prompt import (
+    CONSTRUCTION_RELEVANCE_CLASSIFIER_PROMPT,
+    EXECUTIVE_DEFECT_REPORT_PROMPT,
+    PMO_DEFECT_INSPECTION_PROMPT,
+)
+from services.report_defect_extract import fields_from_parsed, parse_executive_defect_json
 
 logger = logging.getLogger(__name__)
 
@@ -286,6 +291,60 @@ async def generate_inspection_report(
             )
 
         return _extract_assistant_text(data)
+
+
+async def generate_executive_defect_report(
+    *,
+    image_bytes: bytes,
+    mime_type: str,
+    prompt: str | None = None,
+) -> tuple[str, str]:
+    """
+    Vision call for admin reports: structured JSON → validated observation/recommendation fields.
+    Retries once if JSON parse or validation yields no usable bullets.
+    """
+    instructions = prompt or EXECUTIVE_DEFECT_REPORT_PROMPT
+    last_raw = ""
+
+    for attempt in range(2):
+        attempt_prompt = instructions
+        if attempt == 1:
+            attempt_prompt = (
+                f"{instructions.strip()}\n\n"
+                "Your previous reply was invalid. Reply with ONLY one JSON object using keys "
+                "observations and recommendations. Each array item must be one complete "
+                "short sentence with no trailing conjunctions or cut-off words."
+            )
+        raw = await generate_inspection_report(
+            image_bytes=image_bytes,
+            mime_type=mime_type,
+            prompt=attempt_prompt,
+        )
+        last_raw = raw
+        parsed = parse_executive_defect_json(raw)
+        if parsed is not None:
+            obs_field, rec_field = fields_from_parsed(parsed)
+            has_obs = bool(parsed.get("observations"))
+            has_rec = bool(parsed.get("recommendations"))
+            if has_obs or has_rec or "• No defect observed" in obs_field:
+                return obs_field, rec_field
+        logger.warning(
+            "executive defect report: parse/validation failed (attempt %s): %r",
+            attempt + 1,
+            (raw or "")[:400],
+        )
+
+    logger.error(
+        "executive defect report: using fallback after failed parse; last=%r",
+        last_raw[:500],
+    )
+    fallback = parse_executive_defect_json(last_raw) if last_raw else None
+    if fallback:
+        return fields_from_parsed(fallback)
+    return (
+        "• No defect observed",
+        fields_from_parsed({"observations": [], "recommendations": []})[1],
+    )
 
 
 async def stream_inspection_report_deltas(

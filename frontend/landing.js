@@ -1,4 +1,10 @@
-import { getToken, getUser, saveAuth, clearAuth } from "/shared/auth.js";
+import {
+  getToken,
+  getUser,
+  saveAuth,
+  clearAuth,
+  clearAdminLoginSession,
+} from "/shared/auth.js";
 let _profileNavModulePromise = null;
 let _assistantModulePromise = null;
 let _formatApiDetailPromise = null;
@@ -53,13 +59,29 @@ document.addEventListener("DOMContentLoaded", () => {
   function showAlert(msg, type) {
     if (!loginAlert) return;
     loginAlert.textContent = msg;
-    loginAlert.className = `login-alert login-alert--${type}`;
+    loginAlert.className = `alert alert-${type} show`;
+  }
+
+  function applyAdminLandingLayout(user) {
+    const isAdmin = user?.role === "admin";
+    document.documentElement.classList.toggle("landing-admin", isAdmin);
+    document.body.classList.toggle("landing-page--admin", isAdmin);
+    document.documentElement.classList.toggle("landing-admin-report", isAdmin);
+    document.body.classList.toggle("landing-page--admin-report", isAdmin);
+    const dashboardCta = document.getElementById("nav-cta");
+    const reportCta = document.getElementById("hero-generate-report-cta");
+    if (dashboardCta) dashboardCta.textContent = isAdmin ? "Go to Dashboard" : "Get Started";
+    if (reportCta) {
+      reportCta.hidden = !isAdmin;
+      reportCta.setAttribute("aria-hidden", isAdmin ? "false" : "true");
+    }
   }
 
   function showLogin() {
     // Remove the pre-paint "authed" class so the overlay CSS is re-enabled
     // (critical when page is restored from bfcache after logout).
     document.documentElement.classList.remove("authed");
+    applyAdminLandingLayout(null);
     document.getElementById("ssl-assistant-root")?.remove();
     overlay?.classList.remove("is-hidden");
     if (navUserPill) {
@@ -70,6 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function showSite(user) {
+    applyAdminLandingLayout(user);
     overlay?.classList.add("is-hidden");
     if (navUserPill) {
       navUserPill.style.display = "flex";
@@ -111,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function doLogin(email, password) {
     loginSubmit.disabled = true;
     loginSubmit.textContent = "Signing in…";
-    loginAlert.className = "login-alert";
+    loginAlert.className = "alert";
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -124,6 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showAlert(formatApiDetail(data) || "Login failed", "error");
         return;
       }
+      clearAdminLoginSession();
       saveAuth(data.access_token, {
         user_id: data.user_id,
         email: data.email,
@@ -154,7 +178,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // (e.g. user logs out on a dashboard page and navigates back to "/").
   // DOMContentLoaded does NOT fire on bfcache restoration — pageshow does.
   window.addEventListener("pageshow", (e) => {
-    if (e.persisted) validateAndApply();
+    if (!e.persisted) return;
+    validateAndApply();
   });
 
   runWhenIdle(async () => {
@@ -165,16 +190,232 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   });
 
-  /* ═══ LANDING LOGIC ═══ */
+  /* ═══ LANDING LOGIC — Antigravity-style fixed layout + clip reveal ═══ */
+  const HERO_LINE1 = "AI-Powered";
+  const HERO_LINE2 = "Construction Inspection";
+  const HERO_MS_PER_CHAR = 62;
+  const HERO_LINE_PAUSE_MS = 320;
+  const HERO_AFTER_TYPE_MS = 500;
+  const HERO_MIN_LINE_MS = 460;
+  const HERO_TYPEWRITER_SEEN_KEY = "defectraHeroTypewriterSeen";
+  const HERO_INTRO_DELAY_MS = 400;
+  const HERO_CURSOR_LEAD_BLINKS = 1;
+  const HERO_CURSOR_BLINK_MS = 400;
+
+  const heroTypewriterDelay = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+  function isPageReload() {
+    const entry = performance.getEntriesByType("navigation")[0];
+    return entry?.type === "reload";
+  }
+
+  function hasSeenHeroTypewriter() {
+    try {
+      return sessionStorage.getItem(HERO_TYPEWRITER_SEEN_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function shouldSkipHeroAnimation() {
+    return hasSeenHeroTypewriter() && !isPageReload();
+  }
+
+  function markHeroTypewriterSeen() {
+    try {
+      sessionStorage.setItem(HERO_TYPEWRITER_SEEN_KEY, "1");
+    } catch {
+      /* private mode / quota */
+    }
+  }
+
+  function getHeroIntroRoot() {
+    return document.querySelector(".hero-section--landing");
+  }
+
+  function prepareHeroIntroHidden() {
+    const root = getHeroIntroRoot();
+    root?.classList.remove("is-hero-intro-ready");
+    const { reveal1, reveal2, cursor } = getHeroTypewriterEls();
+    if (reveal1) setLineReveal(reveal1, 0, null);
+    if (reveal2) setLineReveal(reveal2, 0, null);
+    cursor?.classList.add("is-off");
+    document.getElementById("hero-typewriter-live")?.classList.remove("is-typing");
+  }
+
+  async function waitForHeroIntroDelay() {
+    await heroTypewriterDelay(HERO_INTRO_DELAY_MS);
+    getHeroIntroRoot()?.classList.add("is-hero-intro-ready");
+  }
+
+  function heroEaseOutCubic(t) {
+    return 1 - (1 - t) ** 3;
+  }
+
+  function getHeroTypewriterEls() {
+    const live = document.getElementById("hero-typewriter-live");
+    const reveal1 = document.getElementById("hero-typewriter-reveal-1");
+    const reveal2 = document.getElementById("hero-typewriter-reveal-2");
+    const cursor = document.getElementById("hero-typewriter-cursor");
+    const line1 = document.getElementById("hero-typewriter-line-1");
+    const line2 = document.getElementById("hero-typewriter-line-2");
+    return { live, reveal1, reveal2, cursor, line1, line2 };
+  }
+
+  function attachHeroCursorToLine(cursorEl, lineInnerEl) {
+    if (!cursorEl || !lineInnerEl) return;
+    lineInnerEl.appendChild(cursorEl);
+    cursorEl.classList.remove("is-off");
+    cursorEl.style.left = "0%";
+  }
+
+  function waitForHeroCursorLeadBlinks(cursorEl) {
+    if (!cursorEl) return Promise.resolve();
+
+    const blinkMs = HERO_CURSOR_BLINK_MS;
+    const totalMs = HERO_CURSOR_LEAD_BLINKS * blinkMs;
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        cursorEl.classList.remove("is-lead-blink");
+        cursorEl.style.opacity = "";
+        cursorEl.removeEventListener("animationend", onAnimationEnd);
+        resolve();
+      };
+
+      const onAnimationEnd = (e) => {
+        if (e.target !== cursorEl) return;
+        finish();
+      };
+
+      cursorEl.classList.add("is-lead-blink");
+      cursorEl.style.setProperty("--hero-cursor-blink-ms", `${blinkMs}ms`);
+      cursorEl.style.setProperty("--hero-cursor-lead-blinks", String(HERO_CURSOR_LEAD_BLINKS));
+      cursorEl.addEventListener("animationend", onAnimationEnd);
+      window.setTimeout(finish, totalMs + 40);
+    });
+  }
+
+  function setLineReveal(revealEl, progress, cursorEl) {
+    const clamped = Math.max(0, Math.min(1, progress));
+    revealEl.style.setProperty("--hero-reveal", String(clamped));
+    if (cursorEl) {
+      cursorEl.style.left = `${clamped * 100}%`;
+    }
+  }
+
+  function animateLineClipReveal(revealEl, text, cursorEl) {
+    const charCount = String(text || "").length;
+    if (!charCount) return Promise.resolve();
+
+    const duration = Math.max(charCount * HERO_MS_PER_CHAR, HERO_MIN_LINE_MS);
+    return new Promise((resolve) => {
+      const start = performance.now();
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / duration);
+        setLineReveal(revealEl, heroEaseOutCubic(t), cursorEl);
+        if (t < 1) requestAnimationFrame(tick);
+        else {
+          setLineReveal(revealEl, 1, cursorEl);
+          resolve();
+        }
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function finishHeroTypewriter({ reveal1, reveal2, cursor, ctaWrap, instant = false }) {
+    setLineReveal(reveal1, 1);
+    setLineReveal(reveal2, 1);
+    cursor?.classList.add("is-off");
+    const live = document.getElementById("hero-typewriter-live");
+    live?.classList.remove("is-typing");
+    if (instant) live?.classList.add("hero-typewriter-live--complete");
+    if (ctaWrap) {
+      ctaWrap.classList.remove("hero-primary-cta--typewriter-wait");
+      ctaWrap.classList.add("hero-primary-cta--typewriter-revealed");
+      if (instant) ctaWrap.classList.add("hero-primary-cta--no-motion");
+    }
+    document.querySelector(".hero-viewport")?.classList.add("is-revealed");
+  }
+
+  function showHeroTypewriterInstant() {
+    const { reveal1, reveal2, cursor } = getHeroTypewriterEls();
+    const ctaWrap = document.getElementById("hero-primary-cta-wrap");
+    if (!reveal1 || !reveal2) return;
+    finishHeroTypewriter({ reveal1, reveal2, cursor, ctaWrap, instant: true });
+  }
+
+  async function runLandingHeroTypewriter() {
+    const { live, reveal1, reveal2, cursor, line1, line2 } = getHeroTypewriterEls();
+    const ctaWrap = document.getElementById("hero-primary-cta-wrap");
+    const line1Inner = line1?.querySelector(".hero-typewriter-line__inner");
+    if (!live || !reveal1 || !reveal2 || !cursor || !line1Inner) return;
+
+    prepareHeroIntroHidden();
+    await waitForHeroIntroDelay();
+
+    if (shouldSkipHeroAnimation()) {
+      showHeroTypewriterInstant();
+      return;
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      showHeroTypewriterInstant();
+      markHeroTypewriterSeen();
+      return;
+    }
+
+    live.classList.add("is-typing");
+    attachHeroCursorToLine(cursor, line1Inner);
+    setLineReveal(reveal1, 0, cursor);
+    setLineReveal(reveal2, 0, null);
+    cursor.classList.remove("is-off");
+    await waitForHeroCursorLeadBlinks(cursor);
+
+    await animateLineClipReveal(reveal1, HERO_LINE1, cursor);
+    await heroTypewriterDelay(HERO_LINE_PAUSE_MS);
+
+    const line2Inner = line2?.querySelector(".hero-typewriter-line__inner");
+    attachHeroCursorToLine(cursor, line2Inner);
+    await animateLineClipReveal(reveal2, HERO_LINE2, cursor);
+
+    await heroTypewriterDelay(HERO_AFTER_TYPE_MS);
+    finishHeroTypewriter({ reveal1, reveal2, cursor, ctaWrap });
+    markHeroTypewriterSeen();
+  }
+
+  void runLandingHeroTypewriter();
+
+  window.addEventListener("pageshow", (e) => {
+    if (!e.persisted || !shouldSkipHeroAnimation()) return;
+    void (async () => {
+      prepareHeroIntroHidden();
+      await waitForHeroIntroDelay();
+      showHeroTypewriterInstant();
+    })();
+  });
+
   const scrollToFeatures = () => {
     const el = document.getElementById("features");
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
-  document.querySelectorAll(".landing-cta").forEach((btn) => {
-    btn.addEventListener("click", scrollToFeatures);
+  document.getElementById("nav-cta")?.addEventListener("click", () => {
+    if (getUser()?.role === "admin") {
+      window.location.href = "/admin/";
+      return;
+    }
+    scrollToFeatures();
+  });
+  document.getElementById("hero-generate-report-cta")?.addEventListener("click", () => {
+    if (getUser()?.role !== "admin") return;
+    window.location.href = "/admin/#report";
   });
 
-  const mqNavMobile = window.matchMedia("(max-width: 760px)");
+  const mqNavMobile = window.matchMedia("(max-width: 820px)");
   const navToggle = document.getElementById("nav-toggle");
   const navLinks = document.getElementById("primary-nav");
 
@@ -280,7 +521,7 @@ document.addEventListener("DOMContentLoaded", () => {
     clearFeaturesCloseTimer();
   });
 
-  featuresDropdown?.querySelectorAll(".nav-dropdown__menu a").forEach((a) => {
+  featuresMenu?.querySelectorAll("a").forEach((a) => {
     a.addEventListener("click", () => {
       if (mqNavMobile.matches) setFeaturesDropdownOpen(false);
     });
@@ -303,7 +544,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   mqNavMobile.addEventListener("change", () => {
     clearFeaturesCloseTimer();
-    if (!mqNavMobile.matches) setNavOpen(false);
+    if (!mqNavMobile.matches) {
+      setNavOpen(false);
+      setFeaturesDropdownOpen(false);
+    }
   });
 
   // Hero scroll indicator

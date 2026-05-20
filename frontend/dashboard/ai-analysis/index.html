@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Inspection Assistant - SiteSureLabs</title>
   <meta name="description" content="Inspection Assistant — upload a site photo and ask follow-up questions about defects, safety, and remediation.">
-  <link rel="icon" type="image/png" href="/MyHomeLogo/MyHomeLogo.png">
+  <link rel="icon" type="image/png" href="/assets/new_logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../style.css">
   <link rel="stylesheet" href="../../insp-clean-chat.css">
 </head>
@@ -37,12 +38,22 @@
             <div class="cht-topbar__inner">
               <div class="cht-topbar__left">
                 <button type="button" class="cht-topbar__sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle chat history" aria-expanded="false">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <line x1="9" y1="3" x2="9" y2="21"/>
+                  </svg>
                 </button>
-                <h1 id="cht-title" class="cht-topbar__title">Inspection Assistant</h1>
+                <div class="cht-topbar__titles">
+                  <span class="cht-topbar__crumb">AI Analysis</span>
+                  <h1 id="cht-title" class="cht-topbar__title">Inspection Assistant</h1>
+                </div>
               </div>
-              <div class="cht-topbar__actions">
-                <a href="/" class="cht-btn cht-btn--back-home" id="cht-back-home-btn" aria-label="Home">← Home</a>
+              <div class="cht-topbar__trailing" id="cht-topbar-trailing">
+                <!-- <a href="/" class="dashboard-back-home dashboard-back-home--icon" id="cht-back-home-btn" aria-label="Back to home" title="Home">
+                  <svg class="dashboard-back-home__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M4 10.5 12 3.5l8 7V20a1.5 1.5 0 0 1-1.5 1.5H16A1.5 1.5 0 0 1 14.5 20v-5.25a1 1 0 0 0-1-1h-3a1 1 0 0 0-1 1V20A1.5 1.5 0 0 1 8 21.5H5.5A1.5 1.5 0 0 1 4 20v-9.5Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/>
+                  </svg>
+                </a> -->
               </div>
             </div>
           </header>
@@ -135,7 +146,7 @@
                     </svg>
                   </button>
                   <div class="cht-composer__main">
-                    <textarea id="gem-input" class="cht-composer__input" rows="1" placeholder="Ask about defects, safety, or next steps…"></textarea>
+                    <textarea id="gem-input" class="cht-composer__input" rows="1" placeholder="Ask your question..."></textarea>
                   </div>
                   <button type="button" class="cht-composer__mic" id="gem-mic-btn" aria-label="Voice input">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -154,7 +165,6 @@
               </div>
               <p class="cht-dock__disclaimer">AI may display inaccurate info. Verify important information.</p>
             </div>
-            <button type="button" class="cht-composer__pdf cht-composer__pdf--outside" id="gem-download-btn" disabled aria-label="Save PDF">Save PDF</button>
           </div>
         </div>
       </section>

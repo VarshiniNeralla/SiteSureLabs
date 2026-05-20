@@ -1,4 +1,7 @@
+@import url("https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Tangerine:wght@400;700&display=swap");
+
 :root {
+  --font-brand: "Tangerine", cursive;
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --primary-active: #1e40af;
@@ -17,6 +20,15 @@
   --radius: 10px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
+  /* Auth pages — register, login overlay, admin sign-in */
+  --font-auth: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --auth-size-label: 0.875rem;
+  --auth-size-input: 0.9375rem;
+  --auth-size-btn: 0.9375rem;
+  --auth-size-caption: 0.875rem;
+  --auth-size-alert: 0.875rem;
+  --auth-size-footer: 0.875rem;
+  --auth-size-field-error: 0.8125rem;
 }
 
 *,
@@ -47,29 +59,96 @@ body {
 .auth-card {
   background: var(--card);
   padding: 2.5rem;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
+  border-radius: 14px;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.1), 0 2px 8px rgba(15, 23, 42, 0.06);
   width: 100%;
   max-width: 420px;
+  text-align: center;
+  font-family: var(--font-auth);
+}
+
+.auth-card label,
+.auth-card input,
+.auth-card button,
+.auth-card p,
+.auth-card a,
+.auth-card span:not(.logo-text) {
+  font-family: var(--font-auth);
+}
+
+.auth-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+  text-align: center;
+}
+
+.brand-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0 0 0.15rem;
+}
+
+.brand-logo img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .auth-card .logo {
-  font-size: 1.75rem;
+  font-family: var(--font-brand);
+  font-size: clamp(1.75rem, 4vw, 2.1rem);
   font-weight: 700;
-  color: var(--primary);
+  font-style: normal;
+  color: #0f172a;
+  letter-spacing: 0;
+  line-height: 1;
   text-align: center;
   margin-bottom: 0.5rem;
 }
 
-.auth-card .subtitle {
+/* SiteSureLabs wordmark below logo on auth cards — Tangerine (Google Fonts) */
+.logo-text,
+.login-brand,
+.brand-title,
+.auth-card .logo,
+.auth-card--register .brand-logo .logo-text,
+.admin-nav__logo-text {
+  font-family: var(--font-brand) !important;
+  font-weight: 700 !important;
+  font-style: normal;
+  letter-spacing: 0;
+  color: #0f172a;
+}
+
+.logo-text,
+.admin-nav__logo-text {
+  font-size: clamp(1.35rem, 2.5vw, 1.65rem);
+  line-height: 1;
+}
+
+.login-brand,
+.brand-title,
+.auth-card .brand-logo .logo-text {
+  font-size: clamp(1.75rem, 4vw, 2.1rem);
+  line-height: 1;
+}
+
+.auth-card .subtitle,
+.auth-card .brand-subtitle {
   text-align: center;
   color: var(--text-muted);
-  font-size: 0.875rem;
-  line-height: 1.55;
-  margin-bottom: 2rem;
-  max-width: 280px;
-  margin-left: auto;
-  margin-right: auto;
+  font-size: var(--auth-size-caption);
+  font-weight: 500;
+  line-height: 1.45;
+  margin: 0 auto 1.5rem;
+  max-width: 300px;
 }
 
 /* ---------- FORMS ---------- */
@@ -79,7 +158,7 @@ body {
 
 .form-group label {
   display: block;
-  font-size: 0.875rem;
+  font-size: var(--auth-size-label);
   font-weight: 500;
   margin-bottom: 0.35rem;
   color: var(--text);
@@ -88,10 +167,10 @@ body {
 .form-group input,
 .form-group select {
   width: 100%;
-  padding: 0.75rem 0.9rem;
+  padding: 0.65rem 0.85rem;
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 0.95rem;
+  font-size: var(--auth-size-input);
   color: var(--text);
   background: #fff;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -162,7 +241,7 @@ body {
   min-height: 44px;
   border: none;
   border-radius: 6px;
-  font-size: 0.95rem;
+  font-size: var(--auth-size-btn);
   font-weight: 500;
   cursor: pointer;
   transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.1s ease, opacity 0.2s ease;
@@ -219,11 +298,13 @@ body {
 
 /* ---------- ALERTS ---------- */
 .alert {
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
+  font-size: var(--auth-size-alert);
+  line-height: 1.45;
   margin-bottom: 1rem;
   display: none;
+  text-align: left;
 }
 
 .alert.show {
@@ -246,14 +327,34 @@ body {
 .auth-link {
   text-align: center;
   margin-top: 1.25rem;
-  font-size: 0.9rem;
+  font-size: var(--auth-size-footer);
+  line-height: 1.45;
   color: var(--text-muted);
 }
 
 .auth-link a {
   color: var(--primary);
   text-decoration: none;
+  font-weight: 600;
+  font-size: inherit;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  color: var(--text-muted);
+  font-size: var(--auth-size-caption);
   font-weight: 500;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
 
 .auth-link a:hover {
@@ -549,9 +650,15 @@ tr:hover td {
   display: none;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.78rem;
+  font-size: var(--auth-size-field-error);
+  line-height: 1.35;
   color: var(--danger);
   margin-top: 0.3rem;
+  text-align: left;
+}
+
+.auth-card .form-group {
+  text-align: left;
 }
 
 .field-error.visible {
@@ -571,7 +678,16 @@ tr:hover td {
 
 /* ---------- AUTH SPACING ---------- */
 .auth-card .btn-full {
-  margin-top: 1.75rem;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.auth-card form .btn-full:last-of-type {
+  margin-top: 0.25rem;
+}
+
+.auth-card--register .register-nav .btn {
+  margin-top: 0;
 }
 
 /* ---------- LIGHTBOX ---------- */

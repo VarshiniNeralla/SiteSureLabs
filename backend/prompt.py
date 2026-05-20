@@ -28,6 +28,35 @@ Set "relevant" to **true** when any meaningful construction, building exterior/i
 If genuinely ambiguous, choose **true** so real site photos are not blocked."""
 
 
+# Admin Excel/PPTX reports: compact JSON only (no markdown essay).
+EXECUTIVE_DEFECT_REPORT_PROMPT = """You are a construction defect extraction engine for executive site walkthrough reports.
+
+Analyze the site photo and reply with **only** one JSON object. No markdown, no prose outside JSON, no code fences.
+
+Required shape (exact keys):
+{"observations":["..."],"recommendations":["..."]}
+
+## observations (visible defects only)
+- Array of 0 to 4 strings.
+- Each string is **one short sentence** describing a **visible** defect or issue (what you see, not why).
+- Mention location in the frame or element when helpful (e.g. "Crack along slab edge near balcony").
+- Do **not** include causes, significance, risk narrative, Evidence/Where/Significance sub-bullets, or scope disclaimers.
+- Do **not** invent defects. Use [] only if the scene is clearly defect-free.
+- Every string must be a **complete** sentence or phrase (no trailing "and", "due to", "because", or cut-off words).
+
+## recommendations (actions only)
+- Array of 1 to 4 strings.
+- Each string is **one short, action-oriented** imperative (e.g. "Remove loose concrete and clean rebar").
+- No long paragraphs. Avoid labels like "Immediate:" or "Verification:" unless safety-critical.
+- Match recommendations to visible issues; add generic verify/re-inspect only when needed.
+- Every string must be **complete** (no mid-sentence cut-off).
+
+## Rules
+- Never output markdown headings or bullet lists outside JSON.
+- Never output null; use empty arrays only for observations when appropriate.
+- Ground every item in visible evidence from the photo."""
+
+
 PMO_DEFECT_INSPECTION_PROMPT = """
 You are a professional construction inspection AI.
 
@@ -327,6 +356,21 @@ def vision_prompt_with_site_context(
         parts.append("(No additional context provided)")
 
     return "\n".join(parts)
+
+
+def build_executive_defect_report_prompt(
+    *,
+    description: str,
+    location: str,
+    issue_type: str,
+) -> str:
+    """Vision prompt for admin report analyze-item (structured JSON output)."""
+    return vision_prompt_with_site_context(
+        base_prompt=EXECUTIVE_DEFECT_REPORT_PROMPT,
+        description=description,
+        location=location,
+        issue_type=issue_type,
+    )
 
 
 # --------------------------------------------------

@@ -49,6 +49,7 @@ async def _store_defect_upload(
     *,
     user: User,
     image: UploadFile,
+    project: str,
     tower: str,
     floor: str,
     flat: str,
@@ -56,7 +57,7 @@ async def _store_defect_upload(
     category: str,
     description: str,
 ) -> dict[str, str]:
-    if not tower.strip() or not floor.strip() or not flat.strip() or not room.strip():
+    if not project.strip() or not tower.strip() or not floor.strip() or not flat.strip() or not room.strip():
         raise HTTPException(status_code=400, detail="All metadata fields are required")
 
     if not image.content_type or not image.content_type.startswith("image/"):
@@ -90,6 +91,7 @@ async def _store_defect_upload(
     defect = Defect(
         user_id=user_id,
         image_path=relative_path,
+        project=project.strip(),
         tower=tower.strip(),
         floor=floor.strip(),
         flat=flat.strip(),
@@ -113,6 +115,7 @@ async def _store_defect_upload(
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_defect(
+    project: str = Form(...),
     tower: str = Form(...),
     floor: str = Form(...),
     flat: str = Form(...),
@@ -125,6 +128,7 @@ async def upload_defect(
     return await _store_defect_upload(
         user=user,
         image=image,
+        project=project,
         tower=tower,
         floor=floor,
         flat=flat,
@@ -165,6 +169,7 @@ async def upload_defects_batch(
             saved = await _store_defect_upload(
                 user=user,
                 image=image,
+                project=str(item.get("project", "")),
                 tower=str(item.get("tower", "")),
                 floor=str(item.get("floor", "")),
                 flat=str(item.get("flat", "")),
@@ -195,6 +200,7 @@ async def my_defects(user: User = Depends(get_current_user)):
         {
             "id": str(d.id),
             "image_path": d.image_path,
+            "project": getattr(d, "project", "") or "",
             "tower": d.tower,
             "floor": d.floor,
             "flat": d.flat,
