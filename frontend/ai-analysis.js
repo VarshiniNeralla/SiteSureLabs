@@ -295,6 +295,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const scrollWrap = document.getElementById("gem-messages-wrap");
   const jumpBtn = document.getElementById("gem-jump-btn");
 
+  const setJumpToLatestVisible = (visible) => {
+    if (!jumpBtn) return;
+    jumpBtn.classList.toggle("is-visible", visible);
+    jumpBtn.setAttribute("aria-hidden", visible ? "false" : "true");
+  };
+
   const getScrollWrap = () => scrollWrap || document.getElementById("gem-messages-wrap");
 
   const distanceFromBottom = (wrap) => {
@@ -320,16 +326,9 @@ document.addEventListener("DOMContentLoaded", () => {
         // If the user scrolls up manually (leaving the bottom), stop auto-scrolling
         autoScrollEnabled = nearBottom;
         
-        // Show the jump button if we are NOT near bottom AND there's scrollable area
-        if (jumpBtn) {
-          if (!nearBottom && scrollWrap.scrollHeight > scrollWrap.clientHeight) {
-            jumpBtn.classList.remove("hidden");
-            jumpBtn.removeAttribute("hidden");
-          } else {
-            jumpBtn.classList.add("hidden");
-            jumpBtn.setAttribute("hidden", "");
-          }
-        }
+        const showJump =
+          !nearBottom && scrollWrap.scrollHeight > scrollWrap.clientHeight + 8;
+        setJumpToLatestVisible(showJump);
       },
       { passive: true }
     );
@@ -339,8 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
     jumpBtn.addEventListener("click", () => {
       autoScrollEnabled = true;
       scrollDown(true);
-      jumpBtn.classList.add("hidden");
-      jumpBtn.setAttribute("hidden", "");
+      setJumpToLatestVisible(false);
     });
   }
 
@@ -373,11 +371,8 @@ document.addEventListener("DOMContentLoaded", () => {
     autoScrollEnabled = true;
     programmaticScroll = true;
     
-    if (jumpBtn) {
-      jumpBtn.classList.add("hidden");
-      jumpBtn.setAttribute("hidden", "");
-    }
-    
+    setJumpToLatestVisible(false);
+
     requestAnimationFrame(() => {
       wrap.scrollTo({ top: wrap.scrollHeight, behavior: force ? 'smooth' : 'auto' });
       setTimeout(() => {

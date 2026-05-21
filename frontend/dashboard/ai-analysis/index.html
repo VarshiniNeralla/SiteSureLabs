@@ -125,10 +125,15 @@
           </div>
 
           <div class="cht-dock">
-            <button type="button" class="cht-jump-btn hidden" id="gem-jump-btn" aria-label="Jump to latest" hidden>
-              ↓ Jump to latest
-            </button>
             <div class="cht-dock-inner">
+              <div class="cht-jump-slot">
+                <button type="button" class="cht-jump-btn" id="gem-jump-btn" aria-label="Jump to latest" aria-hidden="true">
+                  <svg class="cht-jump-btn__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 5v14M6 13l6 6 6-6"/>
+                  </svg>
+                  <span class="cht-jump-btn__label">Latest</span>
+                </button>
+              </div>
               <div class="cht-composer__pending hidden" id="gem-pending" hidden>
                 <div class="cht-composer__pending-chip">
                   <img id="gem-pending-img" alt="Attached photo" width="48" height="48">
@@ -160,7 +165,7 @@
                   </button>
                 </div>
               </div>
-              <p class="cht-dock__disclaimer">AI may display inaccurate info. Verify important information.</p>
+              <!-- <p class="cht-dock__disclaimer">AI may display inaccurate info. Verify important information.</p> -->
             </div>
           </div>
         </div>

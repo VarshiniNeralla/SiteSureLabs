@@ -1249,34 +1249,88 @@ body.page--ai-chat.cht-ai-chat--unified-nav #navbar {
   padding: 0 20px;
   box-sizing: border-box;
 }
+/* Jump-to-latest: docked above composer, right-aligned — never overlays the message stream */
+.cht-jump-slot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  min-height: 0;
+  padding: 0 0 6px;
+  pointer-events: none;
+}
+
 .cht-jump-btn {
-  position: absolute;
-  top: -48px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px 5px 8px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 9999px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #374151;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.2s ease, background 0.15s ease, color 0.15s ease;
-  z-index: 100;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #475569;
   font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 4px 14px rgba(15, 23, 42, 0.08);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition:
+    opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.22s,
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.cht-jump-btn.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.cht-jump-btn__icon {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.cht-jump-btn__label {
+  white-space: nowrap;
 }
 
 .cht-jump-btn:hover {
-  background: #f9fafb;
-  color: #111827;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1e293b;
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.08),
+    0 6px 18px rgba(15, 23, 42, 0.1);
 }
 
-.cht-jump-btn.hidden {
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, 10px);
+.cht-jump-btn:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.45);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cht-jump-btn {
+    transition: opacity 0.15s ease, visibility 0.15s, background 0.15s ease, color 0.15s ease;
+    transform: none;
+  }
+  .cht-jump-btn.is-visible {
+    transform: none;
+  }
 }
 
 
