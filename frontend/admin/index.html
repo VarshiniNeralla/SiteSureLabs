@@ -8263,7 +8263,7 @@
       }
       if (reportExcelViewerMeta) reportExcelViewerMeta.textContent = report.fileName || "Generated workbook";
       if (reportExcelViewerBody) {
-        const headers = ["S.No", "Image", "Category", "Date", "Tower", "Floor", "Flat", "Room", "Observation", "Recommendation"];
+        const headers = ["S.No", "Image", "Category", "Date", "Severity", "Tower", "Floor", "Flat", "Room", "Observation", "Recommendation"];
         reportExcelViewerBody.innerHTML = `
           <table class="report-excel-table">
             <thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>
@@ -8276,6 +8276,7 @@
                   <td>${imgSrc ? `<img class="report-excel-thumb" src="${escapeHtml(imgSrc)}" alt="Report image ${idx + 1}" loading="lazy">` : ""}</td>
                   <td>${escapeHtml(row.category || "Others")}</td>
                   <td>${escapeHtml(row.reporting_date || "")}</td>
+                  <td>${escapeHtml(row.severity || "MEDIUM")}</td>
                   <td>${escapeHtml(row.tower || "")}</td>
                   <td>${escapeHtml(row.floor || "")}</td>
                   <td>${escapeHtml(row.flat || "")}</td>
@@ -8491,6 +8492,7 @@
             defect_id: item.id,
             observation: aiRow.observation || "",
             recommendation: aiRow.recommendation || "",
+            severity: aiRow.severity || "MEDIUM",
           });
         }
 

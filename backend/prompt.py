@@ -103,18 +103,12 @@ Classify severity strictly as:
 Severity must be based ONLY on visible evidence from the image.
 
 ## Rules
-
 * Never output markdown or extra text outside JSON.
-
 * Never output null values.
-
 * Use empty arrays only when no visible defect exists.
-
 * If the image is unrelated to construction/site inspection, return:
   {"observations":[],"recommendations":["Upload a valid construction/site inspection image."],"severity":"LOW"}
-
-* Ensure outputs are concise, technically accurate, professional, and glance-readable for executive walkthrough reports.
-  """
+* Ensure outputs are concise, technically accurate, professional, and glance-readable for executive walkthrough reports. """
 
 
 PMO_DEFECT_INSPECTION_PROMPT = """

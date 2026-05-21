@@ -43,7 +43,11 @@ from services.generate_client import (
     classify_construction_site_image,
     generate_executive_defect_report,
 )
-from services.report_defect_extract import estimate_wrapped_line_count, invalid_image_fields
+from services.report_defect_extract import (
+    estimate_wrapped_line_count,
+    invalid_image_fields,
+    normalize_severity,
+)
 from utils.deps import require_admin
 from utils.security import hash_password
 
@@ -71,6 +75,7 @@ class ReportXlsxEntry(BaseModel):
     defect_id: str
     observation: str = ""
     recommendation: str = ""
+    severity: str = "MEDIUM"
 
 
 class ReportGenerateXlsxBody(BaseModel):
@@ -273,41 +278,48 @@ def _pptx_value_wrap_chars(card_w_in: float, label_col_w_in: float) -> int:
     return max(28, int(value_w * 15))
 
 
+def _pptx_severity_display(row: dict) -> str:
+    return normalize_severity(row.get("severity"))
+
+
 def _pptx_row_heights_for_card(
     row: dict,
     *,
     value_chars: int,
     meta_h: float = 0.27,
     line_h: float = 0.135,
-) -> tuple[float, float, float, float, float, str, str]:
-    """Return meta/obs/rec row heights (inches) and display strings."""
+) -> tuple[float, float, float, float, float, float, str, str]:
+    """Return row heights (inches) and observation/recommendation display strings."""
     loc = _report_card_location(row) or "To be confirmed"
     category = str(row.get("category") or "").strip() or "To be confirmed"
     reporting_date = _pptx_format_reporting_date(str(row.get("reporting_date") or ""))
+    severity_label = _pptx_severity_display(row)
     obs_field = _pptx_bullet_display(row.get("observation") or "")
     rec_field = _pptx_bullet_display(row.get("recommendation") or "")
 
     loc_h = max(meta_h, 0.2 + estimate_wrapped_line_count(loc, chars_per_line=value_chars) * line_h)
     cat_h = max(meta_h, 0.2 + estimate_wrapped_line_count(category, chars_per_line=value_chars) * line_h)
     date_h = max(meta_h, 0.2 + estimate_wrapped_line_count(reporting_date, chars_per_line=value_chars) * line_h)
+    sev_h = max(meta_h, 0.2 + estimate_wrapped_line_count(severity_label, chars_per_line=value_chars) * line_h)
     obs_h = max(0.32, 0.2 + estimate_wrapped_line_count(obs_field, chars_per_line=value_chars) * line_h)
     rec_h = max(0.32, 0.2 + estimate_wrapped_line_count(rec_field, chars_per_line=value_chars) * line_h)
 
-    return loc_h, cat_h, date_h, obs_h, rec_h, obs_field, rec_field
+    return loc_h, cat_h, date_h, sev_h, obs_h, rec_h, obs_field, rec_field
 
 
 def _pptx_slide_table_budget_in() -> float:
     """Max table stack height (inches) before footer on 7.5\" slide."""
-    return 2.95
+    return 3.15
 
 
 # Excel report image column — embedded previews (pixels at 96 DPI).
-_EXCEL_IMAGE_MAX_W_PX = 400
-_EXCEL_IMAGE_MAX_H_PX = 300
-_EXCEL_IMAGE_CELL_PAD_PX = 10
-_EXCEL_IMAGE_COL_MIN_WIDTH = 58.0
+_EXCEL_IMAGE_MAX_W_PX = 360
+_EXCEL_IMAGE_MAX_H_PX = 270
+_EXCEL_IMAGE_CELL_PAD_PX = 12
+_EXCEL_IMAGE_COL_MIN_WIDTH = 48.0
 _EXCEL_IMAGE_JPEG_QUALITY = 92
 _EXCEL_ROW_HEIGHT_FACTOR = 0.75  # user-facing row height vs raw content box
+_EXCEL_SEVERITY_FONT = Font(color="000000", bold=True)
 
 
 def _excel_pixels_to_points(px: float) -> float:
@@ -328,15 +340,18 @@ def _excel_column_width_for_pixels(px: int) -> float:
     return round(max(_EXCEL_IMAGE_COL_MIN_WIDTH, (int(px) + 14) / 7.0), 2)
 
 
-def _excel_row_height_for_content(*, image_h_px: float, text_height_pt: float) -> float:
-    """Row height: text may use 0.75 factor; image rows must fit the full thumbnail height."""
+def _excel_row_height_for_content(
+    *,
+    image_display_h_px: float = 0,
+    text_height_pt: float = 0,
+) -> float:
+    """Row height from wrapped text and fitted image display size (contain in Image column)."""
     pad_pt = _excel_pixels_to_points(_EXCEL_IMAGE_CELL_PAD_PX * 2)
     text_row_pt = max(24.0, text_height_pt) * _EXCEL_ROW_HEIGHT_FACTOR
-    if image_h_px <= 0:
+    if image_display_h_px <= 0:
         return max(20.0, text_row_pt)
-    image_block_pt = _excel_pixels_to_points(image_h_px) + pad_pt
-    # +2pt avoids sub-pixel rounding letting drawings bleed into the next row.
-    return max(20.0, text_row_pt, image_block_pt) + 2.0
+    image_block_pt = _excel_pixels_to_points(image_display_h_px) + pad_pt
+    return max(20.0, text_row_pt, image_block_pt) + 3.0
 
 
 def _excel_fit_image_in_cell_bounds(
@@ -401,7 +416,7 @@ def _excel_center_offsets(
 
 
 def _excel_prepare_row_images(rows: list[dict]) -> tuple[list[tuple[int, int, BytesIO | None]], int]:
-    """Pre-render embed-sized JPEGs and display dimensions for column H."""
+    """Pre-render embed-sized JPEGs for the Image column (I)."""
     plans: list[tuple[int, int, BytesIO | None]] = []
     max_embed_w_px = 0
     for row in rows:
@@ -419,7 +434,7 @@ def _excel_prepare_row_images(rows: list[dict]) -> tuple[list[tuple[int, int, By
     return plans, max_embed_w_px
 
 
-def _excel_finalize_image_column(ws, *, col: int = 8, first_row: int = 2) -> None:
+def _excel_finalize_image_column(ws, *, col: int = 9, first_row: int = 2) -> None:
     """Ensure Image column cells have no value or hyperlink metadata."""
     col_letter = get_column_letter(col)
     for row_idx in range(first_row, (ws.max_row or first_row) + 1):
@@ -435,14 +450,18 @@ def _excel_finalize_image_column(ws, *, col: int = 8, first_row: int = 2) -> Non
         ]
 
 
-def _scrub_excel_column_h_hyperlinks_zip(xlsx_buf: BytesIO) -> BytesIO:
+def _scrub_excel_column_h_hyperlinks_zip(xlsx_buf: BytesIO, *, col_letter: str = "I") -> BytesIO:
     """
-    Remove column-H hyperlinks and path-like cell values from worksheet XML.
+    Remove image-column hyperlinks and path-like cell values from worksheet XML.
     Excel shows hyperlink targets as visible text even when the cell looks empty.
     """
-    hyperlink_re = re.compile(rb'<hyperlink\b[^>]*\bref="H\d+"[^>]*/>', re.IGNORECASE)
+    col = col_letter.upper()
+    hyperlink_re = re.compile(
+        rf'<hyperlink\b[^>]*\bref="{col}\d+"[^>]*/>'.encode(),
+        re.IGNORECASE,
+    )
     h_cell_value_re = re.compile(
-        rb'(<c r="H\d+"[^>]*>(?:(?!</c>).)*?<v>)([^<]*)(</v>)',
+        rf'(<c r="{col}\d+"[^>]*>(?:(?!</c>).)*?<v>)([^<]*)(</v>)'.encode(),
         re.IGNORECASE | re.DOTALL,
     )
 
@@ -479,11 +498,11 @@ def _excel_embed_image_in_cell(
     xl_img: XLImage,
     *,
     row: int,
-    col: int = 8,
+    col: int = 9,
     col_off_px: int = _EXCEL_IMAGE_CELL_PAD_PX,
     row_off_px: int = _EXCEL_IMAGE_CELL_PAD_PX,
 ) -> None:
-    """Anchor image inside the cell; offsets center it within the row/column box."""
+    """Anchor image inside the Image column cell; offsets center it in the cell box."""
     xl_img.anchor = OneCellAnchor(
         _from=AnchorMarker(
             col=col - 1,
@@ -610,11 +629,14 @@ def _apply_pptx_table_outside_borders(table, *, rows: int, cols: int = 2) -> Non
             )
 
 
-def _pptx_set_run_font(run, *, label: bool) -> None:
+def _pptx_set_run_font(run, *, label: bool, value_color: RGBColor | None = None) -> None:
     run.font.name = _PPTX_TABLE_FONT
     run.font.size = Pt(_PPTX_TABLE_FONT_PT)
     run.font.bold = False
-    run.font.color.rgb = _PPTX_LABEL_TEXT if label else _PPTX_VALUE_TEXT
+    if label:
+        run.font.color.rgb = _PPTX_LABEL_TEXT
+    else:
+        run.font.color.rgb = value_color or _PPTX_VALUE_TEXT
 
 
 def _set_pptx_cell(
@@ -623,6 +645,7 @@ def _set_pptx_cell(
     *,
     label: bool = False,
     multiline: bool = False,
+    value_color: RGBColor | None = None,
 ) -> None:
     _apply_pptx_cell_surface(cell, label=label)
     cell.vertical_anchor = MSO_ANCHOR.TOP
@@ -645,7 +668,7 @@ def _set_pptx_cell(
         p.line_spacing = 1.0
         run = p.add_run()
         run.text = line
-        _pptx_set_run_font(run, label=label)
+        _pptx_set_run_font(run, label=label, value_color=None if label else value_color)
 
 
 def _add_pptx_observation_badge(slide, left, top, number: int) -> None:
@@ -732,10 +755,10 @@ def _build_report_presentation(*, rows: list[dict]) -> BytesIO:
         card_plans: list[dict] = []
         max_table_h_in = 0.0
         for row in chunk:
-            loc_h, cat_h, date_h, obs_h, rec_h, obs_field, rec_field = _pptx_row_heights_for_card(
+            loc_h, cat_h, date_h, sev_h, obs_h, rec_h, obs_field, rec_field = _pptx_row_heights_for_card(
                 row, value_chars=value_chars
             )
-            total_h = loc_h + cat_h + date_h + obs_h + rec_h
+            total_h = loc_h + cat_h + date_h + sev_h + obs_h + rec_h
             max_table_h_in = max(max_table_h_in, total_h)
             card_plans.append(
                 {
@@ -743,6 +766,7 @@ def _build_report_presentation(*, rows: list[dict]) -> BytesIO:
                     "loc_h": loc_h,
                     "cat_h": cat_h,
                     "date_h": date_h,
+                    "sev_h": sev_h,
                     "obs_h": obs_h,
                     "rec_h": rec_h,
                     "obs_field": obs_field,
@@ -809,34 +833,38 @@ def _build_report_presentation(*, rows: list[dict]) -> BytesIO:
             loc = _report_card_location(row) or "To be confirmed"
             category = str(row.get("category") or "").strip() or "To be confirmed"
             reporting_date = _pptx_format_reporting_date(str(row.get("reporting_date") or ""))
+            severity_label = _pptx_severity_display(row)
             table_rows = [
-                ("Location", loc),
-                ("Category", category),
-                ("Reporting date", reporting_date),
-                ("Observation", plan["obs_field"]),
-                ("Recommendation", plan["rec_field"]),
+                ("Location", loc, None),
+                ("Category", category, None),
+                ("Reporting date", reporting_date, None),
+                ("Severity", severity_label, None),
+                ("Observation", plan["obs_field"], None),
+                ("Recommendation", plan["rec_field"], None),
             ]
             row_heights = (
                 plan["loc_h"],
                 plan["cat_h"],
                 plan["date_h"],
+                plan["sev_h"],
                 plan["obs_h"],
                 plan["rec_h"],
             )
             table_shape = slide.shapes.add_table(
-                5, 2, left, table_top, card_w, Inches(plan["total_h"])
+                6, 2, left, table_top, card_w, Inches(plan["total_h"])
             )
             table = table_shape.table
             table.columns[0].width = label_col_w
             table.columns[1].width = card_w - label_col_w
-            for row_idx, (label, value) in enumerate(table_rows):
+            for row_idx, (label, value, value_color) in enumerate(table_rows):
                 table.rows[row_idx].height = Inches(row_heights[row_idx])
                 _set_pptx_cell(table.cell(row_idx, 0), label, label=True)
-                is_bullets = row_idx >= 3
+                is_bullets = row_idx >= 4
                 _set_pptx_cell(
                     table.cell(row_idx, 1),
                     str(value),
                     multiline=is_bullets or "\n" in str(value),
+                    value_color=value_color,
                 )
             _apply_pptx_table_outside_borders(table, rows=len(table_rows))
 
@@ -866,6 +894,7 @@ def _build_report_workbook(
         "S.No",
         "Category",
         "Reporting Date",
+        "Severity",
         "Tower",
         "Floor",
         "Flat",
@@ -894,21 +923,23 @@ def _build_report_workbook(
     ws.column_dimensions["A"].width = 8
     ws.column_dimensions["B"].width = 16
     ws.column_dimensions["C"].width = 18
-    ws.column_dimensions["D"].width = 14
-    ws.column_dimensions["E"].width = 10
+    ws.column_dimensions["D"].width = 12
+    ws.column_dimensions["E"].width = 14
     ws.column_dimensions["F"].width = 10
-    ws.column_dimensions["G"].width = 16
-    ws.column_dimensions["I"].width = 60
+    ws.column_dimensions["G"].width = 10
+    ws.column_dimensions["H"].width = 16
     ws.column_dimensions["J"].width = 60
+    ws.column_dimensions["K"].width = 60
 
-    image_col_idx = 8
+    image_col_idx = 9
+    image_col_letter = get_column_letter(image_col_idx)
     image_plans, max_embed_w_px = _excel_prepare_row_images(rows)
-    col_w_chars = _excel_column_width_for_pixels(
-        (max_embed_w_px + (_EXCEL_IMAGE_CELL_PAD_PX * 2))
-        if max_embed_w_px
-        else (_EXCEL_IMAGE_MAX_W_PX + (_EXCEL_IMAGE_CELL_PAD_PX * 2)),
+    target_img_w_px = min(
+        max(max_embed_w_px, _EXCEL_IMAGE_MAX_W_PX // 2),
+        _EXCEL_IMAGE_MAX_W_PX,
     )
-    ws.column_dimensions["H"].width = col_w_chars
+    col_w_chars = _excel_column_width_for_pixels(target_img_w_px + (_EXCEL_IMAGE_CELL_PAD_PX * 2))
+    ws.column_dimensions[image_col_letter].width = col_w_chars
     col_w_px = _excel_col_chars_to_pixels(col_w_chars)
 
     current_row = 2
@@ -916,10 +947,13 @@ def _build_report_workbook(
         ws.cell(row=current_row, column=1, value=idx)
         ws.cell(row=current_row, column=2, value=row.get("category") or "Others")
         ws.cell(row=current_row, column=3, value=row.get("reporting_date") or "")
-        ws.cell(row=current_row, column=4, value=row.get("tower") or "")
-        ws.cell(row=current_row, column=5, value=row.get("floor") or "")
-        ws.cell(row=current_row, column=6, value=row.get("flat") or "")
-        ws.cell(row=current_row, column=7, value=row.get("room") or "")
+        sev_level = normalize_severity(row.get("severity"))
+        sev_cell = ws.cell(row=current_row, column=4, value=sev_level)
+        sev_cell.font = _EXCEL_SEVERITY_FONT
+        ws.cell(row=current_row, column=5, value=row.get("tower") or "")
+        ws.cell(row=current_row, column=6, value=row.get("floor") or "")
+        ws.cell(row=current_row, column=7, value=row.get("flat") or "")
+        ws.cell(row=current_row, column=8, value=row.get("room") or "")
 
         image_path = str(row.get("image_path") or "")
         img_cell = ws.cell(row=current_row, column=image_col_idx, value=None)
@@ -935,39 +969,55 @@ def _build_report_workbook(
 
         obs_value = str(row.get("observation") or "").strip()
         rec_value = str(row.get("recommendation") or "").strip()
-        ws.cell(row=current_row, column=9, value=obs_value)
-        ws.cell(row=current_row, column=10, value=rec_value)
+        ws.cell(row=current_row, column=10, value=obs_value)
+        ws.cell(row=current_row, column=11, value=rec_value)
 
-        for col_idx in (1, 2, 3, 4, 5, 6, 7):
+        for col_idx in (1, 2, 3, 4, 5, 6, 7, 8):
             c = ws.cell(row=current_row, column=col_idx)
             c.alignment = Alignment(horizontal="center", vertical="center")
             c.border = border
             if idx % 2 == 0:
                 c.fill = alt_fill
-        ws.cell(row=current_row, column=9).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
         ws.cell(row=current_row, column=10).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-        ws.cell(row=current_row, column=8).border = border
-        ws.cell(row=current_row, column=9).border = border
+        ws.cell(row=current_row, column=11).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+        ws.cell(row=current_row, column=image_col_idx).border = border
         ws.cell(row=current_row, column=10).border = border
+        ws.cell(row=current_row, column=11).border = border
         if idx % 2 == 0:
-            ws.cell(row=current_row, column=9).fill = alt_fill
             ws.cell(row=current_row, column=10).fill = alt_fill
+            ws.cell(row=current_row, column=11).fill = alt_fill
 
-        obs_text = str(ws.cell(row=current_row, column=9).value or "")
-        rec_text = str(ws.cell(row=current_row, column=10).value or "")
+        obs_text = str(ws.cell(row=current_row, column=10).value or "")
+        rec_text = str(ws.cell(row=current_row, column=11).value or "")
         text_lines = max(
             estimate_wrapped_line_count(obs_text, chars_per_line=55),
             estimate_wrapped_line_count(rec_text, chars_per_line=55),
         )
         text_height_pt = 12 + (text_lines * 15)
         embed_w_px, embed_h_px, thumb_io = image_plans[idx - 1]
+
+        display_w = display_h = col_off_px = row_off_px = 0
+        if thumb_io is not None and embed_w_px > 0 and embed_h_px > 0:
+            est_row_h_px = _excel_row_points_to_pixels(
+                _excel_row_height_for_content(
+                    image_display_h_px=embed_h_px,
+                    text_height_pt=text_height_pt,
+                )
+            )
+            display_w, display_h, col_off_px, row_off_px = _excel_fit_image_in_cell_bounds(
+                embed_w_px,
+                embed_h_px,
+                col_w_px,
+                est_row_h_px,
+            )
+
         row_height_pt = _excel_row_height_for_content(
-            image_h_px=embed_h_px,
+            image_display_h_px=display_h,
             text_height_pt=text_height_pt,
         )
         ws.row_dimensions[current_row].height = row_height_pt
 
-        if thumb_io is not None and embed_w_px > 0 and embed_h_px > 0:
+        if thumb_io is not None and display_w > 0 and display_h > 0:
             try:
                 thumb_io.seek(0)
                 xl_img = XLImage(thumb_io)
@@ -1000,7 +1050,7 @@ def _build_report_workbook(
 
     output = BytesIO()
     wb.save(output)
-    output = _scrub_excel_column_h_hyperlinks_zip(output)
+    output = _scrub_excel_column_h_hyperlinks_zip(output, col_letter=image_col_letter)
     return output
 
 
@@ -1032,6 +1082,7 @@ async def _collect_report_rows(entries: list[ReportXlsxEntry]) -> list[dict]:
                 "image_path": defect.image_path,
                 "observation": entry.observation,
                 "recommendation": entry.recommendation,
+                "severity": normalize_severity(entry.severity),
             }
         )
 
@@ -1285,7 +1336,7 @@ async def analyze_report_item(
         image_bytes=image_bytes,
         mime_type=mime,
     ):
-        observation, recommendation = invalid_image_fields()
+        observation, recommendation, severity = invalid_image_fields()
         return {
             "defect_id": str(defect.id),
             "category": defect.category or "Others",
@@ -1297,6 +1348,7 @@ async def analyze_report_item(
             "image_path": defect.image_path,
             "observation": observation,
             "recommendation": recommendation,
+            "severity": severity,
         }
 
     prompt = build_executive_defect_report_prompt(
@@ -1305,7 +1357,7 @@ async def analyze_report_item(
         issue_type=defect.category or "",
     )
 
-    observation, recommendation = await generate_executive_defect_report(
+    observation, recommendation, severity = await generate_executive_defect_report(
         image_bytes=image_bytes,
         mime_type=mime,
         prompt=prompt,
@@ -1322,6 +1374,7 @@ async def analyze_report_item(
         "image_path": defect.image_path,
         "observation": observation,
         "recommendation": recommendation,
+        "severity": severity,
     }
 
 

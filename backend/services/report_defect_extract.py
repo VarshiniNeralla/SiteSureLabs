@@ -146,7 +146,21 @@ def normalize_bullet_list(
     return out
 
 
-def parse_executive_defect_json(raw: str) -> dict[str, list[str]] | None:
+def normalize_severity(raw: Any) -> str:
+    """Map LLM severity to LOW | MEDIUM | HIGH."""
+    t = str(raw or "").strip().upper()
+    if t in ("LOW", "MEDIUM", "HIGH"):
+        return t
+    if t.startswith("LOW"):
+        return "LOW"
+    if t.startswith("HIGH") or "CRITICAL" in t or "URGENT" in t:
+        return "HIGH"
+    if t.startswith("MED"):
+        return "MEDIUM"
+    return "MEDIUM"
+
+
+def parse_executive_defect_json(raw: str) -> dict[str, Any] | None:
     t = (raw or "").strip()
     if not t:
         return None
@@ -178,6 +192,7 @@ def parse_executive_defect_json(raw: str) -> dict[str, list[str]] | None:
     return {
         "observations": normalize_bullet_list(obs_raw, observation=True),
         "recommendations": normalize_bullet_list(rec_raw, observation=False),
+        "severity": normalize_severity(obj.get("severity")),
     }
 
 
@@ -193,9 +208,10 @@ def default_recommendation_lines() -> list[str]:
     return list(_DEFAULT_RECOMMENDATIONS)
 
 
-def fields_from_parsed(parsed: dict[str, list[str]]) -> tuple[str, str]:
+def fields_from_parsed(parsed: dict[str, Any]) -> tuple[str, str, str]:
     observations = parsed.get("observations") or []
     recommendations = parsed.get("recommendations") or []
+    severity = normalize_severity(parsed.get("severity"))
 
     if not observations:
         observation_field = format_bulleted_field([], empty_observation=True)
@@ -207,11 +223,11 @@ def fields_from_parsed(parsed: dict[str, list[str]]) -> tuple[str, str]:
     else:
         recommendation_field = format_bulleted_field(recommendations)
 
-    return observation_field, recommendation_field
+    return observation_field, recommendation_field, severity
 
 
-def invalid_image_fields() -> tuple[str, str]:
-    return INVALID_IMAGE_OBSERVATION, ""
+def invalid_image_fields() -> tuple[str, str, str]:
+    return INVALID_IMAGE_OBSERVATION, "", "LOW"
 
 def estimate_wrapped_line_count(text: str, *, chars_per_line: int = 62) -> int:
     if not text:

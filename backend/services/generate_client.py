@@ -298,9 +298,9 @@ async def generate_executive_defect_report(
     image_bytes: bytes,
     mime_type: str,
     prompt: str | None = None,
-) -> tuple[str, str]:
+) -> tuple[str, str, str]:
     """
-    Vision call for admin reports: structured JSON → validated observation/recommendation fields.
+    Vision call for admin reports: structured JSON → observation, recommendation, severity.
     Retries once if JSON parse or validation yields no usable bullets.
     """
     instructions = prompt or EXECUTIVE_DEFECT_REPORT_PROMPT
@@ -312,8 +312,8 @@ async def generate_executive_defect_report(
             attempt_prompt = (
                 f"{instructions.strip()}\n\n"
                 "Your previous reply was invalid. Reply with ONLY one JSON object using keys "
-                "observations and recommendations. Each array item must be one complete "
-                "short sentence with no trailing conjunctions or cut-off words."
+                "observations, recommendations, and severity (LOW|MEDIUM|HIGH). Each array "
+                "item must be one complete short sentence with no trailing conjunctions."
             )
         raw = await generate_inspection_report(
             image_bytes=image_bytes,
@@ -323,11 +323,11 @@ async def generate_executive_defect_report(
         last_raw = raw
         parsed = parse_executive_defect_json(raw)
         if parsed is not None:
-            obs_field, rec_field = fields_from_parsed(parsed)
+            obs_field, rec_field, severity = fields_from_parsed(parsed)
             has_obs = bool(parsed.get("observations"))
             has_rec = bool(parsed.get("recommendations"))
             if has_obs or has_rec or "• No defect observed" in obs_field:
-                return obs_field, rec_field
+                return obs_field, rec_field, severity
         logger.warning(
             "executive defect report: parse/validation failed (attempt %s): %r",
             attempt + 1,
@@ -341,10 +341,8 @@ async def generate_executive_defect_report(
     fallback = parse_executive_defect_json(last_raw) if last_raw else None
     if fallback:
         return fields_from_parsed(fallback)
-    return (
-        "• No defect observed",
-        fields_from_parsed({"observations": [], "recommendations": []})[1],
-    )
+    obs, rec, sev = fields_from_parsed({"observations": [], "recommendations": [], "severity": "MEDIUM"})
+    return ("• No defect observed", rec, sev)
 
 
 async def stream_inspection_report_deltas(
