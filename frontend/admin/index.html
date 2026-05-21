@@ -5064,7 +5064,7 @@
               </div>
             </header>
             <div class="report-history-section__body">
-              <p class="report-history-empty" id="reportHistoryEmpty">No reports generated yet. Use <strong>Get Images</strong> above to build your first export.</p>
+              <p class="report-history-empty" id="reportHistoryEmpty">Select a user to view reports.</p>
               <div class="report-generated-list" id="reportGeneratedCard" aria-live="polite"></div>
               <div class="logs-pagination" id="reportGeneratedPagination" aria-label="Generated reports pagination" hidden></div>
             </div>
@@ -7697,6 +7697,8 @@
     const reportExcelViewerMeta = document.getElementById("reportExcelViewerMeta");
     const reportExcelViewerBody = document.getElementById("reportExcelViewerBody");
     let reportUsersLoaded = false;
+    const REPORT_FILTERS_STORAGE_KEY = "admin_report_filters";
+    const REPORT_DAY_FILTER_VALUES = new Set(["", "all", "today", "yesterday", "last7", "custom"]);
     let reportUploadsData = [];
     let lastReportBlob = null;
     let lastReportFilename = "";
@@ -7840,6 +7842,10 @@
       showToast("Report removed");
     }
 
+    function hasReportUserSelected() {
+      return !!(reportUser?.value || "").trim();
+    }
+
     async function loadReportHistory() {
       if (reportHistoryLoaded) return;
       reportHistoryLoaded = true;
@@ -7854,9 +7860,63 @@
         generatedReports = reports
           .filter((report) => report?.id && report?.blob)
           .sort((a, b) => (b.generatedAt || 0) - (a.generatedAt || 0));
-        renderGeneratedReports();
       } catch (err) {
         console.warn("Could not load report history:", err);
+      }
+    }
+
+    async function ensureReportHistoryLoaded() {
+      if (!hasReportUserSelected()) {
+        renderGeneratedReports();
+        return;
+      }
+      await loadReportHistory();
+      renderGeneratedReports();
+    }
+
+    function loadReportFiltersState() {
+      try {
+        const raw = localStorage.getItem(REPORT_FILTERS_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function saveReportFiltersState() {
+      try {
+        const payload = {
+          day: reportDayFilter?.value || "",
+          user: reportUser?.value || "",
+          dateFrom: reportDateFrom?.value || "",
+          dateTo: reportDateTo?.value || "",
+        };
+        localStorage.setItem(REPORT_FILTERS_STORAGE_KEY, JSON.stringify(payload));
+      } catch (err) {
+        console.warn("Could not persist report filters:", err);
+      }
+    }
+
+    function optionExists(selectEl, value) {
+      if (!selectEl || value == null) return false;
+      return Array.from(selectEl.options).some((opt) => opt.value === value);
+    }
+
+    function applySavedReportFilters(saved) {
+      if (!saved) return;
+      const day = String(saved.day ?? "").trim();
+      if (reportDayFilter && REPORT_DAY_FILTER_VALUES.has(day)) {
+        reportDayFilter.value = day;
+      }
+      if (day === "custom") {
+        if (reportDateFrom && saved.dateFrom) reportDateFrom.value = String(saved.dateFrom);
+        if (reportDateTo && saved.dateTo) reportDateTo.value = String(saved.dateTo);
+      }
+      const user = String(saved.user ?? "").trim();
+      if (reportUser && user && optionExists(reportUser, user)) {
+        reportUser.value = user;
       }
     }
 
@@ -8034,6 +8094,7 @@
     }
 
     async function initReportTab() {
+      const savedFilters = loadReportFiltersState();
       if (!reportUsersLoaded) {
         try {
           const res = await apiFetch("/api/admin/uploads");
@@ -8048,29 +8109,36 @@
             reportUser.innerHTML = `<option value="">Select user</option><option value="all">All users</option>${
               users.map((u) => `<option value="${u.email}">${u.name}</option>`).join("")
             }`;
-            reportUser.value = "";
           }
         } catch (e) {
           console.error("Failed to load report users:", e);
         }
         reportUsersLoaded = true;
       }
+      applySavedReportFilters(savedFilters);
       syncReportCustomDateVisibility();
       updateReportGenerateVisibility();
       updateReportImageCount();
-      await loadReportHistory();
+      if (hasReportUserSelected()) {
+        await ensureReportHistoryLoaded();
+      } else {
+        renderGeneratedReports();
+      }
     }
 
-    [reportDayFilter, reportDateFrom, reportDateTo, reportUser].forEach((el) => {
-      el?.addEventListener("change", () => {
-        updateReportGenerateVisibility();
-        updateReportImageCount();
-      });
-    });
-    reportDayFilter?.addEventListener("change", () => {
-      syncReportCustomDateVisibility();
+    function onReportFiltersChanged(el) {
+      saveReportFiltersState();
       updateReportGenerateVisibility();
       updateReportImageCount();
+      if (el === reportUser) onReportUserFilterChange();
+    }
+
+    reportDayFilter?.addEventListener("change", () => {
+      syncReportCustomDateVisibility();
+      onReportFiltersChanged(reportDayFilter);
+    });
+    [reportDateFrom, reportDateTo, reportUser].forEach((el) => {
+      el?.addEventListener("change", () => onReportFiltersChanged(el));
     });
     reportPreviewBtn?.addEventListener("click", openReportPreviewFromButton);
     reportPreviewClose?.addEventListener("click", closeReportPreviewModal);
@@ -8201,6 +8269,26 @@
       const stored = (report.reportSubjectDisplayName || "").trim();
       if (stored) return stored;
       return humanizeReportFilename(report.fileName);
+    }
+
+    /** History list — empty until a user is selected; "all" shows every report, else per-user. */
+    function getFilteredGeneratedReports() {
+      const user = (reportUser?.value || "").trim();
+      if (!user) return [];
+      if (user === "all") return generatedReports;
+      const selectedName = reportUser?.selectedOptions?.[0]?.textContent?.trim() || "";
+      return generatedReports.filter((report) => {
+        if (report.reportUserScope === "all") return false;
+        const email = (report.reportSubjectEmail || "").trim();
+        if (email) return email === user;
+        const display = (report.reportSubjectDisplayName || "").trim();
+        return !!(display && selectedName && display === selectedName);
+      });
+    }
+
+    function onReportUserFilterChange() {
+      reportsCurrentPage = 1;
+      void ensureReportHistoryLoaded();
     }
 
     function getGeneratedReport(reportId) {
@@ -8447,15 +8535,30 @@
 
     function renderGeneratedReports() {
       if (!reportGeneratedCard) return;
-      const total = generatedReports.length;
+      const visibleReports = getFilteredGeneratedReports();
+      const total = visibleReports.length;
+      const userFilter = (reportUser?.value || "").trim();
+      const userSelected = !!userFilter;
+      const historyFilteredByUser = userFilter && userFilter !== "all";
       const perPage = getReportsPerPage();
       const totalPages = Math.max(1, Math.ceil(total / perPage));
       reportsCurrentPage = Math.min(Math.max(1, reportsCurrentPage), totalPages);
       const start = (reportsCurrentPage - 1) * perPage;
-      const pageReports = generatedReports.slice(start, start + perPage);
+      const pageReports = visibleReports.slice(start, start + perPage);
       const historyEmpty = document.getElementById("reportHistoryEmpty");
       const historyBody = document.querySelector(".report-history-section__body");
-      if (historyEmpty) historyEmpty.classList.toggle("is-visible", total === 0);
+      if (historyEmpty) {
+        historyEmpty.classList.toggle("is-visible", total === 0);
+        if (!userSelected) {
+          historyEmpty.textContent = "Select a user to view reports.";
+        } else if (total === 0 && historyFilteredByUser && generatedReports.length > 0) {
+          const who = reportUser?.selectedOptions?.[0]?.textContent?.trim() || "this user";
+          historyEmpty.innerHTML = `No reports for <strong>${escapeHtml(who)}</strong> yet. Generate one using the filters above.`;
+        } else if (total === 0) {
+          historyEmpty.innerHTML =
+            "No reports generated yet. Use <strong>Get Images</strong> above to build your first export.";
+        }
+      }
       if (historyBody) {
         historyBody.classList.toggle("report-history-section__body--has-reports", total > 0);
       }
@@ -8530,6 +8633,7 @@
         });
         const reportId = `report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const subjectMeta = resolveReportSubjectForCard(filtered, reportUser?.value || "");
+        const reportUserValue = (reportUser?.value || "").trim();
         const reportRecord = {
           id: reportId,
           fileName,
@@ -8540,8 +8644,12 @@
           count: filtered.length,
           generatedAtLabel,
           generatedAt: Date.now(),
+          reportUserScope: reportUserValue === "all" ? "all" : reportUserValue,
           ...subjectMeta,
         };
+        if (!reportHistoryLoaded) {
+          await loadReportHistory();
+        }
         generatedReports.unshift(reportRecord);
         await saveReportHistoryItem(reportRecord);
         lastReportBlob = blob;
