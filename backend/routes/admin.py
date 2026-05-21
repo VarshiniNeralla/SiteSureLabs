@@ -2,8 +2,9 @@
 
 import logging
 import re
+import zipfile
 from io import BytesIO
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -12,7 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XLImage
+from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, OneCellAnchor
+from openpyxl.drawing.xdr import XDRPositiveSize2D
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.utils.units import pixels_to_EMU
 from PIL import Image as PILImage
 from pptx import Presentation
 from pptx.dml.color import RGBColor
@@ -22,12 +27,14 @@ from pptx.oxml import parse_xml
 from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
-# Executive report table theme (label column + bordered grid).
-_PPTX_LABEL_FILL = RGBColor(217, 226, 243)  # #D9E2F3
-_PPTX_LABEL_TEXT = RGBColor(31, 56, 100)  # #1F3864
+# Executive report table theme (reference: gray label column, outside border only).
+_PPTX_TABLE_FONT = "Trebuchet MS"
+_PPTX_TABLE_FONT_PT = 8
+_PPTX_LABEL_FILL = RGBColor(166, 166, 166)  # medium gray
+_PPTX_LABEL_TEXT = RGBColor(255, 255, 255)
 _PPTX_VALUE_FILL = RGBColor(255, 255, 255)
-_PPTX_VALUE_TEXT = RGBColor(30, 41, 59)
-_PPTX_TABLE_BORDER_HEX = "8FAADC"
+_PPTX_VALUE_TEXT = RGBColor(0, 0, 0)
+_PPTX_TABLE_BORDER_HEX = "454545"
 from pydantic import BaseModel, Field
 
 from models import Defect, User, UserLog
@@ -221,6 +228,46 @@ def _pptx_bullet_display(value: str) -> str:
     return text
 
 
+_PPTX_MONTH_ABBR = (
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+)
+
+
+def _pptx_format_reporting_date(value: str) -> str:
+    """Display reporting date as e.g. 21-May-2026 (day-Mon-year)."""
+    raw = str(value or "").strip()
+    if not raw:
+        return "To be confirmed"
+    if raw.lower() == "to be confirmed":
+        return raw
+
+    parsed: date | None = None
+    if len(raw) >= 10 and raw[4:5] == "-" and raw[7:8] == "-":
+        try:
+            parsed = date.fromisoformat(raw[:10])
+        except ValueError:
+            parsed = None
+    if parsed is None and "T" in raw:
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00")).date()
+        except ValueError:
+            parsed = None
+    if parsed is None:
+        return raw
+    return f"{parsed.day}-{_PPTX_MONTH_ABBR[parsed.month - 1]}-{parsed.year}"
+
+
 def _pptx_value_wrap_chars(card_w_in: float, label_col_w_in: float) -> int:
     value_w = max(1.4, card_w_in - label_col_w_in)
     return max(28, int(value_w * 15))
@@ -230,13 +277,13 @@ def _pptx_row_heights_for_card(
     row: dict,
     *,
     value_chars: int,
-    meta_h: float = 0.28,
-    line_h: float = 0.145,
+    meta_h: float = 0.27,
+    line_h: float = 0.135,
 ) -> tuple[float, float, float, float, float, str, str]:
     """Return meta/obs/rec row heights (inches) and display strings."""
     loc = _report_card_location(row) or "To be confirmed"
     category = str(row.get("category") or "").strip() or "To be confirmed"
-    reporting_date = str(row.get("reporting_date") or "").strip() or "To be confirmed"
+    reporting_date = _pptx_format_reporting_date(str(row.get("reporting_date") or ""))
     obs_field = _pptx_bullet_display(row.get("observation") or "")
     rec_field = _pptx_bullet_display(row.get("recommendation") or "")
 
@@ -254,6 +301,204 @@ def _pptx_slide_table_budget_in() -> float:
     return 2.95
 
 
+# Excel report image column — embedded previews (pixels at 96 DPI).
+_EXCEL_IMAGE_MAX_W_PX = 400
+_EXCEL_IMAGE_MAX_H_PX = 300
+_EXCEL_IMAGE_CELL_PAD_PX = 10
+_EXCEL_IMAGE_COL_MIN_WIDTH = 58.0
+_EXCEL_IMAGE_JPEG_QUALITY = 92
+_EXCEL_ROW_HEIGHT_FACTOR = 0.75  # user-facing row height vs raw content box
+
+
+def _excel_pixels_to_points(px: float) -> float:
+    return float(px) * 72.0 / 96.0
+
+
+def _excel_col_chars_to_pixels(width_chars: float) -> int:
+    """Approximate pixel width for default Calibri 11 column width."""
+    return max(1, int(float(width_chars) * 7 + 5))
+
+
+def _excel_row_points_to_pixels(height_pt: float) -> int:
+    return max(1, int(float(height_pt) * 96 / 72))
+
+
+def _excel_column_width_for_pixels(px: int) -> float:
+    """Approximate Excel column width (character units) for embedded image pixels."""
+    return round(max(_EXCEL_IMAGE_COL_MIN_WIDTH, (int(px) + 14) / 7.0), 2)
+
+
+def _excel_row_height_for_content(*, image_h_px: float, text_height_pt: float) -> float:
+    """Row height: text may use 0.75 factor; image rows must fit the full thumbnail height."""
+    pad_pt = _excel_pixels_to_points(_EXCEL_IMAGE_CELL_PAD_PX * 2)
+    text_row_pt = max(24.0, text_height_pt) * _EXCEL_ROW_HEIGHT_FACTOR
+    if image_h_px <= 0:
+        return max(20.0, text_row_pt)
+    image_block_pt = _excel_pixels_to_points(image_h_px) + pad_pt
+    # +2pt avoids sub-pixel rounding letting drawings bleed into the next row.
+    return max(20.0, text_row_pt, image_block_pt) + 2.0
+
+
+def _excel_fit_image_in_cell_bounds(
+    embed_w: int,
+    embed_h: int,
+    col_w_px: int,
+    row_h_px: int,
+) -> tuple[int, int, int, int]:
+    """Scale image to fit inside the cell box; return display size and centering offsets."""
+    pad = _EXCEL_IMAGE_CELL_PAD_PX
+    inner_w = max(1, col_w_px - (2 * pad))
+    inner_h = max(1, row_h_px - (2 * pad))
+    scale = min(1.0, inner_w / max(embed_w, 1), inner_h / max(embed_h, 1))
+    display_w = max(1, int(embed_w * scale))
+    display_h = max(1, int(embed_h * scale))
+    col_off, row_off = _excel_center_offsets(
+        col_w_px,
+        row_h_px,
+        display_w,
+        display_h,
+        min_pad=pad,
+    )
+    return display_w, display_h, col_off, row_off
+
+
+def _excel_prepare_image_embed(path: Path) -> tuple[int, int, BytesIO] | None:
+    """Resize source photo for Excel (upscale small images, high JPEG quality)."""
+    try:
+        with PILImage.open(path) as img:
+            img = img.convert("RGB")
+            w, h = img.size
+            scale = min(
+                _EXCEL_IMAGE_MAX_W_PX / max(w, 1),
+                _EXCEL_IMAGE_MAX_H_PX / max(h, 1),
+            )
+            new_w = max(1, int(w * scale))
+            new_h = max(1, int(h * scale))
+            if (new_w, new_h) != (w, h):
+                img = img.resize((new_w, new_h), PILImage.Resampling.LANCZOS)
+            out = BytesIO()
+            img.save(out, format="JPEG", optimize=True, quality=_EXCEL_IMAGE_JPEG_QUALITY)
+            out.seek(0)
+            return new_w, new_h, out
+    except Exception:
+        logger.exception("admin report: failed to prepare excel image %s", path)
+        return None
+
+
+def _excel_center_offsets(
+    cell_w_px: int,
+    cell_h_px: int,
+    img_w: int,
+    img_h: int,
+    *,
+    min_pad: int = _EXCEL_IMAGE_CELL_PAD_PX,
+) -> tuple[int, int]:
+    inner_w = max(0, cell_w_px - (2 * min_pad))
+    inner_h = max(0, cell_h_px - (2 * min_pad))
+    col_off = min_pad + max(0, (inner_w - img_w) // 2)
+    row_off = min_pad + max(0, (inner_h - img_h) // 2)
+    return col_off, row_off
+
+
+def _excel_prepare_row_images(rows: list[dict]) -> tuple[list[tuple[int, int, BytesIO | None]], int]:
+    """Pre-render embed-sized JPEGs and display dimensions for column H."""
+    plans: list[tuple[int, int, BytesIO | None]] = []
+    max_embed_w_px = 0
+    for row in rows:
+        abs_img = _safe_image_abs_path(str(row.get("image_path") or ""))
+        if not abs_img:
+            plans.append((0, 0, None))
+            continue
+        prepared = _excel_prepare_image_embed(abs_img)
+        if prepared is None:
+            plans.append((0, 0, None))
+            continue
+        embed_w, embed_h, thumb = prepared
+        plans.append((embed_w, embed_h, thumb))
+        max_embed_w_px = max(max_embed_w_px, embed_w)
+    return plans, max_embed_w_px
+
+
+def _excel_finalize_image_column(ws, *, col: int = 8, first_row: int = 2) -> None:
+    """Ensure Image column cells have no value or hyperlink metadata."""
+    col_letter = get_column_letter(col)
+    for row_idx in range(first_row, (ws.max_row or first_row) + 1):
+        cell = ws.cell(row=row_idx, column=col)
+        cell.value = None
+        cell.hyperlink = None
+    hyperlinks = list(getattr(ws, "_hyperlinks", []) or [])
+    if hyperlinks:
+        ws._hyperlinks = [
+            h
+            for h in hyperlinks
+            if not str(getattr(h, "ref", "")).upper().startswith(col_letter)
+        ]
+
+
+def _scrub_excel_column_h_hyperlinks_zip(xlsx_buf: BytesIO) -> BytesIO:
+    """
+    Remove column-H hyperlinks and path-like cell values from worksheet XML.
+    Excel shows hyperlink targets as visible text even when the cell looks empty.
+    """
+    hyperlink_re = re.compile(rb'<hyperlink\b[^>]*\bref="H\d+"[^>]*/>', re.IGNORECASE)
+    h_cell_value_re = re.compile(
+        rb'(<c r="H\d+"[^>]*>(?:(?!</c>).)*?<v>)([^<]*)(</v>)',
+        re.IGNORECASE | re.DOTALL,
+    )
+
+    def _strip_path_values(match: re.Match[bytes]) -> bytes:
+        value = match.group(2)
+        lower = value.lower()
+        if (
+            b"/" in value
+            or b"http" in lower
+            or b"uploads" in lower
+            or b".jpg" in lower
+            or b".jpeg" in lower
+            or b".png" in lower
+            or b".webp" in lower
+        ):
+            return match.group(1) + match.group(3)
+        return match.group(0)
+
+    xlsx_buf.seek(0)
+    out_buf = BytesIO()
+    with zipfile.ZipFile(xlsx_buf, "r") as zin, zipfile.ZipFile(out_buf, "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename.startswith("xl/worksheets/") and item.filename.endswith(".xml"):
+                data = hyperlink_re.sub(b"", data)
+                data = h_cell_value_re.sub(_strip_path_values, data)
+            zout.writestr(item, data)
+    out_buf.seek(0)
+    return out_buf
+
+
+def _excel_embed_image_in_cell(
+    ws,
+    xl_img: XLImage,
+    *,
+    row: int,
+    col: int = 8,
+    col_off_px: int = _EXCEL_IMAGE_CELL_PAD_PX,
+    row_off_px: int = _EXCEL_IMAGE_CELL_PAD_PX,
+) -> None:
+    """Anchor image inside the cell; offsets center it within the row/column box."""
+    xl_img.anchor = OneCellAnchor(
+        _from=AnchorMarker(
+            col=col - 1,
+            row=row - 1,
+            colOff=pixels_to_EMU(col_off_px),
+            rowOff=pixels_to_EMU(row_off_px),
+        ),
+        ext=XDRPositiveSize2D(
+            cx=pixels_to_EMU(int(xl_img.width)),
+            cy=pixels_to_EMU(int(xl_img.height)),
+        ),
+    )
+    ws.add_image(xl_img)
+
+
 def _safe_image_abs_path(image_path: str) -> Path | None:
     rel = str(image_path or "").replace("\\", "/").lstrip("/")
     if not rel:
@@ -266,20 +511,6 @@ def _safe_image_abs_path(image_path: str) -> Path | None:
     if not abs_path.exists() or not abs_path.is_file():
         return None
     return abs_path
-
-
-def _thumbnail_image_for_excel(path: Path, *, max_w: int = 148, max_h: int = 108, jpeg_quality: int = 78) -> BytesIO | None:
-    try:
-        with PILImage.open(path) as img:
-            img = img.convert("RGB")
-            img.thumbnail((max_w, max_h), PILImage.Resampling.LANCZOS)
-            out = BytesIO()
-            img.save(out, format="JPEG", optimize=True, quality=jpeg_quality)
-            out.seek(0)
-            return out
-    except Exception:
-        logger.exception("admin report: failed to create thumbnail for %s", path)
-        return None
 
 
 def _thumbnail_image_for_pptx(
@@ -326,10 +557,31 @@ def _apply_pptx_cell_surface(cell, *, label: bool = False) -> None:
     fill.fore_color.rgb = _PPTX_LABEL_FILL if label else _PPTX_VALUE_FILL
 
 
-def _apply_pptx_cell_border(cell, *, color_hex: str = _PPTX_TABLE_BORDER_HEX) -> None:
-    tc = cell._tc
-    tc_pr = tc.get_or_add_tcPr()
+def _clear_pptx_cell_borders(cell) -> None:
+    tc_pr = cell._tc.get_or_add_tcPr()
     for edge in ("lnL", "lnR", "lnT", "lnB"):
+        for existing in tc_pr.findall(qn(f"a:{edge}")):
+            tc_pr.remove(existing)
+
+
+def _set_pptx_cell_border_edges(
+    cell,
+    *,
+    left: bool = False,
+    right: bool = False,
+    top: bool = False,
+    bottom: bool = False,
+    color_hex: str = _PPTX_TABLE_BORDER_HEX,
+) -> None:
+    tc_pr = cell._tc.get_or_add_tcPr()
+    for edge, enabled in (
+        ("lnL", left),
+        ("lnR", right),
+        ("lnT", top),
+        ("lnB", bottom),
+    ):
+        if not enabled:
+            continue
         for existing in tc_pr.findall(qn(f"a:{edge}")):
             tc_pr.remove(existing)
         tc_pr.append(
@@ -342,6 +594,29 @@ def _apply_pptx_cell_border(cell, *, color_hex: str = _PPTX_TABLE_BORDER_HEX) ->
         )
 
 
+def _apply_pptx_table_outside_borders(table, *, rows: int, cols: int = 2) -> None:
+    """Single outside frame — no internal grid lines between rows or columns."""
+    for r in range(rows):
+        for c in range(cols):
+            _clear_pptx_cell_borders(table.cell(r, c))
+    for r in range(rows):
+        for c in range(cols):
+            _set_pptx_cell_border_edges(
+                table.cell(r, c),
+                left=c == 0,
+                right=c == cols - 1,
+                top=r == 0,
+                bottom=r == rows - 1,
+            )
+
+
+def _pptx_set_run_font(run, *, label: bool) -> None:
+    run.font.name = _PPTX_TABLE_FONT
+    run.font.size = Pt(_PPTX_TABLE_FONT_PT)
+    run.font.bold = False
+    run.font.color.rgb = _PPTX_LABEL_TEXT if label else _PPTX_VALUE_TEXT
+
+
 def _set_pptx_cell(
     cell,
     text: str,
@@ -350,12 +625,11 @@ def _set_pptx_cell(
     multiline: bool = False,
 ) -> None:
     _apply_pptx_cell_surface(cell, label=label)
-    _apply_pptx_cell_border(cell)
-    cell.vertical_anchor = MSO_ANCHOR.TOP if multiline else MSO_ANCHOR.MIDDLE
-    cell.margin_left = Inches(0.07)
-    cell.margin_right = Inches(0.07)
-    cell.margin_top = Inches(0.04)
-    cell.margin_bottom = Inches(0.04)
+    cell.vertical_anchor = MSO_ANCHOR.TOP
+    cell.margin_left = Inches(0.08 if label else 0.07)
+    cell.margin_right = Inches(0.06)
+    cell.margin_top = Inches(0.05)
+    cell.margin_bottom = Inches(0.05)
 
     tf = cell.text_frame
     tf.word_wrap = True
@@ -367,14 +641,11 @@ def _set_pptx_cell(
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         p.alignment = PP_ALIGN.LEFT
         p.space_before = Pt(0)
-        p.space_after = Pt(1 if multiline and i < len(lines) - 1 else 0)
-        p.line_spacing = 1.05
+        p.space_after = Pt(2 if multiline and i < len(lines) - 1 else 0)
+        p.line_spacing = 1.0
         run = p.add_run()
         run.text = line
-        run.font.name = "Aptos"
-        run.font.size = Pt(7.6 if label else 7.4)
-        run.font.bold = label
-        run.font.color.rgb = _PPTX_LABEL_TEXT if label else _PPTX_VALUE_TEXT
+        _pptx_set_run_font(run, label=label)
 
 
 def _add_pptx_observation_badge(slide, left, top, number: int) -> None:
@@ -537,7 +808,7 @@ def _build_report_presentation(*, rows: list[dict]) -> BytesIO:
 
             loc = _report_card_location(row) or "To be confirmed"
             category = str(row.get("category") or "").strip() or "To be confirmed"
-            reporting_date = str(row.get("reporting_date") or "").strip() or "To be confirmed"
+            reporting_date = _pptx_format_reporting_date(str(row.get("reporting_date") or ""))
             table_rows = [
                 ("Location", loc),
                 ("Category", category),
@@ -561,7 +832,13 @@ def _build_report_presentation(*, rows: list[dict]) -> BytesIO:
             for row_idx, (label, value) in enumerate(table_rows):
                 table.rows[row_idx].height = Inches(row_heights[row_idx])
                 _set_pptx_cell(table.cell(row_idx, 0), label, label=True)
-                _set_pptx_cell(table.cell(row_idx, 1), str(value), multiline=True)
+                is_bullets = row_idx >= 3
+                _set_pptx_cell(
+                    table.cell(row_idx, 1),
+                    str(value),
+                    multiline=is_bullets or "\n" in str(value),
+                )
+            _apply_pptx_table_outside_borders(table, rows=len(table_rows))
 
         footer = slide.shapes.add_textbox(Inches(0.22), Inches(7.12), Inches(3.4), Inches(0.18))
         footer_run = footer.text_frame.paragraphs[0].add_run()
@@ -621,9 +898,18 @@ def _build_report_workbook(
     ws.column_dimensions["E"].width = 10
     ws.column_dimensions["F"].width = 10
     ws.column_dimensions["G"].width = 16
-    ws.column_dimensions["H"].width = 26
     ws.column_dimensions["I"].width = 60
     ws.column_dimensions["J"].width = 60
+
+    image_col_idx = 8
+    image_plans, max_embed_w_px = _excel_prepare_row_images(rows)
+    col_w_chars = _excel_column_width_for_pixels(
+        (max_embed_w_px + (_EXCEL_IMAGE_CELL_PAD_PX * 2))
+        if max_embed_w_px
+        else (_EXCEL_IMAGE_MAX_W_PX + (_EXCEL_IMAGE_CELL_PAD_PX * 2)),
+    )
+    ws.column_dimensions["H"].width = col_w_chars
+    col_w_px = _excel_col_chars_to_pixels(col_w_chars)
 
     current_row = 2
     for idx, row in enumerate(rows, start=1):
@@ -635,19 +921,17 @@ def _build_report_workbook(
         ws.cell(row=current_row, column=6, value=row.get("flat") or "")
         ws.cell(row=current_row, column=7, value=row.get("room") or "")
 
-        img_cell = ws.cell(row=current_row, column=8, value=None)
         image_path = str(row.get("image_path") or "")
-        normalized_base = str(base_url or "").rstrip("/")
-        if normalized_base and image_path:
-            img_cell.hyperlink = f"{normalized_base}/{image_path.lstrip('/')}"
-        elif image_path:
-            img_cell.hyperlink = f"/{image_path.lstrip('/')}"
-        else:
-            img_cell.hyperlink = None
-        # Keep hyperlink target but never show clickable text like "Open image".
-        img_cell.number_format = "@"
-        img_cell.font = Font(color="1E293B")
-        img_cell.alignment = Alignment(horizontal="center", vertical="center")
+        img_cell = ws.cell(row=current_row, column=image_col_idx, value=None)
+        img_cell.hyperlink = None
+        img_cell.number_format = "General"
+        img_cell.font = Font(color="1E293B", underline=None)
+        img_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=False)
+        img_cell.fill = alt_fill if idx % 2 == 0 else PatternFill(
+            start_color="FFFFFF",
+            end_color="FFFFFF",
+            fill_type="solid",
+        )
 
         obs_value = str(row.get("observation") or "").strip()
         rec_value = str(row.get("recommendation") or "").strip()
@@ -666,7 +950,6 @@ def _build_report_workbook(
         ws.cell(row=current_row, column=9).border = border
         ws.cell(row=current_row, column=10).border = border
         if idx % 2 == 0:
-            ws.cell(row=current_row, column=8).fill = alt_fill
             ws.cell(row=current_row, column=9).fill = alt_fill
             ws.cell(row=current_row, column=10).fill = alt_fill
 
@@ -677,31 +960,47 @@ def _build_report_workbook(
             estimate_wrapped_line_count(rec_text, chars_per_line=55),
         )
         text_height_pt = 12 + (text_lines * 15)
-        image_height_pt = 0
+        embed_w_px, embed_h_px, thumb_io = image_plans[idx - 1]
+        row_height_pt = _excel_row_height_for_content(
+            image_h_px=embed_h_px,
+            text_height_pt=text_height_pt,
+        )
+        ws.row_dimensions[current_row].height = row_height_pt
 
-        abs_img = _safe_image_abs_path(image_path)
-        if abs_img:
+        if thumb_io is not None and embed_w_px > 0 and embed_h_px > 0:
             try:
-                thumb = _thumbnail_image_for_excel(abs_img)
-                if thumb is None:
-                    raise RuntimeError("thumbnail generation failed")
-                xl_img = XLImage(thumb)
-                max_w = 148
-                max_h = 72
-                scale = min(max_w / xl_img.width, max_h / xl_img.height, 1)
-                xl_img.width = int(xl_img.width * scale)
-                xl_img.height = int(xl_img.height * scale)
-                ws.add_image(xl_img, f"H{current_row}")
-                image_height_pt = (xl_img.height * 0.75) + 14
+                thumb_io.seek(0)
+                xl_img = XLImage(thumb_io)
+                row_h_px = _excel_row_points_to_pixels(row_height_pt)
+                display_w, display_h, col_off_px, row_off_px = _excel_fit_image_in_cell_bounds(
+                    embed_w_px,
+                    embed_h_px,
+                    col_w_px,
+                    row_h_px,
+                )
+                xl_img.width = display_w
+                xl_img.height = display_h
+                _excel_embed_image_in_cell(
+                    ws,
+                    xl_img,
+                    row=current_row,
+                    col=image_col_idx,
+                    col_off_px=col_off_px,
+                    row_off_px=row_off_px,
+                )
             except Exception:
-                logger.exception("admin report: failed to embed image %s", abs_img)
+                logger.exception(
+                    "admin report: failed to embed image %s",
+                    image_path,
+                )
 
-        ws.row_dimensions[current_row].height = max(24, text_height_pt, image_height_pt)
         current_row += 1
+
+    _excel_finalize_image_column(ws, col=image_col_idx, first_row=2)
 
     output = BytesIO()
     wb.save(output)
-    output.seek(0)
+    output = _scrub_excel_column_h_hyperlinks_zip(output)
     return output
 
 
@@ -1233,6 +1532,17 @@ def _analytics_area_label(d: Defect) -> str:
     return " · ".join(parts) if parts else "Unknown area"
 
 
+def _tower_floor_label(tower: str, floor: str) -> str:
+    """Human-readable tower + floor, e.g. 'Tower C, Floor 15' (not 'Tower C · 15')."""
+    t = (tower or "").strip() or "Unknown area"
+    f = (floor or "").strip()
+    if not f or f in ("—", "-"):
+        return t
+    if f.lower().startswith("floor"):
+        return f"{t}, {f}"
+    return f"{t}, Floor {f}"
+
+
 def _analytics_category_label(d: Defect) -> str:
     cat = (d.category or "").strip()
     if cat:
@@ -1409,6 +1719,309 @@ async def get_analytics(
         "by_area": by_area,
         "by_category": by_category,
         "insight": insight,
+    }
+
+
+_CRITICAL_KEYWORDS = (
+    "structural",
+    "crack",
+    "collapse",
+    "safety",
+    "fire",
+    "electrical",
+    "shock",
+    "gas",
+    "seepage",
+    "foundation",
+    "hazard",
+    "urgent",
+    "critical",
+    "leak",
+    "waterproof",
+)
+
+
+def _utc_day_key(dt: datetime, tz_offset_min: int) -> str:
+    aware = _as_utc_aware(dt)
+    if aware is None:
+        return ""
+    local = aware + timedelta(minutes=tz_offset_min)
+    return local.strftime("%Y-%m-%d")
+
+
+def _is_critical_defect(d: Defect) -> bool:
+    hay = f"{(d.category or '')} {(d.description or '')}".lower()
+    return any(word in hay for word in _CRITICAL_KEYWORDS)
+
+
+def _format_activity_action(action: str) -> str:
+    if action == "upload":
+        return "Image uploaded"
+    if action == "register":
+        return "New user registered"
+    if action == "login":
+        return "User signed in"
+    if action == "admin_login":
+        return "Admin signed in"
+    if action.startswith("admin_generate_report_pptx:"):
+        n = action.split(":", 1)[-1]
+        return f"PowerPoint report generated ({n} items)"
+    if action.startswith("admin_generate_report:"):
+        n = action.split(":", 1)[-1]
+        return f"Excel report generated ({n} items)"
+    if action.startswith("bulk_delete_uploads:"):
+        return "Bulk upload cleanup"
+    if action.startswith("delete_upload:"):
+        return "Upload removed"
+    if action.startswith("admin_"):
+        return action.replace("admin_", "Admin ").replace("_", " ")
+    return action.replace("_", " ")
+
+
+@router.get("/workspace")
+async def get_workspace_dashboard(
+    tz_offset: int = Query(
+        0,
+        description="Minutes from JS Date.getTimezoneOffset() for local-day boundaries",
+    ),
+    _: User = Depends(require_admin),
+):
+    """Aggregated real-time analytics for the admin Stats workspace tab."""
+    now = datetime.now(timezone.utc)
+    start_today = _start_of_utc_today()
+    week_ago = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
+
+    total_users = await User.count()
+    disabled_users = await User.find(User.is_disabled == True).count()
+    total_uploads = await Defect.count()
+    total_logs = await UserLog.count()
+    users_today = await User.find(User.created_at >= start_today).count()
+    users_week = await User.find(User.created_at >= week_ago).count()
+    uploads_today = await Defect.find(Defect.created_at >= start_today).count()
+    uploads_week = await Defect.find(Defect.created_at >= week_ago).count()
+    logs_today = await UserLog.find(UserLog.timestamp >= start_today).count()
+    logs_week = await UserLog.find(UserLog.timestamp >= week_ago).count()
+
+    defects_30d = await Defect.find(Defect.created_at >= month_ago).to_list()
+    logs_30d = await UserLog.find(UserLog.timestamp >= month_ago).to_list()
+    logs_recent = await UserLog.find().sort("-timestamp").limit(40).to_list()
+
+    user_ids = list(
+        {d.user_id for d in defects_30d}
+        | {log.user_id for log in logs_recent}
+    )
+    if user_ids:
+        users = await User.find(
+            {"_id": {"$in": [PydanticObjectId(uid) for uid in user_ids]}}
+        ).to_list()
+    else:
+        users = []
+    email_map = {str(u.id): u.email for u in users}
+    name_map = {str(u.id): u.name for u in users}
+
+    daily_keys = [
+        _utc_day_key(now - timedelta(days=i), tz_offset)
+        for i in range(13, -1, -1)
+    ]
+    daily_upload_map = {k: 0 for k in daily_keys}
+    for d in defects_30d:
+        key = _utc_day_key(_as_utc_aware(d.created_at) or now, tz_offset)
+        if key in daily_upload_map:
+            daily_upload_map[key] += 1
+    upload_trend_daily = [
+        {"date": k, "label": datetime.strptime(k, "%Y-%m-%d").strftime("%b %d"), "count": daily_upload_map[k]}
+        for k in daily_keys
+    ]
+
+    upload_trend_weekly: list[dict] = []
+    for i in range(7, -1, -1):
+        window_end = now - timedelta(days=i * 7)
+        window_start = window_end - timedelta(days=7)
+        count = sum(
+            1
+            for d in defects_30d
+            if window_start <= _as_utc_aware(d.created_at) < window_end
+        )
+        upload_trend_weekly.append(
+            {
+                "week_start": _utc_day_key(window_start, tz_offset),
+                "label": "This wk" if i == 0 else f"-{i}w",
+                "count": count,
+            }
+        )
+
+    category_counts: dict[str, int] = {}
+    tower_counts: dict[str, int] = {}
+    floor_counts: dict[str, int] = {}
+    tower_floor_counts: dict[tuple[str, str], int] = {}
+    heat_cells: dict[tuple[str, str], int] = {}
+    critical_items: list[dict] = []
+    uploader_7d: dict[str, dict] = {}
+
+    for d in defects_30d:
+        created_at = _as_utc_aware(d.created_at)
+        cat = _analytics_category_label(d)
+        category_counts[cat] = category_counts.get(cat, 0) + 1
+
+        tower = (d.tower or "").strip() or "—"
+        floor = (d.floor or "").strip() or "—"
+        tower_counts[tower] = tower_counts.get(tower, 0) + 1
+        floor_counts[floor] = floor_counts.get(floor, 0) + 1
+        tf_key = (tower, floor)
+        tower_floor_counts[tf_key] = tower_floor_counts.get(tf_key, 0) + 1
+        heat_cells[tf_key] = heat_cells.get(tf_key, 0) + 1
+
+        if _is_critical_defect(d):
+            critical_items.append(
+                {
+                    "id": str(d.id),
+                    "label": _analytics_category_label(d),
+                    "area": _analytics_area_label(d),
+                    "at": _iso_utc(created_at) or "",
+                }
+            )
+
+        if created_at is not None and created_at >= week_ago:
+            uid = d.user_id
+            created_iso = _iso_utc(created_at) or ""
+            row = uploader_7d.get(uid) or {
+                "user_id": uid,
+                "email": email_map.get(uid, "unknown"),
+                "name": name_map.get(uid),
+                "count": 0,
+                "last_at": created_iso,
+            }
+            row["count"] += 1
+            if created_iso > row["last_at"]:
+                row["last_at"] = created_iso
+            uploader_7d[uid] = row
+
+    by_category = _top_counts(list(category_counts.items()), limit=8)
+    tower_floor = _top_counts(
+        [(_tower_floor_label(t[0], t[1]), c) for t, c in tower_floor_counts.items()],
+        limit=8,
+    )
+
+    top_towers = [t for t, _ in sorted(tower_counts.items(), key=lambda x: (-x[1], x[0]))[:6]]
+    top_floors = [f for f, _ in sorted(floor_counts.items(), key=lambda x: (-x[1], x[0]))[:6]]
+    if not top_towers:
+        top_towers = ["—"]
+    if not top_floors:
+        top_floors = ["—"]
+    heatmap = {
+        "towers": top_towers,
+        "floors": top_floors,
+        "cells": [
+            {
+                "tower": tower,
+                "floor": floor,
+                "count": heat_cells.get((tower, floor), 0),
+            }
+            for tower in top_towers
+            for floor in top_floors
+        ],
+        "max": max(heat_cells.values()) if heat_cells else 1,
+    }
+
+    report_daily_map = {k: 0 for k in daily_keys}
+    reports_week = 0
+    reports_today = 0
+    for log in logs_30d:
+        if not log.action.startswith("admin_generate_report"):
+            continue
+        log_ts = _as_utc_aware(log.timestamp)
+        if log_ts is None:
+            continue
+        key = _utc_day_key(log_ts, tz_offset)
+        if key in report_daily_map:
+            report_daily_map[key] += 1
+        if log_ts >= week_ago:
+            reports_week += 1
+        if log_ts >= start_today:
+            reports_today += 1
+    report_trend_daily = [
+        {"date": k, "label": datetime.strptime(k, "%Y-%m-%d").strftime("%b %d"), "count": report_daily_map[k]}
+        for k in daily_keys
+    ]
+
+    user_activity = sorted(
+        uploader_7d.values(),
+        key=lambda row: (-row["count"], (row["email"] or "").lower()),
+    )[:8]
+
+    critical_items.sort(key=lambda row: row["at"], reverse=True)
+    critical_count = len(critical_items)
+    critical_recent = critical_items[:6]
+
+    timeline: list[dict] = []
+    for log in logs_recent[:25]:
+        timeline.append(
+            {
+                "type": "system",
+                "label": _format_activity_action(log.action),
+                "actor": email_map.get(log.user_id, "unknown"),
+                "at": _iso_utc(_as_utc_aware(log.timestamp)) or "",
+            }
+        )
+    for d in sorted(
+        defects_30d,
+        key=lambda x: _as_utc_aware(x.created_at) or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )[:12]:
+        uid = d.user_id
+        timeline.append(
+            {
+                "type": "upload",
+                "label": _analytics_category_label(d),
+                "actor": email_map.get(uid, "unknown"),
+                "at": _iso_utc(_as_utc_aware(d.created_at)) or "",
+            }
+        )
+    timeline.sort(key=lambda row: row["at"], reverse=True)
+    timeline = timeline[:20]
+
+    ai_success = reports_week
+    ai_estimate_fail = max(0, uploads_week - reports_week)
+
+    return {
+        "stats": {
+            "total_users": total_users,
+            "disabled_users": disabled_users,
+            "total_uploads": total_uploads,
+            "total_logs": total_logs,
+            "users_today": users_today,
+            "users_week": users_week,
+            "uploads_today": uploads_today,
+            "uploads_week": uploads_week,
+            "logs_today": logs_today,
+            "logs_week": logs_week,
+        },
+        "kpis": {
+            "critical_count": critical_count,
+            "uploads_today": uploads_today,
+            "reports_today": reports_today,
+            "active_uploaders_7d": len(uploader_7d),
+            "ai_success_week": ai_success,
+            "ai_pending_estimate": ai_estimate_fail,
+        },
+        "upload_trend_daily": upload_trend_daily,
+        "upload_trend_weekly": upload_trend_weekly,
+        "by_category": by_category,
+        "heatmap": heatmap,
+        "tower_floor": tower_floor,
+        "report_trend_daily": report_trend_daily,
+        "user_activity": user_activity,
+        "critical": {"count": critical_count, "recent": critical_recent},
+        "ai_metrics": {
+            "reports_today": reports_today,
+            "reports_week": reports_week,
+            "uploads_week": uploads_week,
+            "success_week": ai_success,
+            "pending_estimate": ai_estimate_fail,
+        },
+        "timeline": timeline,
+        "generated_at": now.isoformat(),
     }
 
 

@@ -68,7 +68,10 @@ class Settings:
             mongodb_uri=os.getenv("MONGODB_URI", "mongodb://localhost:27017"),
             mongodb_db=os.getenv("MONGODB_DB", "defectra"),
             # JWT
-            jwt_secret=os.getenv("JWT_SECRET", "change-me-in-production"),
+            jwt_secret=os.getenv(
+                "JWT_SECRET",
+                "defectra-dev-jwt-secret-change-me-in-production-min-32",
+            ),
             jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
             jwt_expiry_hours=int(os.getenv("JWT_EXPIRY_HOURS", "24")),
             # Bootstrap admin (synced to MongoDB on startup — see main._seed_admin)

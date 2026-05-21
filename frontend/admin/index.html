@@ -145,7 +145,263 @@
     }
 
     /* ── Metric stat cards (layout: icon + trend / number / label) ── */
-    .stats-block { margin-bottom: 1.25rem; position: relative; padding-top: 1.1rem; }
+    .stats-block { margin: 0; position: relative; padding-top: 1.1rem; }
+    #tab-stats.tab-panel { padding-top: 0.15rem; }
+    #tab-stats .stats-block {
+      margin-bottom: 2.25rem;
+      padding-bottom: 0;
+    }
+    #tab-stats .stat-card--metric {
+      border: none;
+      background: #fafafa;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+    #tab-stats .stats-live {
+      opacity: 0.55;
+      font-size: 0.75rem;
+    }
+
+    /* ── Analytics workspace (minimal) ── */
+    .workspace-dashboard {
+      --ws-accent: #0071e3;
+      --ws-ink: #1d1d1f;
+      --ws-muted: #86868b;
+      --ws-line: rgba(0, 0, 0, 0.06);
+      --ws-surface: #fafafa;
+      --ws-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+      max-width: 52rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+      padding-bottom: 2rem;
+    }
+    .workspace-dashboard__head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1.5rem;
+      padding-bottom: 0.25rem;
+    }
+    .workspace-dashboard__title {
+      margin: 0;
+      font-size: 1.75rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: var(--ws-ink);
+      line-height: 1.15;
+    }
+    .workspace-dashboard__sub { display: none; }
+    .workspace-dashboard__live {
+      font-size: 0.8125rem;
+      font-weight: 400;
+      color: var(--ws-muted);
+      letter-spacing: -0.01em;
+    }
+    .workspace-dashboard__live-dot { display: none; }
+
+    .ws-insights {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem 2.75rem;
+      padding: 0;
+    }
+    .ws-insight {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      min-width: 4.5rem;
+    }
+    .ws-insight__val {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: var(--ws-ink);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+    .ws-insight__val--accent { color: var(--ws-accent); }
+    .ws-insight__lbl {
+      font-size: 0.8125rem;
+      font-weight: 400;
+      color: var(--ws-muted);
+      letter-spacing: -0.01em;
+    }
+    .ws-note {
+      font-size: 0.8125rem;
+      color: var(--ws-muted);
+      line-height: 1.5;
+      padding: 0.75rem 0 0;
+      border-top: 1px solid var(--ws-line);
+      margin-top: 0.25rem;
+    }
+    .ws-note--alert {
+      color: var(--ws-ink);
+      border-top-color: transparent;
+      padding-top: 0;
+    }
+    .ws-note--alert strong {
+      font-weight: 600;
+      color: var(--ws-accent);
+    }
+
+    .ws-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 2.75rem;
+    }
+    .ws-section__head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .ws-section__title {
+      margin: 0;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ws-muted);
+    }
+    .ws-section__meta {
+      font-size: 0.8125rem;
+      color: var(--ws-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ws-line-wrap {
+      position: relative;
+      padding: 0.5rem 0 1.75rem;
+    }
+    .ws-line-svg {
+      display: block;
+      width: 100%;
+      height: 5.5rem;
+      overflow: visible;
+    }
+    .ws-line-svg polyline {
+      fill: none;
+      stroke: var(--ws-accent);
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
+    }
+    .ws-line-svg .ws-line-area {
+      fill: url(#wsLineFade);
+      stroke: none;
+    }
+    .ws-line-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.65rem;
+      font-size: 0.6875rem;
+      color: var(--ws-muted);
+      letter-spacing: -0.01em;
+    }
+
+    .ws-duo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem 3rem;
+    }
+    @media (max-width: 720px) {
+      .ws-duo { grid-template-columns: 1fr; }
+    }
+
+    .ws-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    .ws-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 5.5rem) 2rem;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .ws-row__label {
+      font-size: 0.8125rem;
+      color: var(--ws-ink);
+      letter-spacing: -0.01em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ws-row__track {
+      height: 3px;
+      border-radius: 2px;
+      background: rgba(0, 0, 0, 0.06);
+      overflow: hidden;
+    }
+    .ws-row__fill {
+      height: 100%;
+      border-radius: inherit;
+      background: rgba(0, 0, 0, 0.22);
+      transition: width 0.5s var(--ws-ease);
+    }
+    .ws-row__fill--accent { background: var(--ws-accent); opacity: 0.85; }
+    .ws-row__n {
+      font-size: 0.8125rem;
+      color: var(--ws-muted);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ws-heatmap {
+      display: grid;
+      gap: 2px;
+      overflow-x: auto;
+      padding: 0.15rem 0;
+    }
+    .ws-heatmap__corner { font-size: 0; }
+    .ws-heatmap__head,
+    .ws-heatmap__row-label {
+      font-size: 0.625rem;
+      font-weight: 500;
+      color: var(--ws-muted);
+      letter-spacing: 0.02em;
+    }
+    .ws-heatmap__head { text-align: center; padding: 0.15rem; }
+    .ws-heatmap__row-label {
+      display: flex;
+      align-items: center;
+      padding-right: 0.5rem;
+      white-space: nowrap;
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ws-heatmap__cell {
+      min-width: 1.65rem;
+      min-height: 1.5rem;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.5625rem;
+      font-weight: 500;
+      color: var(--ws-muted);
+      background: rgba(0, 0, 0, 0.03);
+    }
+    .ws-heatmap__cell[data-level="1"] { background: rgba(0, 0, 0, 0.06); color: var(--ws-ink); }
+    .ws-heatmap__cell[data-level="2"] { background: rgba(0, 0, 0, 0.1); color: var(--ws-ink); }
+    .ws-heatmap__cell[data-level="3"] { background: rgba(0, 113, 227, 0.18); color: var(--ws-ink); }
+    .ws-heatmap__cell[data-level="4"] { background: rgba(0, 113, 227, 0.32); color: #fff; }
+
+    .ws-empty {
+      font-size: 0.8125rem;
+      color: var(--ws-muted);
+      padding: 0.25rem 0;
+      line-height: 1.5;
+    }
+    .workspace-dashboard--loading .ws-stack {
+      opacity: 0.45;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
     .stats-row--metric {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -443,184 +699,6 @@
       text-transform: uppercase;
       letter-spacing: .04em;
       font-family: Montserrat, system-ui, sans-serif;
-    }
-
-    /* ── Analytics tab ── */
-    .analytics-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-end;
-      gap: 0.75rem;
-      margin-bottom: 1rem;
-      padding: 0.7rem 0.05rem 0.85rem;
-      border-bottom: 1px solid #eef2f7;
-    }
-    .analytics-toolbar.admin-mac-toolbar label {
-      display: block;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif !important;
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      color: #6e6e73;
-      margin-bottom: 0.28rem;
-    }
-    .analytics-toolbar.admin-mac-toolbar input[type="date"] {
-      width: 168px;
-      box-sizing: border-box;
-      appearance: none;
-      -webkit-appearance: none;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif !important;
-      font-size: 0.8125rem;
-      font-weight: 400;
-      line-height: 1.25;
-      letter-spacing: -0.01em;
-      color: #1d1d1f;
-      background-color: #fff;
-      border: 0.5px solid rgba(0, 0, 0, 0.18);
-      border-radius: 6px;
-      box-shadow:
-        0 0 0 0.5px rgba(255, 255, 255, 0.65) inset,
-        0 1px 1px rgba(0, 0, 0, 0.04);
-      min-height: 30px;
-      padding: 0.42rem 0.55rem 0.42rem 0.62rem;
-      cursor: text;
-      color-scheme: light;
-    }
-    .analytics-summary {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 0.75rem;
-      margin-bottom: 1rem;
-    }
-    .summary-chip__icon--uploaders { background: #eff6ff; color: #2563eb; }
-    .summary-chip__icon--observations { background: #f0f9ff; color: #0284c7; }
-    .analytics-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.85rem;
-      margin-bottom: 1rem;
-    }
-    @media (max-width: 900px) {
-      .analytics-grid { grid-template-columns: 1fr; }
-    }
-    .analytics-card {
-      background: #fff;
-      border: 1px solid #eef2f7;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,.05);
-      padding: 0.9rem 1rem 1rem;
-      min-height: 180px;
-    }
-    .analytics-card__title {
-      margin: 0 0 0.75rem;
-      font-size: 0.82rem;
-      font-weight: 650;
-      letter-spacing: -0.01em;
-      color: #334155;
-      text-transform: uppercase;
-    }
-    .analytics-bar-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(72px, 38%) 2.2rem;
-      align-items: center;
-      gap: 0.55rem;
-      margin-bottom: 0.55rem;
-      font-size: 0.78rem;
-    }
-    .analytics-bar-row:last-child { margin-bottom: 0; }
-    .analytics-bar-row__label {
-      color: #475569;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .analytics-bar-row__track {
-      height: 7px;
-      border-radius: 999px;
-      background: #eef2f7;
-      overflow: hidden;
-    }
-    .analytics-bar-row__fill {
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, #60a5fa, #2563eb);
-      min-width: 4px;
-      transition: width .35s ease;
-    }
-    .analytics-bar-row__count {
-      text-align: right;
-      font-weight: 650;
-      color: #0f172a;
-      font-variant-numeric: tabular-nums;
-    }
-    .analytics-uploader-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.45rem;
-    }
-    .analytics-uploader-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.65rem;
-      padding: 0.42rem 0.55rem;
-      border-radius: 8px;
-      background: #f8fafc;
-      border: 1px solid #eef2f7;
-      font-size: 0.8rem;
-    }
-    .analytics-uploader-row__name {
-      color: #334155;
-      font-weight: 550;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .analytics-uploader-row__meta {
-      color: #64748b;
-      font-size: 0.72rem;
-    }
-    .analytics-uploader-row__count {
-      font-weight: 700;
-      color: #1d4ed8;
-      font-variant-numeric: tabular-nums;
-      flex-shrink: 0;
-    }
-    .analytics-empty {
-      color: #94a3b8;
-      font-size: 0.82rem;
-      padding: 0.35rem 0;
-    }
-    .analytics-insight {
-      background: linear-gradient(135deg, #f8fbff 0%, #f1f5ff 55%, #faf5ff 100%);
-      border: 1px solid #dbeafe;
-      border-radius: 14px;
-      padding: 1rem 1.1rem 1.05rem;
-      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.06);
-    }
-    .analytics-insight__head {
-      display: flex;
-      align-items: center;
-      gap: 0.45rem;
-      margin-bottom: 0.55rem;
-      color: #1d4ed8;
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-    .analytics-insight__head svg { width: 15px; height: 15px; }
-    .analytics-insight__text {
-      margin: 0;
-      color: #334155;
-      font-size: 0.92rem;
-      line-height: 1.55;
-    }
-    .analytics-loading {
-      color: #64748b;
-      font-size: 0.85rem;
-      padding: 1rem 0.2rem;
     }
 
     /* ── Search & Filters ── */
@@ -1945,25 +2023,28 @@
     .report-view-stack {
       display: flex;
       flex-direction: column;
-      gap: clamp(1.75rem, 4vw, 2.5rem);
+      gap: clamp(2.25rem, 5vw, 3.25rem);
       min-width: 0;
     }
 
-    /* ── Primary: new report workflow ── */
+    /* ── Primary: report workflow (immersive) ── */
     .report-workflow-hero {
       box-sizing: border-box;
       min-width: 0;
-      padding: clamp(1.35rem, 3.2vw, 2.1rem);
-      border-radius: 20px;
-      border: 1px solid rgba(37, 99, 235, 0.14);
+      padding: clamp(1.65rem, 3.5vw, 2.35rem);
+      border-radius: 16px;
+      border: 1px solid rgba(15, 23, 42, 0.06);
       background:
-        linear-gradient(145deg, #ffffff 0%, #f8fbff 48%, #eef6ff 100%);
+        linear-gradient(168deg, #ffffff 0%, #fafcff 38%, #f4f8ff 100%);
       box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.85) inset,
         0 1px 2px rgba(15, 23, 42, 0.04),
-        0 16px 48px rgba(37, 99, 235, 0.1);
+        0 20px 50px -12px rgba(37, 99, 235, 0.14);
       overflow: visible;
       position: relative;
       z-index: 2;
+      transition: box-shadow 0.35s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        border-color 0.35s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1));
     }
     .report-workflow-hero::before {
       content: "";
@@ -1971,7 +2052,9 @@
       inset: 0;
       border-radius: inherit;
       pointer-events: none;
-      background: radial-gradient(ellipse 80% 60% at 100% 0%, rgba(59, 130, 246, 0.08), transparent 55%);
+      background:
+        radial-gradient(ellipse 90% 70% at 100% -10%, rgba(59, 130, 246, 0.09), transparent 52%),
+        radial-gradient(ellipse 50% 40% at 0% 100%, rgba(99, 102, 241, 0.04), transparent 50%);
     }
     .report-workflow-hero > * {
       position: relative;
@@ -1983,44 +2066,48 @@
     }
     .report-workflow-hero__eyebrow {
       margin: 0;
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: #2563eb;
+      color: #3b82f6;
     }
     .report-workflow-hero__title {
-      margin: 0.4rem 0 0;
+      margin: 0.5rem 0 0;
       width: 100%;
       max-width: none;
-      font-size: clamp(1.35rem, 2.8vw, 1.85rem);
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      font-size: clamp(1.375rem, 2.6vw, 1.875rem);
+      font-weight: 600;
+      letter-spacing: -0.03em;
       color: #0f172a;
-      line-height: 1.2;
+      line-height: 1.15;
     }
     .report-workflow-hero__desc {
       display: block;
       width: 100%;
       max-width: none;
-      margin: 0.55rem 0 0;
-      font-size: clamp(0.88rem, 1.8vw, 0.98rem);
+      margin: 0.625rem 0 0;
+      font-size: clamp(0.875rem, 1.6vw, 0.9375rem);
+      font-weight: 400;
       color: #64748b;
-      line-height: 1.55;
+      line-height: 1.6;
       overflow-wrap: break-word;
       word-wrap: break-word;
     }
     .report-workflow-hero__filters {
-      margin-top: 1.5rem;
-      padding-top: 1.35rem;
-      border-top: 1px solid rgba(37, 99, 235, 0.1);
+      margin-top: clamp(1.35rem, 3vw, 1.75rem);
+      padding: clamp(1rem, 2.5vw, 1.25rem);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(15, 23, 42, 0.05);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
     }
     .report-workflow-hero__filters .report-workflow-filters {
       flex: none;
       width: 100%;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 11.5rem), 1fr));
-      gap: 1rem 1.15rem;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
+      gap: 1rem 1.25rem;
       align-items: end;
     }
     .report-workflow-hero__filters .form-group--day,
@@ -2031,28 +2118,42 @@
       max-width: none;
     }
     .report-workflow-hero__filters .form-group label {
-      font-size: 0.8rem;
-      font-weight: 650;
-      color: #475569;
-      margin-bottom: 0.4rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      color: #64748b;
+      margin-bottom: 0.45rem;
     }
     .report-workflow-hero__filters select,
     .report-workflow-hero__filters input[type="date"] {
-      min-height: 44px;
-      font-size: 0.9rem;
-      border-radius: 10px;
-      border-color: rgba(37, 99, 235, 0.18);
+      min-height: 42px;
+      font-size: 0.875rem;
+      border-radius: 8px;
+      border-color: rgba(15, 23, 42, 0.1);
       background-color: #fff;
+      transition:
+        border-color 0.2s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        box-shadow 0.2s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        background-color 0.2s ease;
+    }
+    .report-workflow-hero__filters select:hover,
+    .report-workflow-hero__filters input[type="date"]:hover {
+      border-color: rgba(15, 23, 42, 0.16);
+    }
+    .report-workflow-hero__filters select:focus,
+    .report-workflow-hero__filters input[type="date"]:focus {
+      border-color: rgba(37, 99, 235, 0.45);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
     }
     .report-workflow-hero__cta {
-      margin-top: 1.4rem;
-      padding-top: 1.25rem;
-      border-top: 1px solid rgba(37, 99, 235, 0.08);
+      margin-top: clamp(1.25rem, 3vw, 1.5rem);
+      padding-top: 0;
+      border-top: none;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      justify-content: space-between;
-      gap: 1rem 1.25rem;
+      justify-content: flex-start;
+      gap: 0.75rem 1rem;
     }
     .report-workflow-hero__cta .report-workflow-action {
       align-items: flex-start;
@@ -2064,44 +2165,65 @@
       justify-content: flex-start;
     }
     .report-workflow-hero .report-preview-action-btn {
-      min-height: 50px;
-      padding: 0.78rem 2rem;
-      font-size: 0.95rem;
-      font-weight: 650;
-      letter-spacing: 0.01em;
-      border-radius: 12px;
+      min-height: 46px;
+      padding: 0 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      border-radius: 10px;
+      border: 1px solid #1d4ed8;
+      background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
       box-shadow:
-        0 1px 2px rgba(15, 23, 42, 0.06),
-        0 10px 28px rgba(37, 99, 235, 0.28);
+        0 1px 2px rgba(15, 23, 42, 0.08),
+        0 8px 20px -4px rgba(37, 99, 235, 0.45);
+      transition:
+        transform 0.22s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        box-shadow 0.22s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        background 0.22s ease,
+        border-color 0.22s ease;
     }
     .report-workflow-hero .report-preview-action-btn:hover:not(:disabled) {
-      transform: translateY(-2px);
+      transform: translateY(-1px);
+      border-color: #1e40af;
+      background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
       box-shadow:
         0 2px 4px rgba(15, 23, 42, 0.06),
-        0 14px 36px rgba(37, 99, 235, 0.32);
+        0 12px 28px -6px rgba(37, 99, 235, 0.5);
+    }
+    .report-workflow-hero .report-preview-action-btn:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.4);
+    }
+    .report-workflow-hero .report-preview-action-btn:disabled {
+      border: 1px dashed rgba(148, 163, 184, 0.55);
+      background: rgba(248, 250, 252, 0.9);
+      color: #94a3b8;
+      box-shadow: none;
     }
     .report-workflow-hero .report-workflow-action__hint {
-      font-size: 0.86rem;
-      color: #475569;
-      font-weight: 500;
+      font-size: 0.8125rem;
+      color: #64748b;
+      font-weight: 400;
+      line-height: 1.45;
     }
 
-    /* ── Secondary: report history ── */
+    /* ── Secondary: report history (light, open) ── */
     .report-history-section {
       min-width: 0;
       overflow: visible;
       position: relative;
       z-index: 1;
+      padding-top: 0.15rem;
     }
     .report-history-section__header {
       display: flex;
       flex-wrap: wrap;
-      align-items: flex-end;
+      align-items: center;
       justify-content: space-between;
-      gap: 0.75rem 1rem;
-      padding-bottom: 0.85rem;
-      margin-bottom: 0.65rem;
-      border-bottom: 1px solid #e2e8f0;
+      gap: 0.65rem 1rem;
+      padding-bottom: 0;
+      margin-bottom: 0.85rem;
+      border-bottom: none;
     }
     .report-history-section__headings {
       min-width: 0;
@@ -2109,18 +2231,18 @@
     }
     .report-history-section__title {
       margin: 0;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       color: #94a3b8;
     }
     .report-history-section__sub {
-      margin: 0.3rem 0 0;
-      font-size: 0.82rem;
-      font-weight: 500;
+      margin: 0.25rem 0 0;
+      font-size: 0.8125rem;
+      font-weight: 400;
       color: #cbd5e1;
-      line-height: 1.4;
+      line-height: 1.45;
     }
     .report-history-section__toolbar {
       flex: 0 0 auto;
@@ -2129,45 +2251,57 @@
       gap: 0.5rem;
     }
     .report-history-section__body {
-      padding: clamp(0.85rem, 2vw, 1.1rem);
-      background: #f8fafc;
-      border: 1px solid #eef2f7;
-      border-radius: 14px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
     }
     .report-history-empty {
       display: none;
       margin: 0;
-      padding: clamp(1.5rem, 4vw, 2.25rem) 1rem;
+      padding: clamp(2rem, 5vw, 2.75rem) 1rem;
       text-align: center;
-      font-size: 0.88rem;
+      font-size: 0.8125rem;
+      font-weight: 400;
       color: #94a3b8;
-      line-height: 1.5;
+      line-height: 1.55;
+      border-radius: 12px;
+      border: 1px dashed rgba(148, 163, 184, 0.35);
+      background: rgba(248, 250, 252, 0.5);
     }
     .report-history-empty.is-visible {
       display: block;
     }
     .report-history-section .report-generated-list {
       margin-top: 0;
-      gap: 0.65rem;
+      gap: 0.5rem;
     }
     .report-history-section__body--has-reports {
-      padding-top: 0.65rem;
+      padding-top: 0;
     }
     .report-history-section .logs-pagination {
-      margin-top: 0.85rem;
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(15, 23, 42, 0.06);
     }
     .report-history-section .report-generated-card {
-      background: #fff;
-      border-color: #e8edf2;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+      background: rgba(255, 255, 255, 0.85);
+      border-color: rgba(15, 23, 42, 0.06);
+      box-shadow: none;
     }
     .report-history-section .report-generated-card:hover {
-      border-color: #dbe4f0;
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+      border-color: rgba(15, 23, 42, 0.1);
+      background: #fff;
+      box-shadow: 0 4px 16px -8px rgba(15, 23, 42, 0.08);
     }
     .report-history-section .report-generated-card__chrome-title {
-      color: #94a3b8;
-      font-size: 0.62rem;
+      color: transparent;
+      font-size: 0;
+      width: 0;
+      overflow: hidden;
+      padding: 0;
+      margin: 0;
     }
 
     .report-panel {
@@ -2613,7 +2747,7 @@
     .report-generated-list {
       display: none;
       grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.5rem), 1fr));
-      gap: 0.85rem;
+      gap: 0.625rem;
       margin-top: 0;
       width: 100%;
       min-width: 0;
@@ -2639,8 +2773,8 @@
       padding: 0;
     }
     .report-generated-list--tile .report-generated-card:hover {
-      transform: none;
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px -10px rgba(15, 23, 42, 0.1);
     }
     .report-generated-list--tile .report-generated-card__chrome {
       grid-area: chrome;
@@ -2716,25 +2850,30 @@
       overflow: hidden;
       min-width: 0;
       width: 100%;
-      border: 1px solid #e8edf2;
-      border-radius: 10px;
-      background: #fcfcfd;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-      animation: reportGeneratedIn .22s cubic-bezier(.2,0,0,1) both;
+      border: 1px solid rgba(15, 23, 42, 0.07);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: none;
+      animation: reportGeneratedIn 0.4s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
       max-width: 100%;
-      transition: box-shadow .18s ease, border-color .18s ease, background-color .18s ease;
+      transition:
+        box-shadow 0.25s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        border-color 0.25s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        background-color 0.25s ease,
+        transform 0.25s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1));
     }
     .report-generated-card:hover {
-      border-color: #d7dee8;
+      border-color: rgba(15, 23, 42, 0.11);
       background: #fff;
-      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+      box-shadow: 0 8px 24px -12px rgba(15, 23, 42, 0.12);
+      transform: translateY(-1px);
     }
     .report-generated-card__chrome {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 0.5rem;
-      padding: 0.5rem 0.75rem 0.35rem;
+      padding: 0.45rem 0.75rem 0.25rem;
       background: transparent;
       border-bottom: none;
     }
@@ -2775,12 +2914,11 @@
     .report-generated-card__chrome-title {
       flex: 1 1 auto;
       min-width: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-      font-size: 0.68rem;
-      font-weight: 600;
-      letter-spacing: 0.03em;
+      font-size: 0.625rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #475569;
+      color: #94a3b8;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -2788,8 +2926,8 @@
     .report-generated-card__body {
       display: flex;
       flex-direction: column;
-      gap: 0.65rem;
-      padding: 0 0.8rem 0.85rem;
+      gap: 0.55rem;
+      padding: 0 0.85rem 0.8rem;
     }
     .report-generated-list--tile .report-generated-card__body {
       display: contents;
@@ -2806,17 +2944,22 @@
       flex: 1 1 auto;
     }
     .report-generated-card__icon {
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
       border-radius: 8px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      background: #f1f5f9;
-      border: 1px solid #e8edf2;
+      background: rgba(241, 245, 249, 0.8);
+      border: none;
       box-shadow: none;
+      color: #64748b;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+    .report-generated-card:hover .report-generated-card__icon {
       color: #3b82f6;
+      background: rgba(239, 246, 255, 0.9);
     }
     .report-generated-card__icon-svg {
       width: 22px;
@@ -2825,27 +2968,29 @@
     }
     .report-generated-card__eyebrow {
       margin: 0;
-      font-size: .7rem;
-      font-weight: 650;
-      color: #15803d;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: #16a34a;
       text-transform: uppercase;
-      letter-spacing: .055em;
+      letter-spacing: 0.06em;
       line-height: 1.25;
     }
     .report-generated-card__name {
-      margin: .14rem 0 0;
-      font-size: .95rem;
-      font-weight: 650;
+      margin: 0.2rem 0 0;
+      font-size: 0.875rem;
+      font-weight: 500;
+      letter-spacing: -0.01em;
       color: #0f172a;
-      line-height: 1.3;
+      line-height: 1.35;
       word-break: break-word;
     }
     .report-generated-card__meta,
     .report-generated-card__time {
-      margin: .2rem 0 0;
-      font-size: .78rem;
-      color: #64748b;
-      line-height: 1.35;
+      margin: 0.15rem 0 0;
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: #94a3b8;
+      line-height: 1.4;
       word-break: break-word;
       overflow-wrap: anywhere;
     }
@@ -2861,20 +3006,26 @@
       display: inline-flex;
       align-items: stretch;
       max-width: 100%;
-      border-radius: 6px;
+      border-radius: 8px;
       overflow: hidden;
-      border: 0.5px solid rgba(0, 0, 0, 0.18);
-      box-shadow:
-        0 1px 1px rgba(0, 0, 0, 0.04),
-        0 0 0 0.5px rgba(255, 255, 255, 0.65) inset;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: none;
+      background: rgba(248, 250, 252, 0.6);
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .report-generated-card:hover .report-generated-card__action-group {
+      border-color: rgba(15, 23, 42, 0.1);
+      background: #f8fafc;
     }
     .report-generated-card__action-group .admin-macos-btn {
       border-radius: 0;
       border: none;
-      border-right: 0.5px solid rgba(0, 0, 0, 0.1);
-      min-height: 28px;
-      padding: 0.32rem 0.62rem;
+      border-right: 1px solid rgba(15, 23, 42, 0.06);
+      min-height: 30px;
+      padding: 0.35rem 0.65rem;
       font-size: 0.75rem;
+      font-weight: 500;
+      transition: background 0.15s ease, color 0.15s ease;
     }
     .report-generated-card__action-group .admin-macos-btn:last-child {
       border-right: none;
@@ -2900,8 +3051,46 @@
       background: #fef3c7;
     }
     @keyframes reportGeneratedIn {
-      from { opacity: 0; transform: translateY(8px) scale(.99); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .report-generated-card:nth-child(1) { animation-delay: 0.02s; }
+    .report-generated-card:nth-child(2) { animation-delay: 0.05s; }
+    .report-generated-card:nth-child(3) { animation-delay: 0.08s; }
+    .report-generated-card:nth-child(4) { animation-delay: 0.11s; }
+    .report-generated-card:nth-child(5) { animation-delay: 0.14s; }
+    .report-generated-card:nth-child(6) { animation-delay: 0.17s; }
+    .report-generated-card:nth-child(7) { animation-delay: 0.2s; }
+    .report-generated-card:nth-child(8) { animation-delay: 0.23s; }
+    @media (prefers-reduced-motion: reduce) {
+      .report-workflow-hero,
+      .report-generated-card,
+      .report-preview-action-btn,
+      .admin-report-back,
+      .report-view-btn,
+      .report-generated-card__icon,
+      .report-generated-card__action-group .admin-macos-btn {
+        transition: none !important;
+      }
+      .report-generated-card {
+        animation: none;
+      }
+      .report-generated-card:nth-child(n) {
+        animation-delay: 0s;
+      }
+      .report-view-panel.open {
+        animation: none;
+      }
+      .report-generated-card:hover,
+      .report-workflow-hero .report-preview-action-btn:hover:not(:disabled) {
+        transform: none;
+      }
     }
     #reportPreviewModal.user-uploads-modal {
       background: rgba(15, 23, 42, 0.28);
@@ -3279,15 +3468,31 @@
         padding-top: 0.55rem;
       }
 
+      #admin-dashboard-main {
+        min-width: 0;
+        width: 100%;
+      }
+
       .tabs {
         position: sticky;
         top: 56px;
         z-index: 20;
         display: flex;
         flex-wrap: nowrap;
-        gap: 0.42rem;
+        justify-content: flex-start;
+        align-items: stretch;
+        gap: 0.35rem;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
         overflow-x: auto;
-        padding: 0.38rem;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scroll-padding-inline: 0.65rem;
+        scroll-snap-type: x proximity;
+        contain: none;
+        padding: 0.38rem 0.5rem;
         margin-bottom: 0.6rem;
         border: 1px solid #e2e8f0;
         border-radius: 12px;
@@ -3298,10 +3503,14 @@
 
       .tab-btn {
         flex: 0 0 auto;
-        min-height: 36px;
-        padding: 0.44rem 0.66rem;
+        flex-shrink: 0;
+        min-height: 40px;
+        padding: 0.5rem 0.75rem;
         border-radius: 9px;
-        font-size: 0.76rem;
+        font-size: 0.8rem;
+        line-height: 1.25;
+        white-space: nowrap;
+        scroll-snap-align: start;
       }
 
       .stats-block {
@@ -3383,31 +3592,417 @@
       }
     }
 
+    /* ── Admin dashboard: phones & narrow viewports (≤600px, aligned with shared/styles) ── */
+    @media (max-width: 600px) {
+      body .container {
+        padding: 0.85rem 0.75rem 1.25rem;
+        gap: 0.5rem;
+      }
+
+      .admin-nav__inner {
+        min-height: 52px;
+        padding-left: 0.65rem;
+        padding-right: 0.65rem;
+      }
+
+      .tabs {
+        top: 52px;
+        padding: 0.35rem 0.45rem;
+      }
+
+      .tab-btn {
+        min-height: 44px;
+        padding: 0.5rem 0.7rem;
+        font-size: 0.8125rem;
+      }
+
+      /* Stats tab */
+      .stats-block {
+        margin-bottom: 1.25rem;
+        padding-top: 0.85rem;
+      }
+
+      .stats-row--metric {
+        grid-template-columns: 1fr;
+        gap: 0.55rem;
+      }
+
+      .stat-card--metric {
+        min-height: 0;
+        padding: 0.85rem 0.9rem 0.75rem;
+      }
+
+      .stat-card--metric .stat-value {
+        font-size: 1.55rem;
+      }
+
+      .stat-card__trend {
+        max-width: none;
+        align-items: flex-end;
+      }
+
+      .stats-live {
+        position: static;
+        justify-content: flex-start;
+        margin-top: 0.35rem;
+      }
+
+      .workspace-dashboard {
+        max-width: none;
+        gap: 2rem;
+        padding-bottom: 1.25rem;
+      }
+
+      .workspace-dashboard__head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.35rem;
+      }
+
+      .workspace-dashboard__title {
+        font-size: 1.45rem;
+      }
+
+      .ws-insights {
+        gap: 1.35rem 1.75rem;
+      }
+
+      .ws-insight {
+        min-width: calc(50% - 0.9rem);
+        flex: 1 1 calc(50% - 0.9rem);
+      }
+
+      .ws-duo {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+
+      .ws-row {
+        grid-template-columns: minmax(0, 1fr) 2rem;
+        grid-template-rows: auto auto;
+        gap: 0.35rem 0.5rem;
+      }
+
+      .ws-row__track {
+        grid-column: 1 / -1;
+      }
+
+      .ws-row__label {
+        white-space: normal;
+        line-height: 1.35;
+      }
+
+      .ws-line-wrap {
+        padding-bottom: 1.25rem;
+      }
+
+      .ws-line-labels {
+        font-size: 0.625rem;
+        gap: 0.25rem;
+      }
+
+      .ws-heatmap {
+        max-width: 100%;
+      }
+
+      /* Users tab */
+      .users-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+        margin-bottom: 1rem;
+      }
+
+      .summary-chip {
+        padding: 0.7rem 0.75rem;
+        gap: 0.55rem;
+      }
+
+      .summary-chip__val {
+        font-size: 1rem;
+      }
+
+      .users-toolbar {
+        gap: 0.55rem;
+        padding-bottom: 0.65rem;
+      }
+
+      .users-toolbar .users-search,
+      .users-toolbar .users-search input {
+        width: 100%;
+        max-width: none;
+      }
+
+      .users-toolbar .users-role-filters,
+      .users-toolbar .users-sort-field,
+      .users-toolbar .users-view-control {
+        width: 100%;
+        margin-left: 0;
+      }
+
+      .users-toolbar .users-role-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+
+      .users-toolbar .users-role-filters .admin-macos-btn {
+        flex: 1 1 calc(33.333% - 0.25rem);
+        min-width: 0;
+      }
+
+      .users-toolbar .users-sort-field select {
+        width: 100%;
+      }
+
+      .users-grid:not(.users-grid--tile) {
+        grid-template-columns: 1fr;
+      }
+
+      /* All uploads tab */
+      .all-uploads-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.55rem;
+        padding-bottom: 0.65rem;
+      }
+
+      .all-uploads-filter-inline {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+      }
+
+      .all-uploads-filter-field--day,
+      .all-uploads-filter-field--user,
+      .all-uploads-filter-field--custom-date {
+        width: 100%;
+        max-width: none;
+        flex: 1 1 auto;
+      }
+
+      .all-uploads-filter-field--day select,
+      .all-uploads-filter-field--user select,
+      .all-uploads-toolbar.admin-mac-toolbar select,
+      .all-uploads-toolbar.admin-mac-toolbar input[type="date"] {
+        width: 100%;
+        max-width: none;
+        min-height: 44px;
+      }
+
+      .all-uploads-toolbar__side {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+      }
+
+      .all-uploads-sort-stack,
+      .all-uploads-clear-actions {
+        width: 100%;
+        border: none;
+        padding: 0;
+      }
+
+      .all-uploads-clear-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .all-uploads-clear-actions .admin-macos-btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+      }
+
+      .all-uploads-sort-toggle {
+        width: 100%;
+        min-height: 44px;
+      }
+
+      #tab-all-uploads .upload-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+      }
+
+      /* Activity logs tab */
+      .logs-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .logs-toolbar .form-group {
+        width: 100%;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+
+      .logs-toolbar input[type="date"] {
+        min-height: 44px;
+      }
+
+      .logs-toolbar__actions {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
+      .logs-toolbar__actions .admin-macos-btn {
+        flex: 1 1 calc(50% - 0.25rem);
+        min-height: 44px;
+        justify-content: center;
+      }
+
+      #tab-logs .card {
+        padding: 0.75rem 0.65rem;
+        overflow: hidden;
+      }
+
+      #tab-logs .table-wrap {
+        margin: 0 -0.15rem;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .logs-pagination__btn {
+        width: 36px;
+        height: 36px;
+      }
+
+      /* Shared controls & modals */
+      .admin-macos-btn:not(.admin-macos-btn--icon) {
+        min-height: 44px;
+      }
+
+      .user-uploads-modal__card,
+      .confirm-modal__card,
+      .report-excel-viewer .user-uploads-modal__card {
+        width: calc(100vw - 1.25rem);
+        max-width: none;
+        margin: 0.5rem;
+      }
+
+      .toast {
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
+        text-align: center;
+      }
+
+      /* Generate report view */
+      body.admin-report-mode .container {
+        padding: 0.75rem 0.65rem 1rem;
+      }
+
+      #admin-report-view .report-workflow-hero {
+        padding: 0.9rem 0.85rem;
+      }
+
+      #admin-report-view .report-workflow-hero__filters {
+        grid-template-columns: 1fr !important;
+      }
+
+      #admin-report-view .report-workflow-action,
+      #admin-report-view .report-workflow-action__buttons {
+        width: 100%;
+        align-items: stretch;
+      }
+
+      #admin-report-view .report-view-btn,
+      #admin-report-view .report-preview-action-btn,
+      #admin-report-view #reportGenerateBtn {
+        width: 100%;
+        min-height: 44px;
+      }
+
+      #admin-report-view .report-generated-list {
+        grid-template-columns: 1fr !important;
+      }
+
+      #admin-report-view .report-preview-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .report-excel-sheet {
+        max-height: min(58vh, 480px);
+      }
+    }
+
+    @media (max-width: 380px) {
+      .ws-insight {
+        min-width: 100%;
+        flex: 1 1 100%;
+      }
+
+      .users-summary {
+        grid-template-columns: 1fr;
+      }
+
+      #tab-all-uploads .upload-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .logs-toolbar__actions .admin-macos-btn {
+        flex: 1 1 100%;
+      }
+    }
+
+    /* Tablet / narrow laptop (601px–900px) — fill gaps between desktop and phone */
+    @media (min-width: 601px) and (max-width: 900px) {
+      body .container {
+        padding: 1rem 1.1rem 1.5rem;
+      }
+
+      .users-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .users-toolbar {
+        flex-wrap: wrap;
+      }
+
+      .all-uploads-filter-inline {
+        flex: 1 1 100%;
+      }
+
+      .all-uploads-toolbar__side {
+        width: 100%;
+        margin-left: 0;
+      }
+
+      .workspace-dashboard {
+        max-width: none;
+      }
+    }
+
     body.admin-report-mode #admin-dashboard-main { display: none !important; }
     body:not(.admin-report-mode) #admin-report-view { display: none !important; }
     body.admin-report-mode #admin-report-view { display: block; }
     .admin-report-view__header {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.85rem;
       flex-wrap: wrap;
-      margin: 0 0 1.15rem;
+      margin: 0 0 clamp(1.25rem, 3vw, 1.75rem);
+      padding-bottom: 0;
     }
     .admin-report-back {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      width: 2.5rem;
-      height: 2.5rem;
+      width: 2.375rem;
+      height: 2.375rem;
       padding: 0;
-      border-radius: 10px;
-      border: 1px solid #e2e8f0;
-      background: #fff;
-      color: #334155;
+      border-radius: 8px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      background: rgba(255, 255, 255, 0.9);
+      color: #475569;
       text-decoration: none;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+      box-shadow: none;
+      transition:
+        background-color 0.2s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        border-color 0.2s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        color 0.2s ease,
+        transform 0.2s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1));
     }
     .admin-report-back svg {
       width: 1.25rem;
@@ -3416,10 +4011,9 @@
     }
     .admin-report-back:hover {
       background: #f8fafc;
-      border-color: #cbd5e1;
+      border-color: rgba(15, 23, 42, 0.12);
       color: #0f172a;
-      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
-      transform: translateX(-1px);
+      transform: translateX(-2px);
     }
     .admin-report-back:focus-visible {
       outline: 2px solid rgba(37, 99, 235, 0.45);
@@ -3431,16 +4025,18 @@
     }
     .admin-report-view__title {
       margin: 0;
-      font-size: clamp(1.15rem, 2.2vw, 1.4rem);
+      font-size: clamp(1.125rem, 2vw, 1.3125rem);
       font-weight: 600;
+      letter-spacing: -0.025em;
       color: #0f172a;
+      line-height: 1.2;
     }
     .admin-report-view__subtitle {
-      margin: 0.2rem 0 0;
-      font-size: 0.82rem;
-      font-weight: 500;
+      margin: 0.25rem 0 0;
+      font-size: 0.8125rem;
+      font-weight: 400;
       color: #94a3b8;
-      line-height: 1.4;
+      line-height: 1.45;
     }
     .report-view-control {
       position: relative;
@@ -3466,7 +4062,7 @@
         align-self: start;
       }
       #admin-report-view .report-view-stack {
-        gap: 1.15rem;
+        gap: 1.75rem;
       }
       #admin-report-view .admin-report-view__header {
         margin-bottom: 0.75rem;
@@ -3496,7 +4092,7 @@
       }
       #admin-report-view .report-workflow-hero__filters {
         margin-top: 1rem;
-        padding-top: 1rem;
+        padding: 0.85rem;
       }
       #admin-report-view .report-workflow-hero__filters .report-workflow-filters {
         grid-template-columns: 1fr;
@@ -3504,7 +4100,7 @@
       }
       #admin-report-view .report-workflow-hero__cta {
         margin-top: 1rem;
-        padding-top: 1rem;
+        padding-top: 0;
       }
       #admin-report-view .report-workflow-hero .report-preview-action-btn {
         width: 100%;
@@ -3541,57 +4137,88 @@
     #admin-report-view .report-history-section__toolbar .report-view-control {
       margin-left: 0;
     }
+    .report-history-section__toolbar .report-view-control {
+      display: inline-flex;
+      padding: 3px;
+      border-radius: 9px;
+      background: rgba(241, 245, 249, 0.85);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      gap: 2px;
+    }
     .report-history-section__toolbar .report-view-btn {
-      min-height: 36px;
-      padding: 0.4rem 0.75rem;
-      font-size: 0.78rem;
-      font-weight: 600;
-      border-radius: 8px;
-      background: #fff;
-      border: 1px solid #e2e8f0;
+      min-height: 32px;
+      padding: 0.35rem 0.7rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid transparent;
       color: #64748b;
       box-shadow: none;
+      transition:
+        color 0.2s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        background 0.2s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
     }
-    .report-history-section__toolbar .report-view-btn.active,
     .report-history-section__toolbar .report-view-btn:hover {
-      color: #475569;
-      border-color: #cbd5e1;
-      background: #fff;
+      color: #334155;
+      background: rgba(255, 255, 255, 0.65);
+      border-color: transparent;
       box-shadow: none;
       transform: none;
     }
+    .report-history-section__toolbar .report-view-btn.active {
+      color: #0f172a;
+      border-color: rgba(15, 23, 42, 0.08);
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      transform: none;
+    }
     .report-view-btn {
-      min-height: 40px;
-      padding: 0.5rem 0.85rem;
+      min-height: 36px;
+      padding: 0.45rem 0.75rem;
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      border-radius: 999px;
-      font-family: Montserrat, system-ui, sans-serif;
-      font-size: 0.84rem;
-      font-weight: 600;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition:
+        color 0.2s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        background 0.2s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
     }
-    .report-view-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .report-view-btn svg { width: 14px; height: 14px; flex-shrink: 0; opacity: 0.75; }
+    .report-view-btn.active svg { opacity: 1; }
     .report-view-btn.active {
-      color: #fff;
-      border-color: #1d4ed8;
-      background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
-      box-shadow:
-        0 1px 1px rgba(37, 99, 235, 0.2),
-        0 0 0 0.5px rgba(255, 255, 255, 0.2) inset;
+      color: #0f172a;
+      border-color: rgba(15, 23, 42, 0.1);
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
     }
     .report-view-panel {
       position: absolute;
-      top: calc(100% + 0.45rem);
+      top: calc(100% + 0.4rem);
       right: 0;
-      width: 150px;
-      background: #fff;
-      border: 1px solid #e2e8f0;
+      width: 148px;
+      background: rgba(255, 255, 255, 0.98);
+      border: 1px solid rgba(15, 23, 42, 0.08);
       border-radius: 10px;
-      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.14);
-      padding: 0.35rem;
+      box-shadow: 0 12px 32px -8px rgba(15, 23, 42, 0.18);
+      padding: 0.3rem;
       z-index: 50;
       display: none;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      animation: reportPanelIn 0.2s var(--report-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    }
+    @keyframes reportPanelIn {
+      from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
     #admin-report-view .report-view-control {
       position: relative;
@@ -3656,6 +4283,9 @@
     /* Match admin landing nav “Admin Dashboard” (--font-nav-pills / Google Sans Flex) */
     body.admin-report-mode {
       --font-nav-pills: "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif;
+      --report-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --report-border: rgba(15, 23, 42, 0.08);
+      --report-muted: #64748b;
     }
     body.admin-report-mode #admin-report-view,
     body.admin-report-mode #admin-report-view *:not(.logo-text),
@@ -3916,20 +4546,33 @@
     .tabs {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 0.35rem;
       width: 100%;
       min-width: 0;
+      max-width: 100%;
       overflow-x: auto;
       overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      scroll-padding-inline: 0.5rem;
       padding: 0 0 1px;
+      margin-bottom: 0.85rem;
       border-bottom: 1px solid #dbe4f0;
-      scrollbar-width: none;
-      contain: layout paint;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
     }
-    .tabs::-webkit-scrollbar { display: none; }
+    .tabs::-webkit-scrollbar {
+      height: 4px;
+    }
+    .tabs::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 999px;
+    }
     .tab-btn {
       appearance: none;
       flex: 0 0 auto;
+      flex-shrink: 0;
       min-height: 40px;
       padding: 0 1rem;
       border: 1px solid transparent;
@@ -3937,8 +4580,9 @@
       background: transparent;
       color: #64748b;
       font-size: 0.9rem;
-      font-weight: 450;
-      line-height: 40px;
+      font-weight: 400;
+      line-height: 1.25;
+      white-space: nowrap;
       cursor: pointer;
       box-sizing: border-box;
       position: relative;
@@ -4002,7 +4646,16 @@
 
   <div class="container">
     <div id="admin-dashboard-main">
-    <!-- Stats -->
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="all-uploads">All Uploads</button>
+      <button class="tab-btn" data-tab="stats">Stats</button>
+      <button class="tab-btn" data-tab="users">Users</button>
+      <button class="tab-btn" data-tab="logs">Activity Logs</button>
+    </div>
+
+    <!-- Stats tab -->
+    <div class="tab-panel" id="tab-stats">
     <div class="stats-block">
       <div class="stats-row stats-row--metric" id="statsRow">
         <div class="stat-card stat-card--metric stat-card--users stat-card--loading" id="cardUsers" aria-busy="true">
@@ -4088,12 +4741,49 @@
       </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="all-uploads">All Uploads</button>
-      <button class="tab-btn" data-tab="users">Users</button>
-      <button class="tab-btn" data-tab="analytics">Analytics</button>
-      <button class="tab-btn" data-tab="logs">Activity Logs</button>
+    <div class="workspace-dashboard" id="workspaceDashboard">
+      <header class="workspace-dashboard__head">
+        <h2 class="workspace-dashboard__title">Overview</h2>
+        <span class="workspace-dashboard__live" id="workspaceLiveText">Syncing…</span>
+      </header>
+
+      <div class="ws-insights" id="workspaceInsights"></div>
+      <p class="ws-note ws-note--alert" id="wsCriticalNote" hidden></p>
+
+      <div class="ws-stack" id="workspaceGrid">
+        <section class="ws-section">
+          <div class="ws-section__head">
+            <h3 class="ws-section__title">Upload volume</h3>
+            <span class="ws-section__meta" id="wsVolumeMeta">14 days</span>
+          </div>
+          <div class="ws-line-wrap" id="wsUploadTrend"></div>
+        </section>
+
+        <div class="ws-duo">
+          <section class="ws-section">
+            <div class="ws-section__head">
+              <h3 class="ws-section__title">Top categories</h3>
+            </div>
+            <div class="ws-rows" id="wsCategories"></div>
+          </section>
+          <section class="ws-section">
+            <div class="ws-section__head">
+              <h3 class="ws-section__title">Busiest areas</h3>
+              <span class="ws-section__meta">Defect count</span>
+            </div>
+            <div class="ws-rows" id="wsHotspots"></div>
+          </section>
+        </div>
+
+        <section class="ws-section">
+          <div class="ws-section__head">
+            <h3 class="ws-section__title">Location density</h3>
+            <span class="ws-section__meta">30 days</span>
+          </div>
+          <div id="wsHeatmap"></div>
+        </section>
+      </div>
+    </div>
     </div>
 
     <!-- Users tab -->
@@ -4184,72 +4874,6 @@
 
       <!-- Pagination -->
       <div class="logs-pagination" id="usersPagination" aria-label="Users pagination"></div>
-    </div>
-
-    <!-- Analytics tab -->
-    <div class="tab-panel" id="tab-analytics">
-      <div class="analytics-toolbar admin-mac-toolbar">
-        <div class="analytics-toolbar__date">
-          <label for="analyticsDatePicker">Select date</label>
-          <input type="date" id="analyticsDatePicker" aria-label="Analytics date" />
-        </div>
-        <button type="button" class="admin-macos-btn admin-macos-btn--secondary" id="analyticsApplyDate">Apply</button>
-        <button type="button" class="admin-macos-btn admin-macos-btn--secondary" id="analyticsTodayBtn">Today</button>
-      </div>
-
-      <div class="analytics-summary">
-        <div class="summary-chip">
-          <div class="summary-chip__icon summary-chip__icon--uploaders">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-          </div>
-          <div>
-            <div class="summary-chip__val" id="analyticsUploaderCount">–</div>
-            <div class="summary-chip__label">Users uploaded</div>
-          </div>
-        </div>
-        <div class="summary-chip">
-          <div class="summary-chip__icon summary-chip__icon--observations">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-          </div>
-          <div>
-            <div class="summary-chip__val" id="analyticsObservationCount">–</div>
-            <div class="summary-chip__label">Observations</div>
-          </div>
-        </div>
-      </div>
-
-      <div id="analyticsLoading" class="analytics-loading" style="display:none">Loading analytics…</div>
-
-      <div class="analytics-grid" id="analyticsGrid">
-        <section class="analytics-card">
-          <h3 class="analytics-card__title">Uploaders</h3>
-          <div class="analytics-uploader-list" id="analyticsUploaders"></div>
-        </section>
-        <section class="analytics-card">
-          <h3 class="analytics-card__title">Projects</h3>
-          <div id="analyticsProjects"></div>
-        </section>
-        <section class="analytics-card">
-          <h3 class="analytics-card__title">Major towers</h3>
-          <div id="analyticsTowers"></div>
-        </section>
-        <section class="analytics-card">
-          <h3 class="analytics-card__title">Hotspot areas</h3>
-          <div id="analyticsAreas"></div>
-        </section>
-        <section class="analytics-card" style="grid-column: 1 / -1;">
-          <h3 class="analytics-card__title">Main defects observed</h3>
-          <div id="analyticsCategories"></div>
-        </section>
-      </div>
-
-      <section class="analytics-insight" id="analyticsInsightBlock">
-        <div class="analytics-insight__head">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M5 19l1 3 1-3 3-1-3-1-1-3-1 3-3 1 3 1z"/><path d="M19 13l.7 2.1 2.1.7-2.1.7L19 18.5l-.7-2.1-2.1-.7 2.1-.7.7-2.1z"/></svg>
-          AI Insight
-        </div>
-        <p class="analytics-insight__text" id="analyticsInsightText">Select a date to view insights for that day.</p>
-      </section>
     </div>
 
     <!-- All Uploads tab -->
@@ -4891,6 +5515,12 @@
           p.style.animation = "";
         }
       });
+      const tabsEl = document.querySelector(".tabs");
+      const activeBtn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
+      if (tabsEl && activeBtn) {
+        const targetLeft = activeBtn.offsetLeft - (tabsEl.clientWidth - activeBtn.offsetWidth) / 2;
+        tabsEl.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+      }
       window.scrollTo(scrollX, scrollY);
     }
 
@@ -4902,8 +5532,8 @@
         showAdminDashboardView();
         activateAdminTab(btn.dataset.tab);
         if (btn.dataset.tab === "all-uploads") loadAllUploads();
+        else if (btn.dataset.tab === "stats") loadWorkspace();
         else if (btn.dataset.tab === "users") loadUsers();
-        else if (btn.dataset.tab === "analytics") loadAnalytics();
         else if (btn.dataset.tab === "logs") {
           loadLogs(
             document.getElementById("dateFrom").value,
@@ -4925,13 +5555,16 @@
       showAdminDashboardView();
       const raw = (location.hash || "").replace(/^#/, "").trim();
       if (!raw) return;
-      const name = raw;
-      const valid = ["all-uploads", "users", "analytics", "logs"];
+      const name = raw === "analytics" ? "stats" : raw;
+      if (raw === "analytics") {
+        history.replaceState(null, "", "#stats");
+      }
+      const valid = ["all-uploads", "stats", "users", "logs"];
       if (!valid.includes(name)) return;
       activateAdminTab(name);
       if (name === "all-uploads") loadAllUploads();
+      else if (name === "stats") loadWorkspace();
       else if (name === "users") loadUsers();
-      else if (name === "analytics") loadAnalytics();
       else if (name === "logs") {
         loadLogs(
           document.getElementById("dateFrom").value,
@@ -4941,86 +5574,6 @@
     }
 
     window.addEventListener("hashchange", openAdminTabFromHash);
-
-    /* ═══════════════════════════════════════════════
-       Analytics — daily uploaders, hotspots, AI insight
-       ═══════════════════════════════════════════════ */
-    const analyticsDatePicker = document.getElementById("analyticsDatePicker");
-    const analyticsApplyDate = document.getElementById("analyticsApplyDate");
-    const analyticsTodayBtn = document.getElementById("analyticsTodayBtn");
-    let analyticsLoadedDate = "";
-    let analyticsLoading = false;
-
-    function localDateInputValue(date = new Date()) {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, "0");
-      const d = String(date.getDate()).padStart(2, "0");
-      return `${y}-${m}-${d}`;
-    }
-
-    function initAnalyticsDatePicker() {
-      if (!analyticsDatePicker || analyticsDatePicker.value) return;
-      analyticsDatePicker.value = localDateInputValue();
-    }
-
-    function renderAnalyticsBars(container, rows, emptyLabel) {
-      if (!container) return;
-      if (!rows || !rows.length) {
-        container.innerHTML = `<div class="analytics-empty">${emptyLabel}</div>`;
-        return;
-      }
-      const max = Math.max(...rows.map((r) => r.count), 1);
-      container.innerHTML = rows.map((row) => {
-        const pct = Math.max(6, Math.round((row.count / max) * 100));
-        const label = escapeHtml(row.name || "Unknown");
-        return `
-          <div class="analytics-bar-row">
-            <span class="analytics-bar-row__label" title="${label}">${label}</span>
-            <div class="analytics-bar-row__track">
-              <div class="analytics-bar-row__fill" style="width:${pct}%"></div>
-            </div>
-            <span class="analytics-bar-row__count">${row.count}</span>
-          </div>
-        `;
-      }).join("");
-    }
-
-    function renderAnalyticsUploaders(rows) {
-      const container = document.getElementById("analyticsUploaders");
-      if (!container) return;
-      if (!rows || !rows.length) {
-        container.innerHTML = `<div class="analytics-empty">No users uploaded on this date.</div>`;
-        return;
-      }
-      container.innerHTML = rows.map((row) => {
-        const name = escapeHtml(displayUserName(row));
-        const email = escapeHtml(row.email || "unknown");
-        return `
-          <div class="analytics-uploader-row">
-            <div>
-              <div class="analytics-uploader-row__name">${name}</div>
-              <div class="analytics-uploader-row__meta">${email}</div>
-            </div>
-            <div class="analytics-uploader-row__count">${row.count}</div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    function analyticsDayBounds(dateStr, tzOffsetMin) {
-      const [y, m, d] = dateStr.split("-").map(Number);
-      if (!y || !m || !d) return null;
-      const startMs = Date.UTC(y, m - 1, d, 0, 0, 0, 0) + tzOffsetMin * 60 * 1000;
-      return { start: new Date(startMs), end: new Date(startMs + 86400000) };
-    }
-
-    function defectInAnalyticsDay(createdAt, dateStr, tzOffsetMin) {
-      const dt = new Date(createdAt);
-      if (isNaN(dt.getTime())) return false;
-      const bounds = analyticsDayBounds(dateStr, tzOffsetMin);
-      if (!bounds) return false;
-      return dt >= bounds.start && dt < bounds.end;
-    }
 
     function analyticsAreaLabel(d) {
       const parts = [];
@@ -5046,176 +5599,566 @@
         .map(([name, count]) => ({ name, count }));
     }
 
-    function analyticsMitigationHint(byCategory) {
-      const haystack = (byCategory || []).slice(0, 5).map((r) => r.name).join(" ").toLowerCase();
-      const rules = [
-        [["crack", "structural", "settlement", "column", "beam"], "Schedule structural punch-list review on affected towers and verify closure with engineer sign-off."],
-        [["water", "leak", "seep", "damp", "moisture", "plumb", "pipe"], "Prioritize waterproofing and plumbing rectification; re-inspect wet areas after rework."],
-        [["electrical", "wiring", "switch", "cable", "mcb"], "Coordinate with MEP for electrical safety checks and targeted fixes in hotspot flats."],
-        [["paint", "finish", "plaster", "tile", "grout", "floor"], "Deploy finishing teams to high-volume rooms and verify quality with photo evidence."],
-        [["door", "window", "frame", "glass", "hardware"], "Batch carpentry and fenestration rework on the most affected floors."],
-      ];
-      for (const [words, hint] of rules) {
-        if (words.some((w) => haystack.includes(w))) return hint;
-      }
-      return "Cluster recurring issues by tower and room, assign owners, and track closure with photo verification.";
+    /* ═══════════════════════════════════════════════
+       Stats + workspace — metrics cards & analytics dashboard
+       ═══════════════════════════════════════════════ */
+    let workspaceLoading = false;
+    let workspaceLastFingerprint = "";
+
+    function workspaceFingerprint(data) {
+      if (!data) return "";
+      return JSON.stringify({
+        s: data.stats,
+        k: data.kpis,
+        at: data.generated_at,
+      });
     }
 
-    function buildAnalyticsInsight(payload) {
-      const n = payload.observation_count || 0;
-      if (!n) {
-        return "No observations were recorded on this date. Try another day or encourage site teams to capture uploads from critical walkthroughs.";
-      }
-      const parts = [];
-      const { by_project: bp, by_tower: bt, by_area: ba, by_category: bc } = payload;
-      if (bp?.length) parts.push(`${bp[0].name} led activity with ${bp[0].count} observation${bp[0].count === 1 ? "" : "s"}.`);
-      if (bt?.length) parts.push(`Tower ${bt[0].name} showed the highest defect concentration (${bt[0].count}).`);
-      if (ba?.length) parts.push(`The busiest hotspot was ${ba[0].name} (${ba[0].count} issues).`);
-      if (bc?.length) parts.push(`The most frequent issue type was ${bc[0].name} (${bc[0].count} recorded).`);
-      parts.push(`Recommended action: ${analyticsMitigationHint(bc)}`);
-      return parts.join(" ");
+    const WS_CRITICAL_WORDS = [
+      "structural", "crack", "collapse", "safety", "fire", "electrical", "shock", "gas",
+      "seepage", "foundation", "hazard", "urgent", "critical", "leak", "waterproof",
+    ];
+
+    function wsIsCriticalDefect(d) {
+      const hay = `${d.category || ""} ${d.description || ""}`.toLowerCase();
+      return WS_CRITICAL_WORDS.some((w) => hay.includes(w));
     }
 
-    function buildAnalyticsFromUploads(items, dateStr, tzOffsetMin) {
-      const dayItems = items.filter((d) => defectInAnalyticsDay(d.created_at, dateStr, tzOffsetMin));
-      const uploaderMap = new Map();
-      const projectMap = new Map();
-      const towerMap = new Map();
-      const areaMap = new Map();
-      const categoryMap = new Map();
+    function wsDayKey(iso, tzOffsetMin) {
+      const dt = new Date(iso);
+      if (isNaN(dt.getTime())) return "";
+      const shifted = new Date(dt.getTime() + tzOffsetMin * 60 * 1000);
+      const y = shifted.getUTCFullYear();
+      const m = String(shifted.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(shifted.getUTCDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
 
-      for (const d of dayItems) {
-        const email = d.email || "unknown";
-        const prev = uploaderMap.get(email) || { email, name: d.name, user_id: d.user_id, count: 0 };
-        prev.count += 1;
-        uploaderMap.set(email, prev);
+    function wsDayLabel(key) {
+      const [y, m, d] = key.split("-").map(Number);
+      if (!y || !m || !d) return key;
+      return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    }
 
-        const project = (d.project || "").trim() || "Unassigned project";
-        projectMap.set(project, (projectMap.get(project) || 0) + 1);
-
-        const tower = (d.tower || "").trim() || "Unknown";
-        towerMap.set(tower, (towerMap.get(tower) || 0) + 1);
-
-        const area = analyticsAreaLabel(d);
-        areaMap.set(area, (areaMap.get(area) || 0) + 1);
-
-        const category = analyticsCategoryLabel(d);
-        categoryMap.set(category, (categoryMap.get(category) || 0) + 1);
+    function wsFormatLogAction(action) {
+      if (!action) return "System event";
+      if (action.startsWith("admin_generate_report_pptx:")) {
+        const n = action.split(":")[1] || "?";
+        return `PowerPoint report (${n} items)`;
       }
+      if (action.startsWith("admin_generate_report:")) {
+        const n = action.split(":")[1] || "?";
+        return `Excel report (${n} items)`;
+      }
+      if (action === "upload") return "Image uploaded";
+      if (action === "login") return "User signed in";
+      if (action === "register") return "New user registered";
+      if (action.startsWith("delete_upload:")) return "Upload removed";
+      if (action.startsWith("bulk_delete_uploads:")) return "Bulk upload cleanup";
+      return action.replace(/_/g, " ");
+    }
 
-      const uploaders = Array.from(uploaderMap.values()).sort(
-        (a, b) => b.count - a.count || (a.email || "").localeCompare(b.email || ""),
+    async function buildWorkspaceFromClientData(stats, tzOffsetMin) {
+      const uploadsRes = await apiFetch("/api/admin/uploads");
+      if (!uploadsRes?.ok) throw new Error("uploads unavailable");
+      const uploads = (await uploadsRes.json()).filter(
+        (d) => !String(d.image_path || "").startsWith("missing/"),
       );
-      const payload = {
-        date: dateStr,
-        observation_count: dayItems.length,
-        uploader_count: uploaders.length,
-        uploaders,
-        by_project: analyticsTopCounts(projectMap),
-        by_tower: analyticsTopCounts(towerMap),
-        by_area: analyticsTopCounts(areaMap),
-        by_category: analyticsTopCounts(categoryMap),
+      const logsRes = await apiFetch("/api/admin/logs");
+      const logs = logsRes?.ok ? await logsRes.json() : [];
+
+      const now = Date.now();
+      const monthAgo = now - 30 * 86400000;
+      const weekAgo = now - 7 * 86400000;
+      const todayKey = wsDayKey(new Date().toISOString(), tzOffsetMin);
+
+      const dailyKeys = [];
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date();
+        d.setHours(12, 0, 0, 0);
+        d.setDate(d.getDate() - i);
+        dailyKeys.push(wsDayKey(d.toISOString(), tzOffsetMin));
+      }
+
+      const dailyUploadMap = Object.fromEntries(dailyKeys.map((k) => [k, 0]));
+      const reportDailyMap = { ...dailyUploadMap };
+
+      const categoryCounts = new Map();
+      const heatCells = new Map();
+      const towerFloorCounts = new Map();
+      const uploader7d = new Map();
+      const criticalItems = [];
+      const defects30d = [];
+
+      for (const d of uploads) {
+        const t = new Date(d.created_at).getTime();
+        if (isNaN(t) || t < monthAgo) continue;
+        defects30d.push(d);
+
+        const dayKey = wsDayKey(d.created_at, tzOffsetMin);
+        if (dayKey in dailyUploadMap) dailyUploadMap[dayKey] += 1;
+
+        const cat = analyticsCategoryLabel(d);
+        categoryCounts.set(cat, (categoryCounts.get(cat) || 0) + 1);
+
+        const tower = (d.tower || "").trim() || "—";
+        const floor = (d.floor || "").trim() || "—";
+        const tf = `${tower}|${floor}`;
+        heatCells.set(tf, (heatCells.get(tf) || 0) + 1);
+        const tfLabel = wsTowerFloorLabel(tower, floor);
+        towerFloorCounts.set(tfLabel, (towerFloorCounts.get(tfLabel) || 0) + 1);
+
+        if (wsIsCriticalDefect(d)) {
+          criticalItems.push({
+            label: cat,
+            area: analyticsAreaLabel(d),
+            at: d.created_at,
+          });
+        }
+
+        if (t >= weekAgo) {
+          const uid = d.user_id;
+          const row = uploader7d.get(uid) || {
+            user_id: uid,
+            email: d.email || "unknown",
+            name: d.name,
+            count: 0,
+          };
+          row.count += 1;
+          uploader7d.set(uid, row);
+        }
+      }
+
+      let reportsWeek = 0;
+      let reportsToday = 0;
+      for (const log of logs) {
+        const action = log.action || "";
+        if (!action.startsWith("admin_generate_report")) continue;
+        const ts = new Date(log.timestamp).getTime();
+        if (isNaN(ts) || ts < monthAgo) continue;
+        const key = wsDayKey(log.timestamp, tzOffsetMin);
+        if (key in reportDailyMap) reportDailyMap[key] += 1;
+        if (ts >= weekAgo) reportsWeek += 1;
+        if (wsDayKey(log.timestamp, tzOffsetMin) === todayKey) reportsToday += 1;
+      }
+
+      const uploadTrendDaily = dailyKeys.map((k) => ({
+        date: k,
+        label: wsDayLabel(k),
+        count: dailyUploadMap[k] || 0,
+      }));
+
+      const uploadTrendWeekly = [];
+      for (let i = 7; i >= 0; i--) {
+        const end = now - i * 7 * 86400000;
+        const start = end - 7 * 86400000;
+        const count = defects30d.filter((d) => {
+          const t = new Date(d.created_at).getTime();
+          return t >= start && t < end;
+        }).length;
+        uploadTrendWeekly.push({
+          week_start: wsDayKey(new Date(start).toISOString(), tzOffsetMin),
+          label: i === 0 ? "This wk" : `-${i}w`,
+          count,
+        });
+      }
+
+      const towerTotals = new Map();
+      const floorTotals = new Map();
+      for (const [tf, count] of heatCells) {
+        const [tower, floor] = tf.split("|");
+        towerTotals.set(tower, (towerTotals.get(tower) || 0) + count);
+        floorTotals.set(floor, (floorTotals.get(floor) || 0) + count);
+      }
+      const towers = [...towerTotals.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 6)
+        .map(([t]) => t);
+      const floors = [...floorTotals.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 6)
+        .map(([f]) => f);
+      const heatTowers = towers.length ? towers : ["—"];
+      const heatFloors = floors.length ? floors : ["—"];
+      const maxHeat = Math.max(...heatCells.values(), 1);
+
+      const timeline = [];
+      for (const log of logs.slice(0, 25)) {
+        timeline.push({
+          type: "system",
+          label: wsFormatLogAction(log.action),
+          actor: log.email || "unknown",
+          at: log.timestamp,
+        });
+      }
+      for (const d of defects30d
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 12)) {
+        timeline.push({
+          type: "upload",
+          label: analyticsCategoryLabel(d),
+          actor: d.email || "unknown",
+          at: d.created_at,
+        });
+      }
+      timeline.sort((a, b) => new Date(b.at) - new Date(a.at));
+
+      criticalItems.sort((a, b) => new Date(b.at) - new Date(a.at));
+      const uploadsWeek = stats?.uploads_week
+        ?? defects30d.filter((d) => new Date(d.created_at).getTime() >= weekAgo).length;
+
+      const userActivity = [...uploader7d.values()]
+        .sort((a, b) => b.count - a.count || (a.email || "").localeCompare(b.email || ""))
+        .slice(0, 8);
+
+      return {
+        stats,
+        kpis: {
+          critical_count: criticalItems.length,
+          uploads_today: stats?.uploads_today ?? dailyUploadMap[todayKey] ?? 0,
+          reports_today: reportsToday,
+          active_uploaders_7d: uploader7d.size,
+          ai_success_week: reportsWeek,
+          ai_pending_estimate: Math.max(0, uploadsWeek - reportsWeek),
+        },
+        upload_trend_daily: uploadTrendDaily,
+        upload_trend_weekly: uploadTrendWeekly,
+        by_category: analyticsTopCounts(categoryCounts, 8),
+        heatmap: {
+          towers: heatTowers,
+          floors: heatFloors,
+          cells: heatTowers.flatMap((tower) =>
+            heatFloors.map((floor) => ({
+              tower,
+              floor,
+              count: heatCells.get(`${tower}|${floor}`) || 0,
+            })),
+          ),
+          max: maxHeat,
+        },
+        tower_floor: analyticsTopCounts(towerFloorCounts, 8),
+        report_trend_daily: dailyKeys.map((k) => ({
+          date: k,
+          label: wsDayLabel(k),
+          count: reportDailyMap[k] || 0,
+        })),
+        user_activity: userActivity,
+        critical: { count: criticalItems.length, recent: criticalItems.slice(0, 6) },
+        ai_metrics: {
+          reports_today: reportsToday,
+          reports_week: reportsWeek,
+          uploads_week: uploadsWeek,
+          success_week: reportsWeek,
+          pending_estimate: Math.max(0, uploadsWeek - reportsWeek),
+        },
+        timeline: timeline.slice(0, 20),
+        generated_at: new Date().toISOString(),
       };
-      payload.insight = buildAnalyticsInsight(payload);
-      return payload;
     }
 
-    async function fetchAnalyticsPayload(date, tzOffset) {
-      const res = await apiFetch(
-        `/api/admin/analytics?date=${encodeURIComponent(date)}&tz_offset=${encodeURIComponent(String(tzOffset))}`,
-      );
-      if (res.ok) return res.json();
-      if (res.status !== 404) return null;
+    function wsTowerFloorLabel(tower, floor) {
+      const t = (tower || "").trim() || "Unknown area";
+      const f = (floor || "").trim();
+      if (!f || f === "—" || f === "-") return t;
+      if (/^floor\b/i.test(f)) return `${t}, ${f}`;
+      return `${t}, Floor ${f}`;
+    }
 
-      let items = allUploadsData;
-      if (!items.length) {
-        const uploadsRes = await apiFetch("/api/admin/uploads");
-        if (!uploadsRes.ok) return null;
-        items = await uploadsRes.json();
+    function wsFormatFloorAxis(floor) {
+      const f = (floor || "").trim() || "—";
+      if (f === "—") return f;
+      if (/^floor\b/i.test(f)) return f;
+      return /^\d+$/.test(f) ? `Fl. ${f}` : `Floor ${f}`;
+    }
+
+    function wsHeatLevel(count, max) {
+      if (!count) return 0;
+      const r = count / Math.max(max, 1);
+      if (r <= 0.25) return 1;
+      if (r <= 0.5) return 2;
+      if (r <= 0.75) return 3;
+      return 4;
+    }
+
+    function wsRenderInsights(kpis, ai) {
+      const el = document.getElementById("workspaceInsights");
+      if (!el || !kpis) return;
+      const reportsWeek = ai?.reports_week ?? kpis.ai_success_week ?? 0;
+      const items = [
+        { val: kpis.uploads_today ?? 0, label: "Uploads today", accent: true },
+        { val: kpis.active_uploaders_7d ?? 0, label: "Active uploaders" },
+        { val: reportsWeek, label: "Reports this week" },
+        { val: kpis.reports_today ?? 0, label: "Reports today" },
+      ];
+      el.innerHTML = items.map((item) => `
+        <div class="ws-insight">
+          <span class="ws-insight__val${item.accent ? " ws-insight__val--accent" : ""}">${item.val}</span>
+          <span class="ws-insight__lbl">${item.label}</span>
+        </div>
+      `).join("");
+
+      const note = document.getElementById("wsCriticalNote");
+      if (note) {
+        const n = kpis.critical_count ?? 0;
+        if (n > 0) {
+          note.hidden = false;
+          note.innerHTML = `<strong>${n}</strong> observation${n === 1 ? "" : "s"} flagged for structural or safety review in the last 30 days.`;
+        } else {
+          note.hidden = true;
+          note.textContent = "";
+        }
       }
-      return buildAnalyticsFromUploads(items, date, tzOffset);
     }
 
-    function renderAnalyticsPayload(data) {
-      document.getElementById("analyticsUploaderCount").textContent = String(data.uploader_count ?? 0);
-      document.getElementById("analyticsObservationCount").textContent = String(data.observation_count ?? 0);
-      renderAnalyticsUploaders(data.uploaders || []);
-      renderAnalyticsBars(
-        document.getElementById("analyticsProjects"),
-        data.by_project || [],
-        "No project data for this date.",
-      );
-      renderAnalyticsBars(
-        document.getElementById("analyticsTowers"),
-        data.by_tower || [],
-        "No tower data for this date.",
-      );
-      renderAnalyticsBars(
-        document.getElementById("analyticsAreas"),
-        data.by_area || [],
-        "No area hotspots for this date.",
-      );
-      renderAnalyticsBars(
-        document.getElementById("analyticsCategories"),
+    function wsRenderLineChart(container, rows) {
+      if (!container) return;
+      if (!rows?.length) {
+        container.innerHTML = `<div class="ws-empty">No upload data yet.</div>`;
+        return;
+      }
+      const w = 320;
+      const h = 56;
+      const padX = 4;
+      const padY = 6;
+      const counts = rows.map((r) => r.count);
+      const max = Math.max(...counts, 1);
+      const n = rows.length;
+      const pts = rows.map((r, i) => {
+        const x = padX + (n <= 1 ? 0 : (i / (n - 1)) * (w - padX * 2));
+        const y = h - padY - (r.count / max) * (h - padY * 2);
+        return [x, y];
+      });
+      const linePts = pts.map((p) => p.join(",")).join(" ");
+      const areaPts = `${padX},${h - padY} ${linePts} ${w - padX},${h - padY}`;
+      const total = counts.reduce((s, c) => s + c, 0);
+      const meta = document.getElementById("wsVolumeMeta");
+      if (meta) meta.textContent = `${total} in 14 days`;
+
+      const labelEvery = Math.max(1, Math.floor(n / 5));
+      const labels = rows
+        .filter((_, i) => i === 0 || i === n - 1 || i % labelEvery === 0)
+        .map((r) => `<span>${escapeHtml(r.label || "")}</span>`)
+        .join("");
+
+      container.innerHTML = `
+        <svg class="ws-line-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="wsLineFade" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0071e3" stop-opacity="0.12"/>
+              <stop offset="100%" stop-color="#0071e3" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <polygon class="ws-line-area" points="${areaPts}"/>
+          <polyline points="${linePts}"/>
+        </svg>
+        <div class="ws-line-labels">${labels}</div>
+      `;
+    }
+
+    function wsRenderMonoRows(container, rows, emptyLabel, opts = {}) {
+      if (!container) return;
+      const limit = opts.limit ?? 5;
+      const accentTop = !!opts.accentTop;
+      const slice = (rows || []).slice(0, limit);
+      if (!slice.length) {
+        container.innerHTML = `<div class="ws-empty">${emptyLabel}</div>`;
+        return;
+      }
+      const max = Math.max(...slice.map((r) => r.count), 1);
+      container.innerHTML = slice.map((row, i) => {
+        const pct = Math.max(4, Math.round((row.count / max) * 100));
+        const fillCls = accentTop && i === 0 ? " ws-row__fill--accent" : "";
+        return `
+          <div class="ws-row">
+            <span class="ws-row__label" title="${escapeHtml(row.name)}">${escapeHtml(row.name)}</span>
+            <div class="ws-row__track"><div class="ws-row__fill${fillCls}" style="width:${pct}%"></div></div>
+            <span class="ws-row__n">${row.count}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function wsRenderHeatmap(container, heatmap) {
+      if (!container) return;
+      const towers = heatmap?.towers || [];
+      const floors = heatmap?.floors || [];
+      const max = heatmap?.max || 1;
+      const cellMap = new Map((heatmap?.cells || []).map((c) => [`${c.tower}|${c.floor}`, c.count]));
+      if (!towers.length || !floors.length) {
+        container.innerHTML = `<div class="ws-empty">Not enough location data yet.</div>`;
+        return;
+      }
+      let html = `<div class="ws-heatmap" style="grid-template-columns:minmax(5.5rem,max-content) repeat(${floors.length}, minmax(1.75rem, 1fr))">`;
+      html += `<div class="ws-heatmap__corner"></div>`;
+      floors.forEach((f) => { html += `<div class="ws-heatmap__head">${escapeHtml(wsFormatFloorAxis(f))}</div>`; });
+      towers.forEach((tower) => {
+        html += `<div class="ws-heatmap__row-label">${escapeHtml(tower)}</div>`;
+        floors.forEach((floor) => {
+          const count = cellMap.get(`${tower}|${floor}`) || 0;
+          const level = wsHeatLevel(count, max);
+          html += `<div class="ws-heatmap__cell" data-level="${level}" title="${count}">${count || ""}</div>`;
+        });
+      });
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    function renderWorkspaceDashboard(data) {
+      wsRenderInsights(data.kpis, data.ai_metrics);
+      wsRenderLineChart(document.getElementById("wsUploadTrend"), data.upload_trend_daily || []);
+      wsRenderMonoRows(
+        document.getElementById("wsCategories"),
         data.by_category || [],
-        "No defect categories recorded for this date.",
+        "No categories recorded yet.",
+        { accentTop: true },
       );
-      document.getElementById("analyticsInsightText").textContent =
-        data.insight || "No insight available for this date.";
+      wsRenderMonoRows(
+        document.getElementById("wsHotspots"),
+        data.tower_floor || [],
+        "No repeated defect areas yet.",
+      );
+      wsRenderHeatmap(document.getElementById("wsHeatmap"), data.heatmap);
+
+      const liveText = document.getElementById("workspaceLiveText");
+      if (liveText) {
+        const at = data.generated_at ? new Date(data.generated_at) : new Date();
+        liveText.textContent = `Updated ${at.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+      }
     }
 
-    async function loadAnalytics(opts = {}) {
+    async function loadWorkspace(opts = {}) {
       const silent = !!opts.silent;
-      initAnalyticsDatePicker();
-      const date = (analyticsDatePicker?.value || localDateInputValue()).trim();
-      if (!date) return;
-      if (silent && analyticsLoadedDate === date && !opts.force) return;
-      if (analyticsLoading) return;
+      if (workspaceLoading) return;
 
-      analyticsLoading = true;
-      const loadingEl = document.getElementById("analyticsLoading");
-      const gridEl = document.getElementById("analyticsGrid");
-      if (!silent && loadingEl && gridEl) {
-        loadingEl.style.display = "block";
-        gridEl.style.opacity = "0.55";
+      const dash = document.getElementById("workspaceDashboard");
+      if (silent && workspaceLastFingerprint && !opts.force) {
+        /* still refresh stats cards on silent tick via lightweight path below */
       }
+
+      workspaceLoading = true;
+      if (dash) dash.classList.add("workspace-dashboard--loading");
 
       try {
         const tzOffset = new Date().getTimezoneOffset();
-        const data = await fetchAnalyticsPayload(date, tzOffset);
-        if (!data) throw new Error("Failed to load analytics");
-        analyticsLoadedDate = date;
-        renderAnalyticsPayload(data);
+        let res = await apiFetch(`/api/admin/workspace?tz_offset=${encodeURIComponent(String(tzOffset))}`);
+        let data;
+        let workspaceSource = "api";
+        if (!res?.ok) {
+          const statsRes = await apiFetch("/api/admin/stats");
+          if (!statsRes?.ok) throw new Error("Workspace unavailable");
+          const s = await statsRes.json();
+          data = await buildWorkspaceFromClientData(s, tzOffset);
+          workspaceSource = "client";
+          if (data.stats) await applyStatsPayload(data.stats, { silent });
+        } else {
+          data = await res.json();
+          if (data.stats) await applyStatsPayload(data.stats, { silent });
+        }
+        const fp = workspaceFingerprint(data);
+        if (silent && fp === workspaceLastFingerprint) {
+          workspaceLoading = false;
+          if (dash) dash.classList.remove("workspace-dashboard--loading");
+          return;
+        }
+        workspaceLastFingerprint = fp;
+        renderWorkspaceDashboard(data);
+        const live = document.getElementById("workspaceLiveText");
+        if (live && workspaceSource === "client") {
+          live.textContent = "Updated from uploads · restart API for full sync";
+        }
       } catch (err) {
-        console.error(err);
+        console.error("Failed to load workspace:", err);
         if (!silent) {
-          document.getElementById("analyticsUploaderCount").textContent = "0";
-          document.getElementById("analyticsObservationCount").textContent = "0";
-          renderAnalyticsUploaders([]);
-          ["analyticsProjects", "analyticsTowers", "analyticsAreas", "analyticsCategories"].forEach((id) => {
-            const el = document.getElementById(id);
-            if (el) el.innerHTML = `<div class="analytics-empty">No data available.</div>`;
-          });
-          document.getElementById("analyticsInsightText").textContent =
-            "Could not load analytics for this date. Restart the backend (uvicorn with --reload) and try again.";
+          const live = document.getElementById("workspaceLiveText");
+          if (live) live.textContent = "Couldn’t load workspace";
         }
       } finally {
-        analyticsLoading = false;
-        if (loadingEl) loadingEl.style.display = "none";
-        if (gridEl) gridEl.style.opacity = "";
+        workspaceLoading = false;
+        if (dash) dash.classList.remove("workspace-dashboard--loading");
       }
     }
 
-    analyticsApplyDate?.addEventListener("click", () => loadAnalytics({ force: true }));
-    analyticsTodayBtn?.addEventListener("click", () => {
-      if (analyticsDatePicker) analyticsDatePicker.value = localDateInputValue();
-      loadAnalytics({ force: true });
-    });
-    analyticsDatePicker?.addEventListener("change", () => loadAnalytics({ force: true }));
+    async function applyStatsPayload(s, opts = {}) {
+      const silent = !!opts.silent;
+      if (silent && !initialStatsLoaded) return;
 
-    /* ═══════════════════════════════════════════════
-       Stats — trends, skeleton → enter, count-up, live label
-       ═══════════════════════════════════════════════ */
+      if (silent && statsSyncFingerprint(s) === statsSyncFingerprint(prevStats)) return;
+
+      document.getElementById("trendUsersToday").textContent = formatTrendLineToday(s.users_today ?? 0);
+      document.getElementById("trendUsersWeek").textContent = formatTrendLineWeek(s.users_week ?? 0);
+      document.getElementById("trendUploadsToday").textContent = formatTrendLineToday(s.uploads_today ?? 0);
+      document.getElementById("trendUploadsWeek").textContent = formatTrendLineWeek(s.uploads_week ?? 0);
+      document.getElementById("trendLogsToday").textContent = formatTrendLineToday(s.logs_today ?? 0);
+      document.getElementById("trendLogsWeek").textContent = formatTrendLineWeek(s.logs_week ?? 0);
+
+      const pairs = [
+        { key: "total_users", elId: "statUsers", cardId: "cardUsers", deltaId: "deltaUsers" },
+        { key: "total_uploads", elId: "statUploads", cardId: "cardUploads", deltaId: "deltaUploads" },
+        { key: "total_logs", elId: "statLogs", cardId: "cardLogs", deltaId: "deltaLogs" },
+      ];
+
+      if (isFirstLoad) {
+        document.querySelectorAll("#statsRow .stat-card--loading").forEach((card) => {
+          card.classList.remove("stat-card--loading");
+          card.classList.add("stat-card--enter");
+          card.setAttribute("aria-busy", "false");
+        });
+        setStatsUpdatedLabel();
+        const baseDelay = 320;
+        setTimeout(() => {
+          pairs.forEach(({ key, elId }, i) => {
+            const el = document.getElementById(elId);
+            const to = s[key];
+            setTimeout(() => animateValue(el, 0, to, STAT_COUNT_DURATION), i * 80);
+          });
+        }, baseDelay);
+      } else if (silent) {
+        let metricsChanged = false;
+        for (const { key, elId } of pairs) {
+          const el = document.getElementById(elId);
+          const oldVal = prevStats[key];
+          const newVal = s[key];
+          if (oldVal !== newVal) {
+            el.textContent = String(newVal);
+            metricsChanged = true;
+          }
+        }
+        if (metricsChanged) bumpLiveSyncedIndicator();
+      } else {
+        for (const { key, elId, cardId, deltaId } of pairs) {
+          const el = document.getElementById(elId);
+          const oldVal = prevStats[key];
+          const newVal = s[key];
+          if (oldVal === null) {
+            el.textContent = String(newVal);
+          } else if (newVal !== oldVal) {
+            animateValue(el, oldVal, newVal, 750);
+            flashCard(cardId, deltaId, newVal - oldVal);
+          }
+        }
+        setStatsUpdatedLabel();
+      }
+
+      const sub = document.getElementById("statUsersDisabledMsg");
+      if (sub) {
+        const d = s.disabled_users ?? 0;
+        if (d > 0) {
+          const next = `${d} disabled account${d === 1 ? "" : "s"}`;
+          if (sub.style.display !== "block" || sub.textContent !== next) {
+            sub.style.display = "block";
+            sub.textContent = next;
+          }
+        } else if (sub.style.display !== "none") {
+          sub.style.display = "none";
+          sub.textContent = "";
+        }
+      }
+
+      prevStats = { ...s };
+      if (isFirstLoad) isFirstLoad = false;
+      initialStatsLoaded = true;
+    }
+
     async function loadStats(opts = {}) {
       const silent = !!opts.silent;
       if (silent && !initialStatsLoaded) return;
@@ -5223,86 +6166,7 @@
         const res = await apiFetch("/api/admin/stats");
         if (!res) return;
         const s = await res.json();
-
-        if (silent && statsSyncFingerprint(s) === statsSyncFingerprint(prevStats)) return;
-
-        document.getElementById("trendUsersToday").textContent = formatTrendLineToday(s.users_today ?? 0);
-        document.getElementById("trendUsersWeek").textContent = formatTrendLineWeek(s.users_week ?? 0);
-        document.getElementById("trendUploadsToday").textContent = formatTrendLineToday(s.uploads_today ?? 0);
-        document.getElementById("trendUploadsWeek").textContent = formatTrendLineWeek(s.uploads_week ?? 0);
-        document.getElementById("trendLogsToday").textContent = formatTrendLineToday(s.logs_today ?? 0);
-        document.getElementById("trendLogsWeek").textContent = formatTrendLineWeek(s.logs_week ?? 0);
-
-        const pairs = [
-          { key: "total_users",   elId: "statUsers",   cardId: "cardUsers",   deltaId: "deltaUsers" },
-          { key: "total_uploads", elId: "statUploads", cardId: "cardUploads", deltaId: "deltaUploads" },
-          { key: "total_logs",    elId: "statLogs",    cardId: "cardLogs",    deltaId: "deltaLogs" },
-        ];
-
-        if (isFirstLoad) {
-          document.querySelectorAll("#statsRow .stat-card--loading").forEach((card) => {
-            card.classList.remove("stat-card--loading");
-            card.classList.add("stat-card--enter");
-            card.setAttribute("aria-busy", "false");
-          });
-          setStatsUpdatedLabel();
-
-          const baseDelay = 320;
-          setTimeout(() => {
-            pairs.forEach(({ key, elId }, i) => {
-              const el = document.getElementById(elId);
-              const to = s[key];
-              setTimeout(
-                () => animateValue(el, 0, to, STAT_COUNT_DURATION),
-                i * 80,
-              );
-            });
-          }, baseDelay);
-        } else if (silent) {
-          let metricsChanged = false;
-          for (const { key, elId } of pairs) {
-            const el = document.getElementById(elId);
-            const oldVal = prevStats[key];
-            const newVal = s[key];
-            if (oldVal !== newVal) {
-              el.textContent = String(newVal);
-              metricsChanged = true;
-            }
-          }
-          if (metricsChanged) bumpLiveSyncedIndicator();
-        } else {
-          for (const { key, elId, cardId, deltaId } of pairs) {
-            const el = document.getElementById(elId);
-            const oldVal = prevStats[key];
-            const newVal = s[key];
-            if (oldVal === null) {
-              el.textContent = String(newVal);
-            } else if (newVal !== oldVal) {
-              animateValue(el, oldVal, newVal, 750);
-              flashCard(cardId, deltaId, newVal - oldVal);
-            }
-          }
-          setStatsUpdatedLabel();
-        }
-
-        const sub = document.getElementById("statUsersDisabledMsg");
-        if (sub) {
-          const d = s.disabled_users ?? 0;
-          if (d > 0) {
-            const next = `${d} disabled account${d === 1 ? "" : "s"}`;
-            if (sub.style.display !== "block" || sub.textContent !== next) {
-              sub.style.display = "block";
-              sub.textContent = next;
-            }
-          } else if (sub.style.display !== "none") {
-            sub.style.display = "none";
-            sub.textContent = "";
-          }
-        }
-
-        prevStats = { ...s };
-        if (isFirstLoad) isFirstLoad = false;
-        initialStatsLoaded = true;
+        await applyStatsPayload(s, { silent });
       } catch (err) {
         console.error("Failed to load stats:", err);
         const live = document.getElementById("statsUpdatedText");
@@ -7996,13 +8860,13 @@
     }
 
     function syncStatsBackground() {
-      loadStats({ silent: true });
+      if (activeTabName() !== "stats") return;
+      loadWorkspace({ silent: true });
     }
 
     function syncVisibleTabBackground() {
       const active = activeTabName();
       if (active === "users") loadUsers({ silent: true });
-      else if (active === "analytics") loadAnalytics({ silent: true });
       else if (active === "logs") {
         loadLogs(
           document.getElementById("dateFrom").value,
@@ -8029,50 +8893,17 @@
       }
     }
 
-    const mqAdminMobile = window.matchMedia("(max-width: 900px)");
-    let adminMobilePrioritized = false;
-    function prioritizeAdminMobileFlow() {
-      if (!mqAdminMobile.matches || adminMobilePrioritized) return;
-      const container = document.querySelector("body > .container");
-      const tabs = container?.querySelector(".tabs");
-      const stats = container?.querySelector(".stats-block");
-
-      if (container && tabs && stats && container.firstElementChild !== tabs) {
-        container.insertBefore(tabs, stats);
-      }
-      if (stats && !container.querySelector(".mobile-stats-toggle")) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "mobile-stats-toggle";
-        btn.textContent = "Show dashboard stats";
-        stats.classList.add("stats-block--collapsed");
-        btn.addEventListener("click", () => {
-          const collapsed = stats.classList.toggle("stats-block--collapsed");
-          btn.textContent = collapsed ? "Show dashboard stats" : "Hide dashboard stats";
-        });
-        stats.parentNode.insertBefore(btn, stats);
-      }
-      adminMobilePrioritized = true;
-    }
-
     (async function bootstrapAdminDashboard() {
-      initAnalyticsDatePicker();
-      await loadStats();
-      openAdminTabFromHash();
-      const activeTab = document.querySelector(".tab-btn.active")?.dataset?.tab || "all-uploads";
-      if (activeTab === "all-uploads") {
-        await loadAllUploads();
-      } else if (activeTab === "analytics") {
-        await loadAnalytics();
+      const hadHash = !!(location.hash || "").replace(/^#/, "").trim();
+      if (hadHash) {
+        openAdminTabFromHash();
+        return;
       }
-      prioritizeAdminMobileFlow();
+      activateAdminTab("all-uploads");
+      await loadAllUploads();
     })();
 
     startBackgroundSync();
-
-    mqAdminMobile.addEventListener("change", () => {
-      if (mqAdminMobile.matches) prioritizeAdminMobileFlow();
-    });
 
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
