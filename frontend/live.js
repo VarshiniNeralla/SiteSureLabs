@@ -4,8 +4,18 @@ import { mountDashboardFooter } from "/shared/components/dashboard-footer.js";
 import { isHeicLike, normalizeImageFileForUpload } from "/heic-utils.js";
 import { optimizeImageForInspection, TARGET_UPLOAD_MAX_BYTES } from "/image-optimize.js";
 
+function mountLiveCollectionIntoNav() {
+  const source = document.getElementById("live-collection-mount");
+  const slot = document.getElementById("dashboard-nav-trailing");
+  const btn = source?.querySelector("#btn-open-collection") || document.getElementById("btn-open-collection");
+  if (!btn || !slot) return;
+  slot.appendChild(btn);
+  source?.remove();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  mountDashboardNav("live");
+  mountDashboardNav("live", { trailingMount: true });
+  mountLiveCollectionIntoNav();
   mountDashboardFooter();
 
   const token = getToken();
@@ -249,10 +259,20 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ═══════════════════════════════════════════════
      Populate selects
      ═══════════════════════════════════════════════ */
-  for (let i = 1; i <= 60; i++) {
+  const FLOOR_OPTIONS = [
+    "Basement 4",
+    "Basement 3",
+    "Basement 2",
+    "Basement 1",
+    "Ground",
+    ...Array.from({ length: 60 }, (_, i) => String(i + 1)),
+    "Terrace",
+    "LMR + OHT",
+  ];
+  for (const floor of FLOOR_OPTIONS) {
     const o = document.createElement("option");
-    o.value = String(i);
-    o.textContent = String(i);
+    o.value = floor;
+    o.textContent = floor;
     selFloor.appendChild(o);
   }
   const FLAT_OPTIONS = [
@@ -1145,8 +1165,8 @@ document.addEventListener("DOMContentLoaded", () => {
       saveCollectionToStorage();
       renderCollectionList();
       showCollectionToast(`Added ✓ (${collectionItems.length} in collection)`);
-      collectionChipBtn?.classList.add("collection-chip--pulse");
-      window.setTimeout(() => collectionChipBtn?.classList.remove("collection-chip--pulse"), 900);
+      collectionChipBtn?.classList.add("live-collection-status--pulse");
+      window.setTimeout(() => collectionChipBtn?.classList.remove("live-collection-status--pulse"), 900);
       fullReset();
       goTo("step-capture");
     } finally {

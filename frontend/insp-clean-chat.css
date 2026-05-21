@@ -40,13 +40,9 @@ body.page--ai-chat.cht-ai-chat--unified-nav #navbar {
   display: none !important;
 }
 
-/* Keep nav padding in line with chat gutters; tab pill width/centering is global (style.css 1fr / auto / 1fr). */
-.page--ai-chat #navbar .nav-container {
-  padding-inline: var(--cht-workbench-gutter);
-}
-
-.page--ai-chat #navbar .nav-dashboard-mode {
-  max-width: min(var(--cht-workbench-max), calc(100vw - 200px));
+/* Compact dashboard chrome: segment stays viewport-centered (see dashboard-chrome.css). */
+.page--ai-chat #navbar .nav-container--compact {
+  padding-inline: clamp(12px, 2vw, var(--cht-workbench-gutter, 1.25rem));
 }
 
 /* Back-to-home is moved into the chat topbar on AI page */
@@ -143,11 +139,7 @@ body.page--ai-chat.cht-ai-chat--unified-nav #navbar {
   }
 }
 
-@media (min-width: 1020px) {
-  .page--ai-chat #navbar .nav-dashboard-mode {
-    transform: translateX(calc(-0.5 * var(--cht-sidebar-track)));
-  }
-}
+/* Navbar tabs stay centered on the full bar; chat column shifts separately below. */
 
 .cht-shell {
   flex: 1;

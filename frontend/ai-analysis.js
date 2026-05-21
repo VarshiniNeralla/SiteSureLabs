@@ -166,7 +166,8 @@ const CHT_AI_NAV_UNIFIED_MQ = window.matchMedia("(max-width: 900px)");
 
 function syncAiChatUnifiedNavChrome() {
   const nav = document.getElementById("navbar");
-  const navContainer = nav?.querySelector(".nav-container");
+  const navZoneStart = nav?.querySelector(".nav-zone--start");
+  const navZoneEnd = nav?.querySelector(".nav-zone--end");
   const logo = nav?.querySelector(".logo-container");
   const openBtn = document.getElementById("drawer-open-btn");
   const navActions = nav?.querySelector(".nav-actions");
@@ -174,7 +175,7 @@ function syncAiChatUnifiedNavChrome() {
   const trailing = document.getElementById("cht-topbar-trailing");
   const sidebarToggle = document.getElementById("sidebar-toggle-btn");
 
-  if (!nav || !navContainer || !openBtn || !topbarLeft || !trailing) return;
+  if (!nav || !navZoneStart || !navZoneEnd || !openBtn || !topbarLeft || !trailing) return;
 
   if (CHT_AI_NAV_UNIFIED_MQ.matches) {
     document.body.classList.add("cht-ai-chat--unified-nav");
@@ -188,11 +189,11 @@ function syncAiChatUnifiedNavChrome() {
   } else {
     document.body.classList.remove("cht-ai-chat--unified-nav");
     openBtn.classList.remove("cht-topbar__workspace-menu");
-    if (logo && openBtn.parentElement !== navContainer) {
-      navContainer.insertBefore(openBtn, logo);
+    if (!navZoneStart.contains(openBtn)) {
+      navZoneStart.insertBefore(openBtn, logo || navZoneStart.firstChild);
     }
-    if (navActions && navActions.parentElement !== navContainer) {
-      navContainer.appendChild(navActions);
+    if (navActions && !navZoneEnd.contains(navActions)) {
+      navZoneEnd.appendChild(navActions);
     }
   }
 }

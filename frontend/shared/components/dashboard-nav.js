@@ -6,22 +6,27 @@
  * injects the correct active tab, and mounts the profile dropdown.
  *
  * On mobile (< 768px) the tab bar is replaced with a hamburger + drawer.
- * Desktop layout remains unchanged.
  *
  * Usage:
  *   import { mountDashboardNav } from "/shared/components/dashboard-nav.js";
- *   mountDashboardNav("live");           // or "ai-analysis" | "image-analysis"
+ *   mountDashboardNav("live");
+ *   mountDashboardNav("live", { trailingMount: true });
  */
 import { mountProfileNav } from "/shared/profile-nav.js";
+import { SHOW_IMAGE_ANALYSIS } from "/shared/feature-flags.js";
 
 const TABS = [
-  { id: "live",           label: "Live Inspection", href: "/dashboard/live/",
+  { id: "live",           label: "Live Inspection", shortLabel: "Live", href: "/dashboard/live/",
     icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` },
-  { id: "ai-analysis",    label: "AI Analysis",     href: "/dashboard/ai-analysis/",
+  { id: "ai-analysis",    label: "AI Analysis",     shortLabel: "AI", href: "/dashboard/ai-analysis/",
     icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/><path d="M16 14H8a4 4 0 00-4 4v2h16v-2a4 4 0 00-4-4z"/></svg>` },
-  { id: "image-analysis", label: "Image Analysis",  href: "/dashboard/image-analysis/",
+  { id: "image-analysis", label: "Image Analysis",  shortLabel: "Image", href: "/dashboard/image-analysis/",
     icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>` },
 ];
+
+function visibleTabs() {
+  return TABS.filter((tab) => tab.id !== "image-analysis" || SHOW_IMAGE_ANALYSIS);
+}
 
 const HAMBURGER_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -43,25 +48,26 @@ const HOME_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"
 </svg>`;
 
 /**
- * Replaces (or inserts) the dashboard nav and mounts the profile dropdown.
- * Also handles auth guard — redirects to "/" if not logged in.
- *
  * @param {"live"|"ai-analysis"|"image-analysis"} activeTab
+ * @param {{ trailingMount?: boolean }} [options]
+ * @returns {HTMLElement | null} Trailing slot when trailingMount is true
  */
-export function mountDashboardNav(activeTab) {
-  const activeLabel = TABS.find((t) => t.id === activeTab)?.label || "Dashboard";
+export function mountDashboardNav(activeTab, options = {}) {
+  const tabs = visibleTabs();
+  const activeLabel = tabs.find((t) => t.id === activeTab)?.label || "Dashboard";
+  const segmentCount = tabs.length;
 
-  const tabsHtml = TABS.map(({ id, label, href }) => {
+  const tabsHtml = tabs.map(({ id, label, shortLabel, href }) => {
     const active = id === activeTab;
     return `<a href="${href}"
-      class="dashboard-mode-toggle__tab${active ? " is-active" : ""}"
+      class="dashboard-segment__tab${active ? " is-active" : ""}"
       role="tab"
       aria-selected="${active}"
       ${active ? 'aria-current="page"' : ""}
-    >${label}</a>`;
+    ><span class="dashboard-segment__label dashboard-segment__label--full">${label}</span><span class="dashboard-segment__label dashboard-segment__label--short">${shortLabel || label}</span></a>`;
   }).join("");
 
-  const drawerItemsHtml = TABS.map(({ id, label, href, icon }) => {
+  const drawerItemsHtml = tabs.map(({ id, label, href, icon }) => {
     const active = id === activeTab;
     return `<a href="${href}" class="drawer-nav__item${active ? " drawer-nav__item--active" : ""}"
       ${active ? 'aria-current="page"' : ""}>
@@ -70,25 +76,37 @@ export function mountDashboardNav(activeTab) {
     </a>`;
   }).join("");
 
+  const trailingHtml = options.trailingMount
+    ? '<div class="dashboard-nav-trailing" id="dashboard-nav-trailing"></div>'
+    : "";
+
   const nav = document.createElement("nav");
   nav.id = "navbar";
-  nav.className = "glass-nav glass-nav--dashboard";
+  nav.className = "glass-nav glass-nav--dashboard glass-nav--compact";
   nav.setAttribute("aria-label", "Primary");
   nav.innerHTML = `
-    <div class="nav-container">
-      <button class="mobile-hamburger" id="drawer-open-btn"
-        aria-label="Open navigation menu" aria-expanded="false">${HAMBURGER_SVG}</button>
-      <a href="/" class="logo-container logo-container--nav">
-        <img src="/assets/new_logo.png" alt="" width="40" height="40"
-          class="logo-img" decoding="async">
-        <span class="logo-text">SiteSureLabs</span>
-      </a>
-      <span class="mobile-page-title">${activeLabel}</span>
-      <div class="dashboard-mode-toggle nav-dashboard-mode"
-        role="tablist" aria-label="Choose workspace">
-        ${tabsHtml}
+    <div class="nav-container nav-container--compact">
+      <div class="nav-zone nav-zone--start">
+        <button type="button" class="mobile-hamburger" id="drawer-open-btn"
+          aria-label="Open navigation menu" aria-expanded="false">${HAMBURGER_SVG}</button>
+        <a href="/" class="logo-container logo-container--nav">
+          <img src="/assets/new_logo.png" alt="" width="36" height="36"
+            class="logo-img" decoding="async">
+          <span class="logo-text logo-text--dashboard">SiteSureLabs</span>
+        </a>
       </div>
-      <div class="nav-actions"></div>
+      <div class="nav-zone nav-zone--center">
+        <div class="dashboard-segment nav-dashboard-mode"
+          role="tablist"
+          aria-label="Choose workspace"
+          style="--segment-count: ${segmentCount}">
+          ${tabsHtml}
+        </div>
+        <span class="mobile-page-title">${activeLabel}</span>
+      </div>
+      <div class="nav-zone nav-zone--end nav-actions">
+        ${trailingHtml}
+      </div>
     </div>`;
 
   const existing = document.getElementById("navbar");
@@ -112,11 +130,11 @@ export function mountDashboardNav(activeTab) {
     <aside class="drawer-panel" role="dialog" aria-label="Navigation menu">
       <div class="drawer-panel__header">
         <a href="/" class="logo-container logo-container--nav">
-          <img src="/assets/new_logo.png" alt="" width="40" height="40"
+          <img src="/assets/new_logo.png" alt="" width="32" height="32"
             class="logo-img" decoding="async">
           <span class="logo-text">SiteSureLabs</span>
         </a>
-        <button class="drawer-panel__close" id="drawer-close-btn" aria-label="Close menu">${CLOSE_SVG}</button>
+        <button type="button" class="drawer-panel__close" id="drawer-close-btn" aria-label="Close menu">${CLOSE_SVG}</button>
       </div>
       <nav class="drawer-nav" aria-label="Dashboard sections">
         ${drawerItemsHtml}
@@ -161,4 +179,6 @@ export function mountDashboardNav(activeTab) {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && isOpen) closeDrawer();
   });
+
+  return options.trailingMount ? document.getElementById("dashboard-nav-trailing") : null;
 }

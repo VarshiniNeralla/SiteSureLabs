@@ -1,0 +1,371 @@
+/**
+ * Compact dashboard chrome — lightweight nav + inline utilities (Linear / Apple).
+ */
+
+/* ── Compact top bar ── */
+.glass-nav--compact {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: none;
+}
+
+/* Override legacy .glass-nav--dashboard direct-child grid placement */
+.glass-nav--dashboard.glass-nav--compact .logo-container,
+.glass-nav--dashboard.glass-nav--compact .nav-dashboard-mode,
+.glass-nav--dashboard.glass-nav--compact .nav-actions,
+.glass-nav--dashboard.glass-nav--compact .mobile-page-title {
+  grid-column: auto;
+  justify-self: auto;
+  align-self: auto;
+}
+
+/* Equal side columns → segment stays viewport-centered */
+.glass-nav--compact .nav-container--compact,
+.glass-nav--dashboard.glass-nav--compact .nav-container--compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: clamp(12px, 2vw, 20px);
+  min-height: 54px;
+  padding-top: max(6px, env(safe-area-inset-top, 0));
+  padding-bottom: 6px;
+}
+
+.glass-nav--compact .nav-zone--start {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: start;
+  min-width: 0;
+}
+
+.glass-nav--compact .nav-zone--center {
+  grid-column: 2;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.glass-nav--compact .nav-zone--end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  justify-self: end;
+  min-width: 0;
+}
+
+.glass-nav--compact .logo-container--nav {
+  flex-shrink: 0;
+  gap: 10px;
+  min-width: 0;
+}
+
+.glass-nav--compact .logo-img {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.glass-nav--compact .logo-text--dashboard,
+.glass-nav--compact .logo-container--nav .logo-text {
+  font-family: var(--font-brand, "Tangerine", cursive);
+  font-size: clamp(1.5rem, 2.6vw, 1.95rem);
+  font-weight: 700;
+  font-style: normal;
+  line-height: 1;
+  color: #0f172a;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  /* Script logo reads small at light weights — slight stroke for clarity */
+  text-shadow: 0 0 0.5px rgba(15, 23, 42, 0.35);
+}
+
+.glass-nav--compact .dashboard-nav-trailing {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.glass-nav--compact .nav-zone--end .profile-nav,
+.glass-nav--compact .nav-zone--end > * {
+  flex-shrink: 0;
+}
+
+.glass-nav--compact .mobile-page-title {
+  display: none;
+}
+
+/* ── Segmented control ── */
+.dashboard-segment {
+  --segment-count: 2;
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.05);
+  border: none;
+  box-shadow: none;
+  flex-shrink: 0;
+}
+
+.dashboard-segment__tab {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  min-height: 32px;
+  border-radius: 7px;
+  font-family: var(--font-sans, "Montserrat", system-ui, sans-serif);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: #64748b;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  white-space: nowrap;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.dashboard-segment__tab:hover:not(.is-active):not([aria-current="page"]) {
+  color: #334155;
+}
+
+.dashboard-segment__tab.is-active,
+.dashboard-segment__tab[aria-current="page"] {
+  color: #0f172a;
+  font-weight: 600;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+.dashboard-segment__tab:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.dashboard-segment__label--short {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .dashboard-segment__label--full {
+    display: none;
+  }
+
+  .dashboard-segment__label--short {
+    display: inline;
+  }
+
+  .dashboard-segment__tab {
+    padding: 6px 12px;
+  }
+}
+
+/* ── Live: minimal collection status ── */
+.live-collection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 5px 8px 5px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-family: var(--font-sans, "Montserrat", system-ui, sans-serif);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.live-collection-status:hover {
+  background: rgba(15, 23, 42, 0.05);
+  color: #0f172a;
+}
+
+.live-collection-status:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.live-collection-status__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.live-collection-status--pulse .live-collection-status__count {
+  animation: liveCollectionPulse 0.7s ease;
+}
+
+@keyframes liveCollectionPulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+    background: rgba(37, 99, 235, 0.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ── Mobile: hamburger | title | actions ── */
+@media (max-width: 767px) {
+  .glass-nav--compact .nav-container--compact,
+  .glass-nav--dashboard.glass-nav--compact .nav-container--compact {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 48px;
+    column-gap: 10px;
+  }
+
+  .glass-nav--compact .nav-zone--start {
+    grid-column: 1;
+  }
+
+  .glass-nav--compact .nav-zone--center {
+    grid-column: 2;
+    justify-self: stretch;
+  }
+
+  .glass-nav--compact .nav-zone--end {
+    grid-column: 3;
+  }
+
+  .glass-nav--compact .logo-container--nav {
+    display: none;
+  }
+
+  .glass-nav--compact .dashboard-segment {
+    display: none;
+  }
+
+  .glass-nav--compact .mobile-page-title {
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    font-family: var(--font-sans, "Montserrat", system-ui, sans-serif);
+    letter-spacing: -0.02em;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .glass-nav--compact .mobile-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #475569;
+    flex-shrink: 0;
+  }
+
+  .glass-nav--compact .mobile-hamburger:hover {
+    background: rgba(15, 23, 42, 0.05);
+  }
+
+  .live-collection-status {
+    padding: 4px 6px 4px 8px;
+    font-size: 0.78rem;
+  }
+
+  .live-collection-status__label {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .glass-nav--compact .mobile-hamburger {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .glass-nav--compact .logo-text--dashboard,
+  .glass-nav--compact .logo-container--nav .logo-text {
+    font-size: 1.55rem;
+  }
+
+  .glass-nav--compact .logo-img {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-collection-status--pulse .live-collection-status__count {
+    animation: none;
+  }
+}
+
+/* ── AI Analysis page: same compact chrome as Live (no sidebar offset on tabs) ── */
+.page--ai-chat #navbar .nav-dashboard-mode,
+.page--ai-chat #navbar .dashboard-segment {
+  transform: none !important;
+  max-width: none !important;
+}
+
+.page--ai-chat #navbar .nav-container--compact {
+  padding-inline: clamp(12px, 2vw, 1.5rem);
+}
+
+.page--ai-chat #navbar .logo-text--dashboard,
+.page--ai-chat #navbar .logo-container--nav .logo-text {
+  font-size: clamp(1.5rem, 2.6vw, 1.95rem);
+}
+
+.page--ai-chat .cht-sidebar {
+  border-right-color: rgba(15, 23, 42, 0.06);
+  background: #fafbfc;
+}
+
+.page--ai-chat .cht-topbar__inner {
+  padding-block: 8px;
+  min-height: 0;
+}
+
+/* Desktop: navbar carries workspace + profile; hide empty chat topbar */
+@media (min-width: 901px) {
+  .page--ai-chat .cht-topbar {
+    display: none;
+  }
+}

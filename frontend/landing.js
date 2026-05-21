@@ -5,6 +5,15 @@ import {
   clearAuth,
   clearAdminLoginSession,
 } from "/shared/auth.js";
+import { SHOW_IMAGE_ANALYSIS } from "/shared/feature-flags.js";
+
+function applyImageAnalysisVisibility() {
+  if (SHOW_IMAGE_ANALYSIS) return;
+  document.querySelectorAll('[data-feature="image-analysis"]').forEach((el) => {
+    el.hidden = true;
+    el.setAttribute("aria-hidden", "true");
+  });
+}
 let _profileNavModulePromise = null;
 let _assistantModulePromise = null;
 let _formatApiDetailPromise = null;
@@ -48,6 +57,8 @@ function runWhenIdle(fn) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  applyImageAnalysisVisibility();
+
   /* ═══ AUTH GATE ═══ */
   const overlay       = document.getElementById("login-overlay");
   const loginForm     = document.getElementById("login-form");

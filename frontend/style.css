@@ -142,6 +142,11 @@ body.dashboard-page .glass-nav {
   border-bottom-color: rgba(226, 232, 240, 0.95);
 }
 
+body.dashboard-page .glass-nav--compact {
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom-color: rgba(15, 23, 42, 0.06);
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -4869,6 +4874,11 @@ body.landing-page--admin #nav-cta.landing-cta {
   border-radius: 50%;
   filter: blur(56px);
   opacity: 0.5;
+}
+
+.glass-nav--compact + .landing-main .dashboard-page-decor__orb,
+body:has(.glass-nav--compact) .dashboard-page-decor__orb {
+  opacity: 0.28;
 }
 
 .dashboard-page-decor__orb--a,
