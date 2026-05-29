@@ -988,6 +988,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     appendMessage("user", buildUserHtml(text, fileToSend ? dataUrlSnapshot : ""));
     recordTx("user", text, { image: fileToSend ? dataUrlSnapshot : null });
+    persistCurrentSession();
+    renderSidebar();
 
     if (inputEl) inputEl.value = "";
     syncComposerHeight();
@@ -1107,10 +1109,68 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
+  const stripTitleSource = (text) => String(text || "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[[^\]]*]\([^)]*\)/g, " ")
+    .replace(/\[[^\]]*]\([^)]*\)/g, " ")
+    .replace(/[#>*_~|()[\]{}:;,.!?]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const isGenericTitleLine = (line) => /^(summary|overview|analysis|key defects?|findings?|observations?|evidence|where|significance|recommendations?)$/i
+    .test(stripTitleSource(line));
+
+  const smartTitleCase = (value) => String(value || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word, idx) => {
+      const lower = word.toLowerCase();
+      if (idx > 0 && /^(and|or|of|in|on|at|to|for|with|by)$/i.test(word)) return lower;
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(" ");
+
+  const titleFromText = (text, fallback = "New chat") => {
+    const cleaned = stripTitleSource(text)
+      .replace(/^(please|can you|could you|tell me|explain|summari[sz]e|analyze|analyse|check)\s+/i, "")
+      .replace(/^this\s+(inspection|image|photo|site)\s+(shows|focuses on|is about)\s+/i, "")
+      .trim();
+    if (!cleaned) return fallback;
+    const words = cleaned.split(/\s+/).filter(Boolean).slice(0, 7);
+    if (!words.length) return fallback;
+    return smartTitleCase(words.join(" "));
+  };
+
+  const titleFromAssistantText = (text) => {
+    const raw = String(text || "");
+    const keyDefectMatch = raw.match(/(?:^|\n)\s*[-*]\s*\*\*([^*\n:]{4,80})\*\*/);
+    if (keyDefectMatch?.[1]) return titleFromText(keyDefectMatch[1], "Site image analysis");
+
+    const lines = raw
+      .replace(/```[\s\S]*?```/g, " ")
+      .split(/\n+/)
+      .map((line) => line.replace(/^\s*(#{1,6}|[-*]|\d+[.)])\s*/, "").trim())
+      .filter((line) => line && !isGenericTitleLine(line));
+
+    const defectLine = lines.find((line) => /defect|crack|honeycomb|spall|leak|damage|penetration|conduit|void|corrosion|stain|wall|slab|beam|column/i.test(line));
+    return titleFromText(defectLine || lines[0] || "", "Site image analysis");
+  };
+
+  const chatTitleFromTranscript = () => {
+    const firstUser = transcript.find((t) => t.role === "user");
+    if (firstUser?.text?.trim()) return titleFromText(firstUser.text, "New chat");
+
+    const firstAssistant = transcript.find((t) => t.role === "assistant" && t.text?.trim());
+    if (firstAssistant) return titleFromAssistantText(firstAssistant.text);
+
+    if (firstUser?.image) return "Site image analysis";
+    return "New chat";
+  };
+
   const persistCurrentSession = () => {
     if (!sessionId || !transcript.length) return;
-    const firstUser = transcript.find((t) => t.role === "user");
-    const title = (firstUser?.text || "").trim().slice(0, 80) || "New chat";
+    const title = chatTitleFromTranscript().slice(0, 80);
     const msgs = transcript.map((t) => ({
       role: t.role,
       text: t.text || "",
@@ -1207,7 +1267,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const DEL_ICON = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
         parts.push(`
           <div class="cht-sidebar__item${active}" data-sid="${escapeHtml(s.id)}" role="button" tabindex="0">
-            <span class="cht-sidebar__item-text">${escapeHtml(s.title)}</span>
+            <span class="cht-sidebar__item-text" title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</span>
             <button type="button" class="cht-sidebar__item-del" data-del="${escapeHtml(s.id)}" aria-label="Delete chat" title="Delete">${DEL_ICON}</button>
           </div>`);
       }
