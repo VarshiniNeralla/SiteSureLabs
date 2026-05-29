@@ -6,12 +6,16 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
+import aiofiles
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, EmailStr
 
-from models import User, UserLog
+from models import Notification, User, UserLog
 from utils.deps import get_current_user
 from utils.security import hash_password, verify_password, create_access_token
+from utils.uploads import ensure_supported_image, read_upload_with_limit
+
+_PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024
 
 logger = logging.getLogger(__name__)
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -23,6 +27,8 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 MSG_ADMIN_USE_USER_PORTAL = "Please sign in via the Login as Admin to access the Admin Portal."
 MSG_ADMIN_PORTAL_USER_ONLY = "This sign-in is for administrator accounts only. Use the standard login for your account."
+MSG_DEV_USE_DEV_PORTAL = "Developer accounts must sign in through the Developer Portal at /dev."
+MSG_DEV_PORTAL_DEV_ONLY = "This sign-in is for developer accounts only."
 PROFILE_NAME_MAX_LENGTH = 80
 PROFILE_SITE_MAX_LENGTH = 80
 PROFILE_LOCATION_MAX_LENGTH = 120
@@ -82,6 +88,24 @@ async def register(body: RegisterRequest):
 
     await UserLog(user_id=str(user.id), action="register").insert()
 
+    # Surface the signup in the developer inbox. Best-effort — never block registration.
+    try:
+        await Notification(
+            type="user_registered",
+            title="New user registered",
+            body=f"{user.name or user.email} signed up.",
+            severity="info",
+            entity_id=str(user.id),
+            entity_type="user",
+            meta={
+                "email": user.email,
+                "name": user.name,
+                "mobile": user.mobile,
+            },
+        ).insert()
+    except Exception:
+        logger.exception("failed to create user_registered notification for %s", user.email)
+
     return {
         "user_id": str(user.id),
         "email": user.email,
@@ -99,6 +123,10 @@ async def login(body: LoginRequest):
     if user.is_disabled:
         logger.warning("disabled user attempted login: %s", body.email)
         raise HTTPException(status_code=403, detail="This account has been disabled.")
+
+    if user.role == "developer":
+        logger.warning("developer blocked from user login: %s", user.email)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MSG_DEV_USE_DEV_PORTAL)
 
     if user.role == "admin":
         logger.warning("admin user blocked from user login: %s", user.email)
@@ -131,6 +159,10 @@ async def admin_login(body: LoginRequest):
         logger.warning("disabled admin attempted login: %s", body.email)
         raise HTTPException(status_code=403, detail="This administrator account has been disabled.")
 
+    if user.role == "developer":
+        logger.warning("developer blocked from admin login: %s", user.email)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MSG_DEV_USE_DEV_PORTAL)
+
     if user.role != "admin":
         logger.warning("non-admin blocked from admin login: %s", user.email)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MSG_ADMIN_PORTAL_USER_ONLY)
@@ -139,6 +171,38 @@ async def admin_login(body: LoginRequest):
 
     await UserLog(user_id=str(user.id), action="admin_login").insert()
     logger.info("admin logged in: %s (id=%s)", user.email, user.id)
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user_id": str(user.id),
+        "role": user.role,
+        "email": user.email,
+        "name": user.name,
+        "profile_photo": user.profile_photo,
+    }
+
+
+@router.post("/dev-login")
+async def dev_login(body: LoginRequest):
+    """Developer Portal login — only `role == 'developer'` accounts may authenticate here."""
+    user = await User.find_one(User.email == _normalize_email(body.email))
+    if not user or not verify_password(body.password, user.password):
+        logger.warning("failed dev login attempt for email: %s", body.email)
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if user.is_disabled:
+        logger.warning("disabled developer attempted login: %s", body.email)
+        raise HTTPException(status_code=403, detail="This developer account has been disabled.")
+
+    if user.role != "developer":
+        logger.warning("non-developer blocked from dev login: %s", user.email)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MSG_DEV_PORTAL_DEV_ONLY)
+
+    token = create_access_token({"sub": str(user.id), "role": user.role})
+
+    await UserLog(user_id=str(user.id), action="dev_login").insert()
+    logger.info("developer logged in: %s (id=%s)", user.email, user.id)
 
     return {
         "access_token": token,
@@ -228,11 +292,14 @@ async def upload_profile_photo(
     if not photo.content_type or not photo.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Only image files are allowed")
 
-    content = await photo.read()
+    content = await read_upload_with_limit(
+        photo,
+        _PROFILE_PHOTO_MAX_BYTES,
+        detail="Image size must be <= 5MB",
+    )
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
-    if len(content) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Image size must be <= 5MB")
+    ensure_supported_image(content)  # magic-byte check (not just client Content-Type)
 
     ext = ".jpg"
     if photo.filename and "." in photo.filename:
@@ -242,7 +309,8 @@ async def upload_profile_photo(
 
     file_name = f"{uuid.uuid4().hex}{ext}"
     out_path = PROFILE_DIR / file_name
-    out_path.write_bytes(content)
+    async with aiofiles.open(out_path, "wb") as f:
+        await f.write(content)
 
     old_path = user.profile_photo
     user.profile_photo = f"uploads/profiles/{file_name}"

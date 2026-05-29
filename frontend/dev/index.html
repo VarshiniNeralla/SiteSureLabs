@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Developer Portal - SiteSureLabs</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="icon" type="image/png" href="/assets/new_logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/dev/dev.css" />
+  <script>
+    // Set theme before first paint to avoid a dark→light flash on light-mode reloads.
+    (function () {
+      try {
+        var saved = localStorage.getItem("defectra_dev_theme");
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (_) { /* localStorage unavailable */ }
+    })();
+  </script>
+</head>
+<body>
+  <!-- Login view (shown when not authenticated as developer) -->
+  <main id="dev-login-view" class="dev-login-view" hidden>
+    <div class="dev-login-card">
+      <div class="dev-login-header">
+        <div class="dev-login-logo">
+          <img src="/assets/new_logo.png" alt="SiteSureLabs" width="48" height="48" />
+          <span>SiteSureLabs</span>
+        </div>
+        <h1>Developer Portal</h1>
+        <p>Highest-privilege console. Restricted to developer accounts.</p>
+      </div>
+
+      <form id="dev-login-form" novalidate>
+        <div id="dev-login-alert" class="dev-alert" role="alert"></div>
+
+        <label class="dev-field">
+          <span>Developer email</span>
+          <input id="dev-email" type="email" autocomplete="username" placeholder="dev@gmail.com" required />
+        </label>
+
+        <label class="dev-field">
+          <span>Password</span>
+          <input id="dev-password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+        </label>
+
+        <button type="submit" id="dev-login-submit" class="dev-btn dev-btn-primary dev-btn-block">
+          <span class="dev-btn-label">Sign in to Developer Portal</span>
+        </button>
+
+        <p class="dev-login-hint">
+          Not a developer? <a href="/">Return to SiteSureLabs</a>.
+        </p>
+      </form>
+    </div>
+  </main>
+
+  <!-- Dashboard view (shown when authenticated as developer) -->
+  <div id="dev-app" class="dev-app" hidden>
+    <aside class="dev-sidebar">
+      <div class="dev-sidebar-brand">
+        <img src="/assets/new_logo.png" alt="SiteSureLabs" width="36" height="36" />
+        <div>
+          <div class="dev-sidebar-brand-name">SiteSureLabs</div>
+          <div class="dev-sidebar-brand-sub">Developer Portal</div>
+        </div>
+      </div>
+
+      <nav class="dev-nav" aria-label="Developer sections">
+        <button class="dev-nav-item is-active" data-section="overview">
+          <span class="dev-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          </span>Overview
+        </button>
+        <button class="dev-nav-item" data-section="admins">
+          <span class="dev-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"/></svg>
+          </span>Admin Management
+        </button>
+        <button class="dev-nav-item" data-section="users">
+          <span class="dev-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>User Management
+        </button>
+        <button class="dev-nav-item" data-section="uploads">
+          <span class="dev-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </span>Upload Monitoring
+        </button>
+        <button class="dev-nav-item" data-section="analytics">
+          <span class="dev-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </span>Analytics
+        </button>
+        <button class="dev-nav-item" data-section="audit">
+          <span class="dev-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </span>Audit Logs
+        </button>
+        <button class="dev-nav-item" data-section="health">
+          <span class="dev-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </span>System Health
+        </button>
+        <button class="dev-nav-item" data-section="settings">
+          <span class="dev-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </span>Settings
+        </button>
+      </nav>
+
+      <div class="dev-sidebar-footer">
+        <div class="dev-sidebar-user">
+          <div class="dev-sidebar-user-avatar" id="dev-user-avatar">D</div>
+          <div class="dev-sidebar-user-meta">
+            <div class="dev-sidebar-user-name" id="dev-user-name">Developer</div>
+            <div class="dev-sidebar-user-email" id="dev-user-email">—</div>
+          </div>
+        </div>
+        <button id="dev-logout" class="dev-btn dev-btn-ghost dev-btn-block">Sign out</button>
+      </div>
+    </aside>
+
+    <main class="dev-main">
+      <header class="dev-topbar">
+        <div>
+          <h1 id="dev-section-title" class="dev-section-title">Overview</h1>
+          <p id="dev-section-sub" class="dev-section-sub">Platform-wide system status and key metrics.</p>
+        </div>
+        <div class="dev-topbar-actions">
+          <span class="dev-pill" id="dev-status-pill">System: checking…</span>
+          <button class="dev-theme-toggle" id="dev-theme-toggle" type="button" aria-label="Toggle color theme" title="Toggle light / dark">
+            <svg class="dev-theme-icon dev-theme-icon--moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <svg class="dev-theme-icon dev-theme-icon--sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          </button>
+          <div class="dev-inbox" id="dev-inbox-wrap">
+            <button class="dev-bell" id="dev-bell" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <span id="dev-bell-badge" class="dev-bell-badge" hidden>0</span>
+            </button>
+            <div class="dev-inbox-panel" id="dev-inbox-panel" hidden role="dialog" aria-label="Notifications">
+              <div class="dev-inbox-head">
+                <div>
+                  <div class="dev-inbox-title">Inbox</div>
+                  <div class="dev-inbox-sub" id="dev-inbox-sub">No unread notifications</div>
+                </div>
+                <div class="dev-inbox-actions">
+                  <button class="dev-btn dev-btn-sm" id="dev-inbox-mark-all">Mark all read</button>
+                  <button class="dev-btn dev-btn-sm" id="dev-inbox-clear">Clear read</button>
+                </div>
+              </div>
+              <div class="dev-inbox-tabs" role="tablist">
+                <button class="dev-inbox-tab is-active" data-filter="all" role="tab" aria-selected="true">All</button>
+                <button class="dev-inbox-tab" data-filter="unread" role="tab" aria-selected="false">Unread</button>
+              </div>
+              <div class="dev-inbox-list" id="dev-inbox-list">
+                <div class="dev-empty">Loading…</div>
+              </div>
+            </div>
+          </div>
+          <button class="dev-btn dev-btn-ghost" id="dev-refresh">Refresh</button>
+        </div>
+      </header>
+
+      <!-- ───────── Overview ───────── -->
+      <section class="dev-section" id="section-overview" data-section="overview">
+        <div class="dev-cards">
+          <div class="dev-card">
+            <div class="dev-card-label">Total Users</div>
+            <div class="dev-card-value" id="ov-total-users">—</div>
+            <div class="dev-card-foot" id="ov-disabled-users">—</div>
+          </div>
+          <div class="dev-card">
+            <div class="dev-card-label">Total Admins</div>
+            <div class="dev-card-value" id="ov-total-admins">—</div>
+            <div class="dev-card-foot" id="ov-total-devs">—</div>
+          </div>
+          <div class="dev-card">
+            <div class="dev-card-label">Total Uploads</div>
+            <div class="dev-card-value" id="ov-total-uploads">—</div>
+            <div class="dev-card-foot">All projects</div>
+          </div>
+          <div class="dev-card">
+            <div class="dev-card-label">Active Users</div>
+            <div class="dev-card-value" id="ov-active-users">—</div>
+            <div class="dev-card-foot">Last 30 minutes</div>
+          </div>
+          <div class="dev-card">
+            <div class="dev-card-label">Storage Consumption</div>
+            <div class="dev-card-value" id="ov-storage">—</div>
+            <div class="dev-card-foot">uploads/ directory</div>
+          </div>
+          <div class="dev-card">
+            <div class="dev-card-label">System Status</div>
+            <div class="dev-card-value" id="ov-status">—</div>
+            <div class="dev-card-foot" id="ov-status-foot">—</div>
+          </div>
+        </div>
+
+        <div class="dev-panel">
+          <div class="dev-panel-head">
+            <h2>Recent Activity</h2>
+            <span class="dev-panel-sub">Latest events across the platform</span>
+          </div>
+          <div class="dev-table-wrap">
+            <table class="dev-table">
+              <thead>
+                <tr><th>When</th><th>Actor</th><th>Action</th><th>Target</th></tr>
+              </thead>
+              <tbody id="ov-recent-tbody">
+                <tr><td colspan="4" class="dev-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ───────── Admin Management ───────── -->
+      <section class="dev-section" id="section-admins" data-section="admins" hidden>
+        <div class="dev-toolbar">
+          <input id="admins-search" class="dev-input" placeholder="Search admins by name or email…" />
+          <button class="dev-btn dev-btn-primary" id="admins-create">+ Create Admin</button>
+        </div>
+        <div class="dev-panel">
+          <div class="dev-table-wrap">
+            <table class="dev-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Last Active</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admins-tbody">
+                <tr><td colspan="7" class="dev-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="dev-pager" id="admins-pager"></div>
+        </div>
+      </section>
+
+      <!-- ───────── User Management ───────── -->
+      <section class="dev-section" id="section-users" data-section="users" hidden>
+        <div class="dev-toolbar">
+          <input id="users-search" class="dev-input" placeholder="Search users by name or email…" />
+          <select id="users-status" class="dev-select">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="disabled">Disabled</option>
+          </select>
+          <select id="users-role" class="dev-select">
+            <option value="">All roles</option>
+            <option value="user">Standard User</option>
+            <option value="admin">Admin</option>
+            <option value="developer">Developer</option>
+          </select>
+        </div>
+        <div class="dev-panel">
+          <div class="dev-table-wrap">
+            <table class="dev-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Uploads</th>
+                  <th>Last Active</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody">
+                <tr><td colspan="7" class="dev-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="dev-pager" id="users-pager"></div>
+        </div>
+      </section>
+
+      <!-- ───────── Upload Monitoring ───────── -->
+      <section class="dev-section" id="section-uploads" data-section="uploads" hidden>
+        <div class="dev-panel">
+          <div class="dev-panel-head">
+            <h2>Platform Uploads</h2>
+            <span class="dev-panel-sub">Most recent images submitted across all users</span>
+          </div>
+          <div class="dev-table-wrap">
+            <table class="dev-table">
+              <thead>
+                <tr>
+                  <th>Preview</th>
+                  <th>Uploader</th>
+                  <th>Project / Location</th>
+                  <th>Category</th>
+                  <th>Uploaded</th>
+                </tr>
+              </thead>
+              <tbody id="uploads-tbody">
+                <tr><td colspan="5" class="dev-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="dev-pager" id="uploads-pager"></div>
+        </div>
+      </section>
+
+      <!-- ───────── Analytics ───────── -->
+      <section class="dev-section" id="section-analytics" data-section="analytics" hidden>
+        <div class="dev-toolbar">
+          <label class="dev-inline-field">
+            Range
+            <select id="analytics-range" class="dev-select">
+              <option value="7">Last 7 days</option>
+              <option value="14">Last 14 days</option>
+              <option value="30" selected>Last 30 days</option>
+              <option value="90">Last 90 days</option>
+            </select>
+          </label>
+        </div>
+        <div class="dev-analytics-grid">
+          <div class="dev-panel">
+            <div class="dev-panel-head"><h2>Upload Trend</h2><span class="dev-panel-sub">Daily new uploads</span></div>
+            <div class="dev-chart" id="chart-uploads"></div>
+          </div>
+          <div class="dev-panel">
+            <div class="dev-panel-head"><h2>User Growth</h2><span class="dev-panel-sub">Daily new registrations</span></div>
+            <div class="dev-chart" id="chart-users"></div>
+          </div>
+          <div class="dev-panel">
+            <div class="dev-panel-head"><h2>Login Activity</h2><span class="dev-panel-sub">Daily sign-ins (all roles)</span></div>
+            <div class="dev-chart" id="chart-logins"></div>
+          </div>
+          <div class="dev-panel">
+            <div class="dev-panel-head"><h2>Defect Categories</h2><span class="dev-panel-sub">Top categories in range</span></div>
+            <div class="dev-chart" id="chart-categories"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ───────── Audit Logs ───────── -->
+      <section class="dev-section" id="section-audit" data-section="audit" hidden>
+        <div class="dev-toolbar">
+          <input id="audit-action" class="dev-input" placeholder="Filter by action (e.g. dev_disable_account)…" />
+        </div>
+        <div class="dev-panel">
+          <div class="dev-table-wrap">
+            <table class="dev-table">
+              <thead>
+                <tr><th>When</th><th>Actor</th><th>Action</th><th>Target</th></tr>
+              </thead>
+              <tbody id="audit-tbody">
+                <tr><td colspan="4" class="dev-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="dev-pager" id="audit-pager"></div>
+        </div>
+      </section>
+
+      <!-- ───────── System Health ───────── -->
+      <section class="dev-section" id="section-health" data-section="health" hidden>
+        <div class="dev-health-grid" id="health-grid">
+          <div class="dev-empty">Loading…</div>
+        </div>
+        <div class="dev-panel">
+          <div class="dev-panel-head"><h2>Error Log (recent)</h2></div>
+          <div class="dev-table-wrap">
+            <table class="dev-table">
+              <thead>
+                <tr><th>When</th><th>Event</th><th>Target</th></tr>
+              </thead>
+              <tbody id="errors-tbody">
+                <tr><td colspan="3" class="dev-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ───────── Settings ───────── -->
+      <section class="dev-section" id="section-settings" data-section="settings" hidden>
+        <div class="dev-panel">
+          <div class="dev-panel-head">
+            <h2>Platform Settings</h2>
+            <span class="dev-panel-sub">High-level configuration is environment-driven. Use this panel to view current effective values.</span>
+          </div>
+          <dl class="dev-settings-list" id="settings-list">
+            <div class="dev-settings-row">
+              <dt>Developer identity</dt>
+              <dd id="settings-me">—</dd>
+            </div>
+            <div class="dev-settings-row">
+              <dt>Server uptime</dt>
+              <dd id="settings-uptime">—</dd>
+            </div>
+            <div class="dev-settings-row">
+              <dt>Storage path</dt>
+              <dd><code>uploads/</code> (mounted at <code>/uploads</code>)</dd>
+            </div>
+            <div class="dev-settings-row">
+              <dt>Active session window</dt>
+              <dd>30 minutes</dd>
+            </div>
+            <div class="dev-settings-row">
+              <dt>Role hierarchy</dt>
+              <dd>Developer → Admin → Standard User</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Confirmation dialog -->
+  <div id="dev-dialog" class="dev-dialog" hidden>
+    <div class="dev-dialog-backdrop" data-dialog-close></div>
+    <div class="dev-dialog-card" role="dialog" aria-modal="true" aria-labelledby="dev-dialog-title">
+      <h3 id="dev-dialog-title">Confirm</h3>
+      <p id="dev-dialog-body">Are you sure?</p>
+      <div id="dev-dialog-form" class="dev-dialog-form"></div>
+      <div class="dev-dialog-actions">
+        <button id="dev-dialog-cancel" class="dev-btn dev-btn-ghost" data-dialog-close>Cancel</button>
+        <button id="dev-dialog-confirm" class="dev-btn dev-btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="dev-toast" class="dev-toast" hidden></div>
+
+  <script type="module" src="/dev/dev.js"></script>
+</body>
+</html>

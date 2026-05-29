@@ -1159,6 +1159,10 @@ export function mountLandingProfile(container, user, { onLogout } = {}) {
           ${ADMIN_SVG} Admin Dashboard
        </a>`
     : "";
+  const uploadsItem = user.role !== "admin"
+    ? `<button type="button" class="nav-profile-menu__item" id="nav-uploads-btn"
+        role="menuitem">${UPLOADS_SVG} My Uploads</button>`
+    : "";
 
   const wrapper = document.createElement("div");
   wrapper.className = "nav-profile pn-landing-wrapper";
@@ -1174,8 +1178,7 @@ export function mountLandingProfile(container, user, { onLogout } = {}) {
       <button type="button" class="nav-profile-menu__item" id="nav-myprofile-btn"
         role="menuitem">${PROFILE_SVG} My Profile</button>
       ${adminItem}
-      <button type="button" class="nav-profile-menu__item" id="nav-uploads-btn"
-        role="menuitem">${UPLOADS_SVG} My Uploads</button>
+      ${uploadsItem}
       <div class="nav-profile-menu__sep"></div>
       <button type="button"
         class="nav-profile-menu__item nav-profile-menu__item--danger"
@@ -1205,7 +1208,7 @@ export function mountLandingProfile(container, user, { onLogout } = {}) {
     loadAndShowProfile();
   });
 
-  wrapper.querySelector("#nav-uploads-btn").addEventListener("click", () => {
+  wrapper.querySelector("#nav-uploads-btn")?.addEventListener("click", () => {
     setOpen(false);
     loadAndShowUploads();
   });
@@ -1255,6 +1258,12 @@ export function mountProfileNav(target) {
         Admin Dashboard
        </a>`
     : "";
+  const uploadsItem = user.role !== "admin"
+    ? `<button type="button" class="nav-profile-menu__item" id="nav-uploads-btn" role="menuitem">
+        ${UPLOADS_SVG}
+        My Uploads
+      </button>`
+    : "";
 
   wrapper.innerHTML = `
     <button type="button" class="${avatarButtonClass(user)}" id="nav-profile-btn"
@@ -1270,10 +1279,7 @@ export function mountProfileNav(target) {
         My Profile
       </button>
       ${adminItem}
-      <button type="button" class="nav-profile-menu__item" id="nav-uploads-btn" role="menuitem">
-        ${UPLOADS_SVG}
-        My Uploads
-      </button>
+      ${uploadsItem}
       <div class="nav-profile-menu__sep"></div>
       <button type="button" class="nav-profile-menu__item nav-profile-menu__item--danger"
         id="nav-logout-btn" role="menuitem">
@@ -1309,7 +1315,7 @@ export function mountProfileNav(target) {
     loadAndShowProfile();
   });
 
-  wrapper.querySelector("#nav-uploads-btn").addEventListener("click", () => {
+  wrapper.querySelector("#nav-uploads-btn")?.addEventListener("click", () => {
     setOpen(false);
     loadAndShowUploads();
   });

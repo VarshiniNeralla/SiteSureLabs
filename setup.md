@@ -37,6 +37,25 @@ Get-NetTCPConnection -State Listen | Where-Object {$_.LocalPort -in 2626,8080,80
 
 
 
+
+Now we are having this graph in the admin dashboard. I want to have this by applying filters, so based on the Project 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Use this for production grade, don't use --reload and port number as 0.0.0.0
 uvicorn main:app --host 127.0.0.1 --port 8010
 

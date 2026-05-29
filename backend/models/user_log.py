@@ -3,6 +3,7 @@ from typing import Optional
 
 from beanie import Document
 from pydantic import Field
+from pymongo import ASCENDING, DESCENDING, IndexModel
 
 
 class UserLog(Document):
@@ -16,3 +17,8 @@ class UserLog(Document):
 
     class Settings:
         name = "user_logs"
+        indexes = [
+            IndexModel([("user_id", ASCENDING), ("timestamp", DESCENDING)]),
+            IndexModel([("timestamp", DESCENDING)]),
+            IndexModel([("target_user_id", ASCENDING)]),
+        ]

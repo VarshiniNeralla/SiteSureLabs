@@ -1,7 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Tangerine:wght@400;700&display=swap");
 
 :root {
-  --font-brand: "Tangerine", cursive;
+  --font-brand: "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif;
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --primary-active: #1e40af;
@@ -103,17 +103,17 @@ body {
 
 .auth-card .logo {
   font-family: var(--font-brand);
-  font-size: clamp(1.75rem, 4vw, 2.1rem);
-  font-weight: 700;
+  font-size: clamp(1.1rem, 2.5vw, 1.3rem);
+  font-weight: 500;
   font-style: normal;
   color: #0f172a;
-  letter-spacing: 0;
+  letter-spacing: -0.04em;
   line-height: 1;
   text-align: center;
   margin-bottom: 0.5rem;
 }
 
-/* SiteSureLabs wordmark below logo on auth cards — Tangerine (Google Fonts) */
+/* SiteSureLabs wordmark — match landing hero (Google Sans Flex) */
 .logo-text,
 .login-brand,
 .brand-title,
@@ -121,22 +121,22 @@ body {
 .auth-card--register .brand-logo .logo-text,
 .admin-nav__logo-text {
   font-family: var(--font-brand) !important;
-  font-weight: 700 !important;
+  font-weight: 500 !important;
   font-style: normal;
-  letter-spacing: 0;
+  letter-spacing: -0.04em;
   color: #0f172a;
 }
 
 .logo-text,
 .admin-nav__logo-text {
-  font-size: clamp(1.35rem, 2.5vw, 1.65rem);
+  font-size: clamp(0.875rem, 1.35vw, 1.05rem);
   line-height: 1;
 }
 
 .login-brand,
 .brand-title,
 .auth-card .brand-logo .logo-text {
-  font-size: clamp(1.75rem, 4vw, 2.1rem);
+  font-size: clamp(1.1rem, 2.5vw, 1.3rem);
   line-height: 1;
 }
 

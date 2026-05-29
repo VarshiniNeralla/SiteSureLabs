@@ -74,13 +74,17 @@
 
 .ssl-mascot-hint {
   position: absolute;
-  left: 50%;
+  left: auto;
+  right: 8px;
   bottom: calc(var(--ass-fab-size) + 38px);
   margin: 0;
-  padding: 5px 11px;
+  min-width: 176px;
+  padding: 7px 12px;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
+  line-height: 1.35;
+  text-align: center;
   color: #0f172a;
   background: #ffffff;
   border: 1px solid rgba(15, 23, 42, 0.08);
@@ -89,29 +93,34 @@
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transform: translateX(-50%) translateY(6px) scale(0.94);
+  transform: translateY(6px) scale(0.94);
   transition:
     opacity 0.35s var(--ass-mascot-ease),
     transform 0.45s var(--ass-mascot-spring);
   z-index: 4;
 }
 
+.ssl-mascot-hint__line {
+  display: block;
+  white-space: nowrap;
+}
+
 .ssl-mascot-hint::after {
   content: "";
   position: absolute;
-  left: 50%;
+  right: 42px;
   bottom: -5px;
   width: 10px;
   height: 10px;
   background: #ffffff;
   border-right: 1px solid rgba(15, 23, 42, 0.06);
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-  transform: translateX(-50%) rotate(45deg);
+  transform: rotate(45deg);
 }
 
 .ssl-mascot-hint.is-visible {
   opacity: 1;
-  transform: translateX(-50%) translateY(0) scale(1);
+  transform: translateY(0) scale(1);
 }
 
 /* Hide-and-seek idle: mostly behind the button, gentle peek */
@@ -884,8 +893,6 @@
   .ssl-assistant-launcher,
   .ssl-assistant-fab .ssl-mascot,
   .ssl-assistant-fab .ssl-mascot__body,
-  .ssl-assistant-fab .ssl-mascot__pigtail--l,
-  .ssl-assistant-fab .ssl-mascot__pigtail--r,
   .ssl-mascot__blink,
   .ssl-assistant-row,
   .ssl-assistant-panel__status-dot,
@@ -898,7 +905,7 @@
 
   .ssl-mascot-hint.is-visible {
     opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1);
+    transform: translateY(0) scale(1);
   }
 
   .ssl-assistant-bubble--user.is-delivered .ssl-assistant-bubble__ticks {

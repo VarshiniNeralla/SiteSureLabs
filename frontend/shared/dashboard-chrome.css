@@ -21,16 +21,24 @@
   align-self: auto;
 }
 
-/* Equal side columns → segment stays viewport-centered */
+/* Equal side columns → segment stays viewport-centered. Insets match marketing homepage. */
 .glass-nav--compact .nav-container--compact,
 .glass-nav--dashboard.glass-nav--compact .nav-container--compact {
+  --dashboard-nav-padding-inline: clamp(0.75rem, 3vw, 2rem);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   column-gap: clamp(12px, 2vw, 20px);
-  min-height: 54px;
-  padding-top: max(6px, env(safe-area-inset-top, 0));
-  padding-bottom: 6px;
+  min-height: 52px;
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+  padding-top: max(0px, env(safe-area-inset-top, 0));
+  padding-bottom: 0;
+  padding-left: var(--dashboard-nav-padding-inline);
+  padding-right: var(--dashboard-nav-padding-inline);
 }
 
 .glass-nav--compact .nav-zone--start {
@@ -63,26 +71,31 @@
   flex-shrink: 0;
   gap: 10px;
   min-width: 0;
+  padding: 4px 0;
+  align-items: center;
 }
 
-.glass-nav--compact .logo-img {
-  width: 36px;
-  height: 36px;
+/* Match marketing homepage navbar (.logo-img / .logo-text in style.css). */
+.glass-nav--compact .logo-img,
+.glass-nav--dashboard.glass-nav--compact .logo-container--nav .logo-img {
+  width: clamp(34px, 4.2vw, 42px);
+  height: clamp(34px, 4.2vw, 42px);
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
   flex-shrink: 0;
 }
 
 .glass-nav--compact .logo-text--dashboard,
 .glass-nav--compact .logo-container--nav .logo-text {
-  font-family: var(--font-brand, "Tangerine", cursive);
-  font-size: clamp(1.5rem, 2.6vw, 1.95rem);
-  font-weight: 700;
+  font-family: var(--font-brand, "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif);
+  font-size: clamp(0.875rem, 1.35vw, 1.05rem);
+  font-weight: 500;
   font-style: normal;
   line-height: 1;
   color: #0f172a;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.03em;
   white-space: nowrap;
-  /* Script logo reads small at light weights — slight stroke for clarity */
-  text-shadow: 0 0 0.5px rgba(15, 23, 42, 0.35);
 }
 
 .glass-nav--compact .dashboard-nav-trailing {
@@ -178,30 +191,40 @@
   }
 }
 
-/* ── Live: minimal collection status ── */
+/* ── Live: collection status (bucket) ── */
 .live-collection-status {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin: 0;
-  padding: 5px 8px 5px 10px;
-  border: none;
-  border-radius: 8px;
+  padding: 5px 10px 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   background: transparent;
-  color: #64748b;
+  color: #475569;
   font-family: var(--font-sans, "Montserrat", system-ui, sans-serif);
   font-size: 0.8125rem;
   font-weight: 500;
   letter-spacing: -0.01em;
   line-height: 1.2;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transform: translate3d(var(--mag-x, 0px), var(--mag-y, 0px), 0);
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease,
+    box-shadow 0.22s ease, transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1);
   -webkit-tap-highlight-color: transparent;
+  will-change: transform;
 }
 
 .live-collection-status:hover {
-  background: rgba(15, 23, 42, 0.05);
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.06);
   color: #0f172a;
+  box-shadow: 0 6px 18px -10px rgba(15, 23, 42, 0.35);
+}
+
+.live-collection-status:active {
+  transform: translate3d(var(--mag-x, 0px), var(--mag-y, 0px), 0) scale(0.97);
 }
 
 .live-collection-status:focus-visible {
@@ -209,36 +232,205 @@
   outline-offset: 2px;
 }
 
-.live-collection-status__count {
+/* Bucket icon + interior stack + ripple */
+.live-collection-status__bucket {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  color: #334155;
+  transition: color 0.18s ease;
+}
+
+.live-collection-status:hover .live-collection-status__bucket {
+  color: #0f172a;
+}
+
+.live-collection-status__bucket-svg {
+  display: block;
+  overflow: visible;
+}
+
+.live-collection-status__bucket-lid {
+  /* Handle pivots at the joint where it meets the cart basket, so the
+     receive-item tilt reads as the handle being grabbed/lifted. */
+  transform-origin: right bottom;
+  transform-box: fill-box;
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.live-collection-status__bucket-body {
+  transform-origin: 50% 100%;
+  transform-box: fill-box;
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Stack of recently-added thumbs sitting "inside" the cart basket.
+   Slightly nudged right + up so it sits centered inside the basket
+   trapezoid (which itself is offset right of the icon center by the
+   handle). */
+.live-collection-status__stack {
+  pointer-events: none;
+  position: absolute;
+  left: 55%;
+  top: 49%;
+  width: 12px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.live-collection-status__stack-thumb {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transform: translateY(-6px) scale(0.85);
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.22s ease;
+}
+
+.live-collection-status__stack-thumb--in {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Ripple / success glow */
+.live-collection-status__ripple {
+  pointer-events: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  transform: translate(-50%, -50%) scale(0.4);
+  background: radial-gradient(
+    circle,
+    rgba(37, 99, 235, 0.35) 0%,
+    rgba(37, 99, 235, 0) 70%
+  );
+  opacity: 0;
+}
+
+.live-collection-status--ripple .live-collection-status__ripple {
+  animation: liveCollectionRipple 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes liveCollectionRipple {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(3.6);
+  }
+}
+
+/* Bucket open / receive / bounce */
+.live-collection-status--open .live-collection-status__bucket-lid {
+  transform: translate(2px, -4px) rotate(-18deg);
+}
+
+.live-collection-status--bounce .live-collection-status__bucket-body {
+  animation: liveCollectionBucketBounce 0.55s
+    cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes liveCollectionBucketBounce {
+  0% {
+    transform: scaleY(1) scaleX(1);
+  }
+  35% {
+    transform: scaleY(0.86) scaleX(1.1);
+  }
+  65% {
+    transform: scaleY(1.06) scaleX(0.96);
+  }
+  100% {
+    transform: scaleY(1) scaleX(1);
+  }
+}
+
+/* Count badge + tick animation */
+.live-collection-status__count {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 7px;
   background: rgba(15, 23, 42, 0.06);
   color: #0f172a;
   font-size: 0.75rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  transition: background 0.22s ease, color 0.22s ease;
 }
 
-.live-collection-status--pulse .live-collection-status__count {
-  animation: liveCollectionPulse 0.7s ease;
+.live-collection-status__count-num {
+  display: inline-block;
+  transform: translate3d(0, 0, 0);
 }
 
-@keyframes liveCollectionPulse {
+.live-collection-status--tick .live-collection-status__count {
+  background: rgba(37, 99, 235, 0.14);
+  color: #2563eb;
+}
+
+.live-collection-status--tick .live-collection-status__count-num {
+  animation: liveCollectionCountTick 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes liveCollectionCountTick {
   0% {
-    transform: scale(1);
+    transform: translateY(110%);
+    opacity: 0;
   }
-  40% {
-    transform: scale(1.12);
-    background: rgba(37, 99, 235, 0.12);
+  60% {
+    opacity: 1;
   }
   100% {
-    transform: scale(1);
+    transform: translateY(0);
+    opacity: 1;
   }
+}
+
+/* Flying overlay layer */
+.collection-fly-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4000;
+  overflow: visible;
+}
+
+.collection-fly-thumb {
+  position: fixed;
+  top: 0;
+  left: 0;
+  border-radius: 10px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 18px 36px -16px rgba(15, 23, 42, 0.45),
+    0 4px 10px rgba(15, 23, 42, 0.12);
+  will-change: transform, opacity, filter;
+  transform: translate3d(0, 0, 0);
+  pointer-events: none;
 }
 
 /* ── Mobile: hamburger | title | actions ── */
@@ -304,12 +496,18 @@
   }
 
   .live-collection-status {
-    padding: 4px 6px 4px 8px;
+    padding: 4px 8px 4px 6px;
+    gap: 6px;
     font-size: 0.78rem;
   }
 
   .live-collection-status__label {
     display: none;
+  }
+
+  .live-collection-status__bucket {
+    width: 24px;
+    height: 24px;
   }
 }
 
@@ -322,35 +520,59 @@
 @media (min-width: 768px) and (max-width: 1024px) {
   .glass-nav--compact .logo-text--dashboard,
   .glass-nav--compact .logo-container--nav .logo-text {
-    font-size: 1.55rem;
-  }
-
-  .glass-nav--compact .logo-img {
-    width: 34px;
-    height: 34px;
+    font-size: 1rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .live-collection-status--pulse .live-collection-status__count {
-    animation: none;
+  .live-collection-status,
+  .live-collection-status__bucket-lid,
+  .live-collection-status__bucket-body,
+  .live-collection-status__stack-thumb {
+    transition: none !important;
+  }
+
+  .live-collection-status--bounce .live-collection-status__bucket-body,
+  .live-collection-status--tick .live-collection-status__count-num,
+  .live-collection-status--ripple .live-collection-status__ripple {
+    animation: none !important;
+  }
+
+  .collection-fly-thumb {
+    display: none !important;
   }
 }
 
-/* ── AI Analysis page: same compact chrome as Live (no sidebar offset on tabs) ── */
+/* ── Dashboard workspace pages: aligned chrome (Live + AI Analysis) ── */
+.page--ai-chat #navbar,
+.page--live #navbar {
+  flex-shrink: 0;
+}
+
 .page--ai-chat #navbar .nav-dashboard-mode,
-.page--ai-chat #navbar .dashboard-segment {
+.page--ai-chat #navbar .dashboard-segment,
+.page--live #navbar .nav-dashboard-mode,
+.page--live #navbar .dashboard-segment {
   transform: none !important;
   max-width: none !important;
 }
 
-.page--ai-chat #navbar .nav-container--compact {
-  padding-inline: clamp(12px, 2vw, 1.5rem);
+.page--live {
+  --cht-workbench-gutter: clamp(0.75rem, 3vw, 2rem);
 }
 
-.page--ai-chat #navbar .logo-text--dashboard,
-.page--ai-chat #navbar .logo-container--nav .logo-text {
-  font-size: clamp(1.5rem, 2.6vw, 1.95rem);
+/* Profile: same right inset as homepage .nav-actions (gap 8px). */
+.page--live #navbar .nav-zone--end,
+.page--ai-chat #navbar .nav-zone--end,
+body.dashboard-page .glass-nav--dashboard.glass-nav--compact .nav-zone--end {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.page--live #navbar .nav-zone--end .profile-nav,
+.page--ai-chat #navbar .nav-zone--end .profile-nav {
+  flex-shrink: 0;
+  margin: 0;
 }
 
 .page--ai-chat .cht-sidebar {

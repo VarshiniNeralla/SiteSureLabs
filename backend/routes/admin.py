@@ -1,15 +1,17 @@
 """Admin-only dashboard endpoints."""
 
+import asyncio
 import logging
 import re
 import zipfile
 from io import BytesIO
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Literal, Optional
+from types import SimpleNamespace
+from typing import Any, Iterable, Literal, Optional
 
 from beanie import PydanticObjectId
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XLImage
@@ -18,7 +20,7 @@ from openpyxl.drawing.xdr import XDRPositiveSize2D
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.units import pixels_to_EMU
-from PIL import Image as PILImage
+from PIL import Image as PILImage, ImageOps
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
@@ -44,8 +46,12 @@ from services.generate_client import (
     generate_executive_defect_report,
 )
 from services.report_defect_extract import (
+    UNCLEAR_DEFECT_LABEL,
     estimate_wrapped_line_count,
+    infer_defect_label,
     invalid_image_fields,
+    is_uncertain_label,
+    normalize_defect_label,
     normalize_severity,
 )
 from utils.deps import require_admin
@@ -53,10 +59,21 @@ from utils.security import hash_password
 
 logger = logging.getLogger(__name__)
 
+# Decompression-bomb guard for report-image processing (placeholder is used if an image is rejected).
+PILImage.MAX_IMAGE_PIXELS = 64_000_000
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 UPLOADS_DIR = REPO_ROOT / "uploads"
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+# Pagination: keep list responses as JSON arrays (backward compatible) but bound the page size so a
+# single request can never load an entire collection into memory. Total count is surfaced via the
+# X-Total-Count header so the frontend can page without a response-shape change.
+_LIST_PAGE_MAX = 500
+_USERS_PAGE_DEFAULT = 200
+_UPLOADS_PAGE_DEFAULT = 100
+_LOGS_PAGE_DEFAULT = 200
 
 
 class AdminResetPasswordBody(BaseModel):
@@ -73,6 +90,7 @@ class ReportAnalyzeItemBody(BaseModel):
 
 class ReportXlsxEntry(BaseModel):
     defect_id: str
+    defect: str = ""
     observation: str = ""
     recommendation: str = ""
     severity: str = "MEDIUM"
@@ -81,6 +99,7 @@ class ReportXlsxEntry(BaseModel):
 class ReportGenerateXlsxBody(BaseModel):
     entries: list[ReportXlsxEntry]
     base_url: str = ""
+    project: str = ""
 
 
 class BulkDeleteUploadsBody(BaseModel):
@@ -215,6 +234,21 @@ def _defect_to_dict(d: Defect, *, email: str | None = None, name: str | None = N
     return out
 
 
+async def _user_identity_maps(user_ids: Iterable[str]) -> tuple[dict[str, str], dict[str, str]]:
+    valid_ids: list[PydanticObjectId] = []
+    for uid in {str(x) for x in user_ids if x}:
+        try:
+            valid_ids.append(PydanticObjectId(uid))
+        except Exception:
+            logger.warning("admin: skipping invalid user id while enriching rows: %s", uid)
+    if not valid_ids:
+        return {}, {}
+    users = await User.find({"_id": {"$in": valid_ids}}).to_list()
+    email_map = {str(u.id): u.email for u in users}
+    name_map = {str(u.id): (u.name or "") for u in users}
+    return email_map, name_map
+
+
 def _defect_location_string(d: Defect) -> str:
     project = str(getattr(d, "project", "") or "").strip()
     base = f"Tower {d.tower}, Floor {d.floor}, Flat {d.flat}, Room {d.room}"
@@ -282,18 +316,50 @@ def _pptx_severity_display(row: dict) -> str:
     return normalize_severity(row.get("severity"))
 
 
+def _resolve_defect_label(ai_label: Any, *fallback_text: Any) -> str:
+    """
+    Single source of truth for the short Defect column value.
+
+    Honors the AI's uncertainty signal — if the model said "Unclear" /
+    "Needs review" / etc. or returned LOW confidence (already translated
+    into the uncertainty marker upstream), we DO NOT keyword-infer a label
+    from observations or category. That inference path is what was
+    producing hallucinated labels on low-confidence images.
+    """
+    if is_uncertain_label(ai_label):
+        return UNCLEAR_DEFECT_LABEL
+    label = normalize_defect_label(ai_label)
+    if label:
+        return label
+    inferred = infer_defect_label(*fallback_text)
+    if inferred and inferred.lower() != "to be confirmed":
+        return inferred
+    return UNCLEAR_DEFECT_LABEL
+
+
+def _report_defect_label(row: dict) -> str:
+    """Convenience wrapper over `_resolve_defect_label` for row dicts."""
+    return _resolve_defect_label(
+        row.get("defect"),
+        row.get("category"),
+        row.get("description"),
+        row.get("observation"),
+    )
+
+
 def _pptx_row_heights_for_card(
     row: dict,
     *,
     value_chars: int,
     meta_h: float = 0.27,
     line_h: float = 0.135,
-) -> tuple[float, float, float, float, float, float, str, str]:
+) -> tuple[float, float, float, float, float, float, float, str, str]:
     """Return row heights (inches) and observation/recommendation display strings."""
     loc = _report_card_location(row) or "To be confirmed"
     category = str(row.get("category") or "").strip() or "To be confirmed"
     reporting_date = _pptx_format_reporting_date(str(row.get("reporting_date") or ""))
     severity_label = _pptx_severity_display(row)
+    defect_label = _report_defect_label(row)
     obs_field = _pptx_bullet_display(row.get("observation") or "")
     rec_field = _pptx_bullet_display(row.get("recommendation") or "")
 
@@ -301,10 +367,11 @@ def _pptx_row_heights_for_card(
     cat_h = max(meta_h, 0.2 + estimate_wrapped_line_count(category, chars_per_line=value_chars) * line_h)
     date_h = max(meta_h, 0.2 + estimate_wrapped_line_count(reporting_date, chars_per_line=value_chars) * line_h)
     sev_h = max(meta_h, 0.2 + estimate_wrapped_line_count(severity_label, chars_per_line=value_chars) * line_h)
+    defect_h = max(meta_h, 0.2 + estimate_wrapped_line_count(defect_label, chars_per_line=value_chars) * line_h)
     obs_h = max(0.32, 0.2 + estimate_wrapped_line_count(obs_field, chars_per_line=value_chars) * line_h)
     rec_h = max(0.32, 0.2 + estimate_wrapped_line_count(rec_field, chars_per_line=value_chars) * line_h)
 
-    return loc_h, cat_h, date_h, sev_h, obs_h, rec_h, obs_field, rec_field
+    return loc_h, cat_h, date_h, sev_h, defect_h, obs_h, rec_h, obs_field, rec_field
 
 
 def _pptx_slide_table_budget_in() -> float:
@@ -320,6 +387,41 @@ _EXCEL_IMAGE_COL_MIN_WIDTH = 48.0
 _EXCEL_IMAGE_JPEG_QUALITY = 92
 _EXCEL_ROW_HEIGHT_FACTOR = 0.75  # user-facing row height vs raw content box
 _EXCEL_SEVERITY_FONT = Font(color="000000", bold=True)
+
+
+def _ensure_heif_opener_for_reports() -> None:
+    """Enable HEIC/HEIF decoding for reports when the optional dependency is installed."""
+    try:
+        from pillow_heif import register_heif_opener
+
+        register_heif_opener()
+    except ImportError:
+        # Uploads are normally normalized before this point; keep JPEG/PNG reports working.
+        return
+
+
+def _report_image_to_rgb(img: PILImage.Image) -> PILImage.Image:
+    """Return a detached RGB image, preserving transparent images on a white background."""
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        rgba = img.convert("RGBA")
+        background = PILImage.new("RGB", rgba.size, (255, 255, 255))
+        background.paste(rgba, mask=rgba.getchannel("A"))
+        return background
+    return img.convert("RGB")
+
+
+def _open_report_image_upright(path: Path) -> PILImage.Image:
+    """
+    Open a report image with orientation baked into pixels before any resizing.
+
+    Mobile and chat apps often store camera rotation in EXIF instead of rotating pixels.
+    Excel/PPT do not reliably honor that metadata for embedded images, so exports must
+    bake the phone/gallery orientation into a new RGB JPEG stream.
+    """
+    _ensure_heif_opener_for_reports()
+    with PILImage.open(path) as img:
+        upright = ImageOps.exif_transpose(img)
+        return _report_image_to_rgb(upright)
 
 
 def _excel_pixels_to_points(px: float) -> float:
@@ -378,23 +480,22 @@ def _excel_fit_image_in_cell_bounds(
 
 
 def _excel_prepare_image_embed(path: Path) -> tuple[int, int, BytesIO] | None:
-    """Resize source photo for Excel (upscale small images, high JPEG quality)."""
+    """Resize an upright source photo for Excel (contain box, high JPEG quality)."""
     try:
-        with PILImage.open(path) as img:
-            img = img.convert("RGB")
-            w, h = img.size
-            scale = min(
-                _EXCEL_IMAGE_MAX_W_PX / max(w, 1),
-                _EXCEL_IMAGE_MAX_H_PX / max(h, 1),
-            )
-            new_w = max(1, int(w * scale))
-            new_h = max(1, int(h * scale))
-            if (new_w, new_h) != (w, h):
-                img = img.resize((new_w, new_h), PILImage.Resampling.LANCZOS)
-            out = BytesIO()
-            img.save(out, format="JPEG", optimize=True, quality=_EXCEL_IMAGE_JPEG_QUALITY)
-            out.seek(0)
-            return new_w, new_h, out
+        img = _open_report_image_upright(path)
+        w, h = img.size
+        scale = min(
+            _EXCEL_IMAGE_MAX_W_PX / max(w, 1),
+            _EXCEL_IMAGE_MAX_H_PX / max(h, 1),
+        )
+        new_w = max(1, int(w * scale))
+        new_h = max(1, int(h * scale))
+        if (new_w, new_h) != (w, h):
+            img = img.resize((new_w, new_h), PILImage.Resampling.LANCZOS)
+        out = BytesIO()
+        img.save(out, format="JPEG", optimize=True, quality=_EXCEL_IMAGE_JPEG_QUALITY)
+        out.seek(0)
+        return new_w, new_h, out
     except Exception:
         logger.exception("admin report: failed to prepare excel image %s", path)
         return None
@@ -540,13 +641,12 @@ def _thumbnail_image_for_pptx(
     jpeg_quality: int = 84,
 ) -> tuple[BytesIO, int, int] | None:
     try:
-        with PILImage.open(path) as img:
-            img = img.convert("RGB")
-            img.thumbnail((max_w, max_h), PILImage.Resampling.LANCZOS)
-            out = BytesIO()
-            img.save(out, format="JPEG", optimize=True, quality=jpeg_quality)
-            out.seek(0)
-            return out, img.width, img.height
+        img = _open_report_image_upright(path)
+        img.thumbnail((max_w, max_h), PILImage.Resampling.LANCZOS)
+        out = BytesIO()
+        img.save(out, format="JPEG", optimize=True, quality=jpeg_quality)
+        out.seek(0)
+        return out, img.width, img.height
     except Exception:
         logger.exception("admin report: failed to create pptx image for %s", path)
         return None
@@ -723,14 +823,13 @@ def _add_fitted_pptx_image(slide, path: Path, left, top, width, height) -> None:
     slide.shapes.add_picture(image_stream, img_left, img_top, width=actual_w, height=actual_h)
 
 
-def _build_report_presentation(*, rows: list[dict]) -> BytesIO:
+def _build_report_presentation(*, rows: list[dict], project: str = "") -> BytesIO:
     prs = Presentation()
     prs.slide_width = Inches(13.333)
     prs.slide_height = Inches(7.5)
     blank_layout = prs.slide_layouts[6]
 
     title_color = RGBColor(190, 54, 73)
-    subtitle_color = RGBColor(156, 43, 59)
     image_border_color = RGBColor(69, 69, 69)
 
     card_w = Inches(3.58)
@@ -755,10 +854,10 @@ def _build_report_presentation(*, rows: list[dict]) -> BytesIO:
         card_plans: list[dict] = []
         max_table_h_in = 0.0
         for row in chunk:
-            loc_h, cat_h, date_h, sev_h, obs_h, rec_h, obs_field, rec_field = _pptx_row_heights_for_card(
+            loc_h, cat_h, date_h, sev_h, defect_h, obs_h, rec_h, obs_field, rec_field = _pptx_row_heights_for_card(
                 row, value_chars=value_chars
             )
-            total_h = loc_h + cat_h + date_h + sev_h + obs_h + rec_h
+            total_h = loc_h + cat_h + date_h + sev_h + defect_h + obs_h + rec_h
             max_table_h_in = max(max_table_h_in, total_h)
             card_plans.append(
                 {
@@ -767,6 +866,7 @@ def _build_report_presentation(*, rows: list[dict]) -> BytesIO:
                     "cat_h": cat_h,
                     "date_h": date_h,
                     "sev_h": sev_h,
+                    "defect_h": defect_h,
                     "obs_h": obs_h,
                     "rec_h": rec_h,
                     "obs_field": obs_field,
@@ -783,30 +883,18 @@ def _build_report_presentation(*, rows: list[dict]) -> BytesIO:
         image_h = Inches(slide_image_h_in)
         table_top = Inches(image_top_in + slide_image_h_in + table_gap_in)
 
-        title_box = slide.shapes.add_textbox(Inches(0.55), Inches(0.18), Inches(8.7), Inches(0.36))
+        title_box = slide.shapes.add_textbox(Inches(0.55), Inches(0.32), Inches(8.7), Inches(0.36))
         title_tf = title_box.text_frame
         title_tf.clear()
         title_p = title_tf.paragraphs[0]
         title_run = title_p.add_run()
-        title_run.text = "Quality walkthrough - Observation"
+        title_run.text = f"Quality Walkthrough - {project}" if project else "Quality Walkthrough"
         title_run.font.name = "Aptos"
         title_run.font.size = Pt(21)
         title_run.font.italic = True
         title_run.font.bold = True
         title_run.font.color.rgb = title_color
 
-        categories = {str(r.get("category") or "Observation").strip() for r in chunk if r.get("category")}
-        subtitle = next(iter(categories)) if len(categories) == 1 else "Defect observations"
-        sub_box = slide.shapes.add_textbox(Inches(0.58), Inches(0.56), Inches(8.2), Inches(0.26))
-        sub_tf = sub_box.text_frame
-        sub_tf.clear()
-        sub_run = sub_tf.paragraphs[0].add_run()
-        sub_run.text = subtitle
-        sub_run.font.name = "Aptos"
-        sub_run.font.size = Pt(11)
-        sub_run.font.italic = True
-        sub_run.font.bold = True
-        sub_run.font.color.rgb = subtitle_color
 
         for idx, plan in enumerate(card_plans):
             row = plan["row"]
@@ -834,11 +922,13 @@ def _build_report_presentation(*, rows: list[dict]) -> BytesIO:
             category = str(row.get("category") or "").strip() or "To be confirmed"
             reporting_date = _pptx_format_reporting_date(str(row.get("reporting_date") or ""))
             severity_label = _pptx_severity_display(row)
+            defect_label = _report_defect_label(row)
             table_rows = [
                 ("Location", loc, None),
                 ("Category", category, None),
                 ("Reporting date", reporting_date, None),
                 ("Severity", severity_label, None),
+                ("Defect", defect_label, None),
                 ("Observation", plan["obs_field"], None),
                 ("Recommendation", plan["rec_field"], None),
             ]
@@ -847,11 +937,12 @@ def _build_report_presentation(*, rows: list[dict]) -> BytesIO:
                 plan["cat_h"],
                 plan["date_h"],
                 plan["sev_h"],
+                plan["defect_h"],
                 plan["obs_h"],
                 plan["rec_h"],
             )
             table_shape = slide.shapes.add_table(
-                6, 2, left, table_top, card_w, Inches(plan["total_h"])
+                7, 2, left, table_top, card_w, Inches(plan["total_h"])
             )
             table = table_shape.table
             table.columns[0].width = label_col_w
@@ -859,7 +950,7 @@ def _build_report_presentation(*, rows: list[dict]) -> BytesIO:
             for row_idx, (label, value, value_color) in enumerate(table_rows):
                 table.rows[row_idx].height = Inches(row_heights[row_idx])
                 _set_pptx_cell(table.cell(row_idx, 0), label, label=True)
-                is_bullets = row_idx >= 4
+                is_bullets = row_idx >= 5
                 _set_pptx_cell(
                     table.cell(row_idx, 1),
                     str(value),
@@ -899,6 +990,7 @@ def _build_report_workbook(
         "Floor",
         "Flat",
         "Room",
+        "Defect",
         "Image",
         "Observation",
         "Recommendation",
@@ -928,10 +1020,11 @@ def _build_report_workbook(
     ws.column_dimensions["F"].width = 10
     ws.column_dimensions["G"].width = 10
     ws.column_dimensions["H"].width = 16
-    ws.column_dimensions["J"].width = 60
+    ws.column_dimensions["I"].width = 18
     ws.column_dimensions["K"].width = 60
+    ws.column_dimensions["L"].width = 60
 
-    image_col_idx = 9
+    image_col_idx = 10
     image_col_letter = get_column_letter(image_col_idx)
     image_plans, max_embed_w_px = _excel_prepare_row_images(rows)
     target_img_w_px = min(
@@ -954,6 +1047,7 @@ def _build_report_workbook(
         ws.cell(row=current_row, column=6, value=row.get("floor") or "")
         ws.cell(row=current_row, column=7, value=row.get("flat") or "")
         ws.cell(row=current_row, column=8, value=row.get("room") or "")
+        ws.cell(row=current_row, column=9, value=_report_defect_label(row))
 
         image_path = str(row.get("image_path") or "")
         img_cell = ws.cell(row=current_row, column=image_col_idx, value=None)
@@ -969,26 +1063,26 @@ def _build_report_workbook(
 
         obs_value = str(row.get("observation") or "").strip()
         rec_value = str(row.get("recommendation") or "").strip()
-        ws.cell(row=current_row, column=10, value=obs_value)
-        ws.cell(row=current_row, column=11, value=rec_value)
+        ws.cell(row=current_row, column=11, value=obs_value)
+        ws.cell(row=current_row, column=12, value=rec_value)
 
-        for col_idx in (1, 2, 3, 4, 5, 6, 7, 8):
+        for col_idx in (1, 2, 3, 4, 5, 6, 7, 8, 9):
             c = ws.cell(row=current_row, column=col_idx)
             c.alignment = Alignment(horizontal="center", vertical="center")
             c.border = border
             if idx % 2 == 0:
                 c.fill = alt_fill
-        ws.cell(row=current_row, column=10).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
         ws.cell(row=current_row, column=11).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+        ws.cell(row=current_row, column=12).alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
         ws.cell(row=current_row, column=image_col_idx).border = border
-        ws.cell(row=current_row, column=10).border = border
         ws.cell(row=current_row, column=11).border = border
+        ws.cell(row=current_row, column=12).border = border
         if idx % 2 == 0:
-            ws.cell(row=current_row, column=10).fill = alt_fill
             ws.cell(row=current_row, column=11).fill = alt_fill
+            ws.cell(row=current_row, column=12).fill = alt_fill
 
-        obs_text = str(ws.cell(row=current_row, column=10).value or "")
-        rec_text = str(ws.cell(row=current_row, column=11).value or "")
+        obs_text = str(ws.cell(row=current_row, column=11).value or "")
+        rec_text = str(ws.cell(row=current_row, column=12).value or "")
         text_lines = max(
             estimate_wrapped_line_count(obs_text, chars_per_line=55),
             estimate_wrapped_line_count(rec_text, chars_per_line=55),
@@ -1074,6 +1168,13 @@ async def _collect_report_rows(entries: list[ReportXlsxEntry]) -> list[dict]:
             {
                 "defect_id": str(defect.id),
                 "category": defect.category or "Others",
+                "description": defect.description or "",
+                "defect": _resolve_defect_label(
+                    entry.defect,
+                    defect.category,
+                    defect.description,
+                    entry.observation,
+                ),
                 "reporting_date": defect.created_at.date().isoformat(),
                 "tower": defect.tower,
                 "floor": defect.floor,
@@ -1092,8 +1193,23 @@ async def _collect_report_rows(entries: list[ReportXlsxEntry]) -> list[dict]:
 
 
 @router.get("/users")
-async def get_all_users(_: User = Depends(require_admin)):
-    users = await User.find_all().sort("-created_at").to_list()
+async def get_all_users(
+    response: Response,
+    page: int = Query(1, ge=1),
+    limit: int = Query(_USERS_PAGE_DEFAULT, ge=1, le=_LIST_PAGE_MAX),
+    _: User = Depends(require_admin),
+):
+    total = await User.find_all().count()
+    users = (
+        await User.find_all()
+        .sort("-created_at")
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .to_list()
+    )
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Page"] = str(page)
+    response.headers["X-Limit"] = str(limit)
 
     user_ids = [str(u.id) for u in users]
 
@@ -1281,26 +1397,45 @@ async def admin_set_user_role(user_id: str, body: AdminRoleBody, admin: User = D
 @router.get("/users/{user_id}/uploads")
 async def get_user_uploads(user_id: str, _: User = Depends(require_admin)):
     defects = await Defect.find(Defect.user_id == user_id).sort("-created_at").to_list()
+    email_map, name_map = await _user_identity_maps([user_id])
     logger.info("admin: fetched %d uploads for user %s", len(defects), user_id)
-    return [_defect_to_dict(d) for d in defects]
-
-
-@router.get("/uploads")
-async def get_all_uploads(_: User = Depends(require_admin)):
-    """Return every upload across all users, enriched with uploader identity."""
-    defects = await Defect.find_all().sort("-created_at").to_list()
-    user_ids = list({d.user_id for d in defects})
-    users = await User.find(
-        {"_id": {"$in": [PydanticObjectId(uid) for uid in user_ids]}}
-    ).to_list()
-    email_map = {str(u.id): u.email for u in users}
-    name_map = {str(u.id): u.name for u in users}
-    logger.info("admin: fetched all uploads (%d total)", len(defects))
     return [
         _defect_to_dict(
             d,
             email=email_map.get(d.user_id, "unknown"),
-            name=name_map.get(d.user_id),
+            name=name_map.get(d.user_id, ""),
+        )
+        for d in defects
+    ]
+
+
+@router.get("/uploads")
+async def get_all_uploads(
+    response: Response,
+    page: int = Query(1, ge=1),
+    limit: int = Query(_UPLOADS_PAGE_DEFAULT, ge=1, le=_LIST_PAGE_MAX),
+    _: User = Depends(require_admin),
+):
+    """Return uploads across all users (paginated), enriched with uploader identity."""
+    total = await Defect.find_all().count()
+    defects = (
+        await Defect.find_all()
+        .sort("-created_at")
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .to_list()
+    )
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Page"] = str(page)
+    response.headers["X-Limit"] = str(limit)
+
+    email_map, name_map = await _user_identity_maps(d.user_id for d in defects)
+    logger.info("admin: fetched uploads page=%d limit=%d (total=%d)", page, limit, total)
+    return [
+        _defect_to_dict(
+            d,
+            email=email_map.get(d.user_id, "unknown"),
+            name=name_map.get(d.user_id, ""),
         )
         for d in defects
     ]
@@ -1322,7 +1457,7 @@ async def analyze_report_item(
     if not abs_img:
         raise HTTPException(status_code=404, detail="Image file not found on storage")
 
-    image_bytes = abs_img.read_bytes()
+    image_bytes = await asyncio.to_thread(abs_img.read_bytes)
     ext = abs_img.suffix.lower()
     if ext == ".png":
         mime = "image/png"
@@ -1332,14 +1467,21 @@ async def analyze_report_item(
         mime = "image/jpeg"
 
     # Validation: never generate defect observations for unrelated images.
-    if not await classify_construction_site_image(
-        image_bytes=image_bytes,
-        mime_type=mime,
-    ):
-        observation, recommendation, severity = invalid_image_fields()
+    try:
+        is_relevant = await classify_construction_site_image(
+            image_bytes=image_bytes,
+            mime_type=mime,
+        )
+    except Exception:
+        logger.exception("analyze-item: classifier error for defect %s — proceeding", defect.id)
+        is_relevant = True
+    if not is_relevant:
+        observation, recommendation, severity, defect_label = invalid_image_fields()
         return {
             "defect_id": str(defect.id),
             "category": defect.category or "Others",
+            "description": defect.description or "",
+            "defect": defect_label,
             "reporting_date": defect.created_at.date().isoformat(),
             "tower": defect.tower,
             "floor": defect.floor,
@@ -1357,15 +1499,45 @@ async def analyze_report_item(
         issue_type=defect.category or "",
     )
 
-    observation, recommendation, severity = await generate_executive_defect_report(
-        image_bytes=image_bytes,
-        mime_type=mime,
-        prompt=prompt,
-    )
+    try:
+        observation, recommendation, severity, defect_label = await generate_executive_defect_report(
+            image_bytes=image_bytes,
+            mime_type=mime,
+            prompt=prompt,
+        )
+    except Exception:
+        # Partial-failure resilience: a single item's AI failure must not 500 and abort the admin's
+        # whole report run. Return a flagged placeholder row so the rest of the report still builds.
+        # The defect is always "Needs review" here — we cannot identify what's in an image whose
+        # AI analysis just crashed, so guessing from the user-typed category would be misleading.
+        logger.exception("analyze-item: generation failed for defect %s", defect.id)
+        return {
+            "defect_id": str(defect.id),
+            "category": defect.category or "Others",
+            "description": defect.description or "",
+            "defect": UNCLEAR_DEFECT_LABEL,
+            "reporting_date": defect.created_at.date().isoformat(),
+            "tower": defect.tower,
+            "floor": defect.floor,
+            "flat": defect.flat,
+            "room": defect.room,
+            "image_path": defect.image_path,
+            "observation": "• Automated analysis is temporarily unavailable for this item.",
+            "recommendation": "• Re-run analysis later, or document this defect manually.",
+            "severity": "MEDIUM",
+            "analysis_failed": True,
+        }
 
     return {
         "defect_id": str(defect.id),
         "category": defect.category or "Others",
+        "description": defect.description or "",
+        "defect": _resolve_defect_label(
+            defect_label,
+            defect.category,
+            defect.description,
+            observation,
+        ),
         "reporting_date": defect.created_at.date().isoformat(),
         "tower": defect.tower,
         "floor": defect.floor,
@@ -1384,7 +1556,9 @@ async def generate_report_xlsx(
     admin: User = Depends(require_admin),
 ):
     rows = await _collect_report_rows(body.entries)
-    workbook = _build_report_workbook(rows=rows, base_url=body.base_url)
+    # Offload CPU-bound openpyxl + PIL work to a thread so it doesn't block the event loop
+    # (one report would otherwise freeze every concurrent request on this single worker).
+    workbook = await asyncio.to_thread(_build_report_workbook, rows=rows, base_url=body.base_url)
     filename = f"SiteSureLabs_Report_{datetime.now(timezone.utc).date().isoformat()}.xlsx"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
 
@@ -1406,7 +1580,9 @@ async def generate_report_pptx(
     admin: User = Depends(require_admin),
 ):
     rows = await _collect_report_rows(body.entries)
-    presentation = _build_report_presentation(rows=rows)
+    project = body.project.strip() if body.project.strip() else (rows[0].get("project", "") if rows else "")
+    # Offload CPU-bound python-pptx + PIL work to a thread so it doesn't block the event loop.
+    presentation = await asyncio.to_thread(_build_report_presentation, rows=rows, project=project)
     filename = f"SiteSureLabs_Report_{datetime.now(timezone.utc).date().isoformat()}.pptx"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
 
@@ -1422,10 +1598,30 @@ async def generate_report_pptx(
     )
 
 
+def _local_date_start_utc(value: str, tz_offset: int, field_name: str) -> datetime:
+    try:
+        day = datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {field_name} format; use YYYY-MM-DD",
+        ) from exc
+    return datetime(day.year, day.month, day.day, tzinfo=timezone.utc) + timedelta(
+        minutes=tz_offset
+    )
+
+
 @router.get("/logs")
 async def get_logs(
+    response: Response,
     date_from: Optional[str] = Query(None, description="ISO date, e.g. 2025-01-01"),
     date_to: Optional[str] = Query(None, description="ISO date, e.g. 2025-12-31"),
+    tz_offset: int = Query(
+        0,
+        description="Minutes from JS Date.getTimezoneOffset() for local-day boundaries",
+    ),
+    page: int = Query(1, ge=1),
+    limit: int = Query(_LOGS_PAGE_DEFAULT, ge=1, le=_LIST_PAGE_MAX),
     _: User = Depends(require_admin),
 ):
     query = {}
@@ -1433,26 +1629,25 @@ async def get_logs(
     if date_from or date_to:
         ts_filter = {}
         if date_from:
-            try:
-                ts_filter["$gte"] = datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc)
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid date_from format")
+            ts_filter["$gte"] = _local_date_start_utc(date_from, tz_offset, "date_from")
         if date_to:
-            try:
-                end = datetime.fromisoformat(date_to).replace(
-                    hour=23, minute=59, second=59, tzinfo=timezone.utc,
-                )
-                ts_filter["$lte"] = end
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid date_to format")
+            end = _local_date_start_utc(date_to, tz_offset, "date_to") + timedelta(days=1)
+            ts_filter["$lt"] = end
         query["timestamp"] = ts_filter
 
-    logs = await UserLog.find(query).sort("-timestamp").to_list()
+    total = await UserLog.find(query).count()
+    logs = (
+        await UserLog.find(query)
+        .sort("-timestamp")
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .to_list()
+    )
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Page"] = str(page)
+    response.headers["X-Limit"] = str(limit)
 
-    user_ids = list({log.user_id for log in logs})
-    users = await User.find({"_id": {"$in": [PydanticObjectId(uid) for uid in user_ids]}}).to_list()
-    email_map = {str(u.id): u.email for u in users}
-    name_map = {str(u.id): u.name for u in users}
+    email_map, name_map = await _user_identity_maps(log.user_id for log in logs)
 
     logger.info("admin: fetched %d log entries", len(logs))
     return [
@@ -1460,7 +1655,7 @@ async def get_logs(
             "id": str(log.id),
             "user_id": log.user_id,
             "email": email_map.get(log.user_id, "unknown"),
-            "name": name_map.get(log.user_id),
+            "name": name_map.get(log.user_id, ""),
             "action": log.action,
             "timestamp": log.timestamp.isoformat(),
             "target_user_id": log.target_user_id,
@@ -1488,8 +1683,8 @@ async def bulk_delete_uploads(body: BulkDeleteUploadsBody, admin: User = Depends
     removed = 0
 
     if body.mode == "all":
-        defects = await Defect.find_all().to_list()
-        for defect in defects:
+        # Stream documents one at a time instead of materializing the whole collection in memory.
+        async for defect in Defect.find_all():
             await _delete_defect_upload_best_effort(defect)
             removed += 1
     elif body.mode == "user":
@@ -1831,6 +2026,65 @@ def _format_activity_action(action: str) -> str:
     return action.replace("_", " ")
 
 
+# Workspace dashboard reads only these fields; projecting them (instead of hydrating full Defect /
+# UserLog documents for the whole 30-day window) keeps the analytics query's memory footprint small.
+_WORKSPACE_DEFECT_PROJECTION = {
+    "user_id": 1,
+    "created_at": 1,
+    "category": 1,
+    "description": 1,
+    "tower": 1,
+    "floor": 1,
+    "flat": 1,
+    "room": 1,
+}
+_WORKSPACE_LOG_PROJECTION = {"user_id": 1, "action": 1, "timestamp": 1}
+
+
+async def _fetch_workspace_defects(query: dict) -> list[SimpleNamespace]:
+    """Projected, lightweight defect rows (newest first) for dashboard analytics."""
+    cursor = (
+        Defect.get_motor_collection()
+        .find(query, _WORKSPACE_DEFECT_PROJECTION)
+        .sort("created_at", -1)
+    )
+    rows: list[SimpleNamespace] = []
+    async for doc in cursor:
+        rows.append(
+            SimpleNamespace(
+                id=doc.get("_id"),
+                user_id=doc.get("user_id", "") or "",
+                created_at=doc.get("created_at"),
+                category=doc.get("category", "") or "",
+                description=doc.get("description", "") or "",
+                tower=doc.get("tower", "") or "",
+                floor=doc.get("floor", "") or "",
+                flat=doc.get("flat", "") or "",
+                room=doc.get("room", "") or "",
+            )
+        )
+    return rows
+
+
+async def _fetch_workspace_logs(query: dict) -> list[SimpleNamespace]:
+    """Projected, lightweight log rows (newest first) for dashboard analytics."""
+    cursor = (
+        UserLog.get_motor_collection()
+        .find(query, _WORKSPACE_LOG_PROJECTION)
+        .sort("timestamp", -1)
+    )
+    rows: list[SimpleNamespace] = []
+    async for doc in cursor:
+        rows.append(
+            SimpleNamespace(
+                user_id=doc.get("user_id", "") or "",
+                action=doc.get("action", "") or "",
+                timestamp=doc.get("timestamp"),
+            )
+        )
+    return rows
+
+
 @router.get("/workspace")
 async def get_workspace_dashboard(
     tz_offset: int = Query(
@@ -1856,8 +2110,8 @@ async def get_workspace_dashboard(
     logs_today = await UserLog.find(UserLog.timestamp >= start_today).count()
     logs_week = await UserLog.find(UserLog.timestamp >= week_ago).count()
 
-    defects_30d = await Defect.find(Defect.created_at >= month_ago).to_list()
-    logs_30d = await UserLog.find(UserLog.timestamp >= month_ago).to_list()
+    defects_30d = await _fetch_workspace_defects({"created_at": {"$gte": month_ago}})
+    logs_30d = await _fetch_workspace_logs({"timestamp": {"$gte": month_ago}})
     logs_recent = await UserLog.find().sort("-timestamp").limit(40).to_list()
 
     user_ids = list(
@@ -1955,6 +2209,49 @@ async def get_workspace_dashboard(
         [(_tower_floor_label(t[0], t[1]), c) for t, c in tower_floor_counts.items()],
         limit=8,
     )
+
+    # Coverage gaps: tower+floor combos active before the 7-day window but silent in it
+    recent_7d_locations = {
+        (d.tower or "—", d.floor or "—")
+        for d in defects_30d
+        if (_as_utc_aware(d.created_at) or now) >= week_ago
+    }
+    older_locations = {
+        (d.tower or "—", d.floor or "—")
+        for d in defects_30d
+        if (_as_utc_aware(d.created_at) or now) < week_ago
+    }
+    coverage_gaps = [
+        {"tower": t, "floor": f}
+        for t, f in (older_locations - recent_7d_locations)
+        if t and t != "—"
+    ][:8]
+
+    # Category velocity: current week vs prior week counts per category.
+    # Prior-week (14d→7d ago) is within the 30-day window already loaded, so derive it from
+    # defects_30d instead of issuing a second full query.
+    two_weeks_ago = now - timedelta(days=14)
+    prev_category_counts: dict[str, int] = {}
+    for d in defects_30d:
+        ct = _as_utc_aware(d.created_at)
+        if ct is not None and two_weeks_ago <= ct < week_ago:
+            cat = _analytics_category_label(d)
+            prev_category_counts[cat] = prev_category_counts.get(cat, 0) + 1
+    # Build 7d current counts for fair comparison
+    curr_week_category_counts: dict[str, int] = {}
+    for d in defects_30d:
+        if (_as_utc_aware(d.created_at) or now) >= week_ago:
+            cat = _analytics_category_label(d)
+            curr_week_category_counts[cat] = curr_week_category_counts.get(cat, 0) + 1
+    category_velocity = [
+        {
+            "name": item["name"],
+            "count": item["count"],
+            "curr_week": curr_week_category_counts.get(item["name"], 0),
+            "prev_week": prev_category_counts.get(item["name"], 0),
+        }
+        for item in by_category
+    ]
 
     top_towers = [t for t, _ in sorted(tower_counts.items(), key=lambda x: (-x[1], x[0]))[:6]]
     top_floors = [f for f, _ in sorted(floor_counts.items(), key=lambda x: (-x[1], x[0]))[:6]]
@@ -2074,6 +2371,8 @@ async def get_workspace_dashboard(
             "pending_estimate": ai_estimate_fail,
         },
         "timeline": timeline,
+        "coverage_gaps": coverage_gaps,
+        "category_velocity": category_velocity,
         "generated_at": now.isoformat(),
     }
 

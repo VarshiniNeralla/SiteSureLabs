@@ -1,4 +1,4 @@
-import { getToken, getUser } from "/shared/auth.js";
+import { getToken, getUser, apiFetch } from "/shared/auth.js";
 import { mountDashboardNav } from "/shared/components/dashboard-nav.js";
 import { mountDashboardFooter } from "/shared/components/dashboard-footer.js";
 import { isHeicLike, normalizeImageFileForUpload } from "/heic-utils.js";
@@ -13,9 +13,206 @@ function mountLiveCollectionIntoNav() {
   source?.remove();
 }
 
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+function attachMagneticHover(btn) {
+  if (!btn || prefersReducedMotion()) return;
+  const STRENGTH = 0.18;
+  const RADIUS = 90;
+  let frame = 0;
+  const reset = () => {
+    cancelAnimationFrame(frame);
+    btn.style.setProperty("--mag-x", "0px");
+    btn.style.setProperty("--mag-y", "0px");
+  };
+  btn.addEventListener("pointermove", (e) => {
+    const rect = btn.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > RADIUS) {
+      reset();
+      return;
+    }
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      btn.style.setProperty("--mag-x", `${dx * STRENGTH}px`);
+      btn.style.setProperty("--mag-y", `${dy * STRENGTH}px`);
+    });
+  });
+  btn.addEventListener("pointerleave", reset);
+  btn.addEventListener("blur", reset);
+}
+
+function pushBucketStackThumb(btn, src) {
+  if (!btn || !src) return;
+  const host = btn.querySelector(".live-collection-status__stack");
+  if (!host) return;
+  const thumb = document.createElement("span");
+  thumb.className = "live-collection-status__stack-thumb";
+  thumb.style.backgroundImage = `url("${src}")`;
+  host.appendChild(thumb);
+  // Trim older thumbs so the stack stays at 3
+  const all = host.querySelectorAll(".live-collection-status__stack-thumb");
+  if (all.length > 3) all[0].remove();
+  requestAnimationFrame(() => {
+    thumb.classList.add("live-collection-status__stack-thumb--in");
+  });
+}
+
+function tickBucketCount(btn, nextCount) {
+  if (!btn) return;
+  const numEl = btn.querySelector(".live-collection-status__count-num");
+  if (!numEl) return;
+  // Restart animation cleanly
+  btn.classList.remove("live-collection-status--tick");
+  void btn.offsetWidth;
+  numEl.textContent = String(nextCount);
+  numEl.dataset.count = String(nextCount);
+  btn.classList.add("live-collection-status--tick");
+  window.setTimeout(() => {
+    btn.classList.remove("live-collection-status--tick");
+  }, 600);
+}
+
+function flyThumbToCollection({ sourceEl, targetBtn, imageSrc, onAbsorb }) {
+  return new Promise((resolve) => {
+    if (
+      !sourceEl ||
+      !targetBtn ||
+      !imageSrc ||
+      prefersReducedMotion() ||
+      typeof Element.prototype.animate !== "function"
+    ) {
+      try { onAbsorb?.(); } catch {}
+      resolve();
+      return;
+    }
+    const layer = document.getElementById("collection-fly-layer");
+    if (!layer) {
+      try { onAbsorb?.(); } catch {}
+      resolve();
+      return;
+    }
+    const srcRect = sourceEl.getBoundingClientRect();
+    const bucket = targetBtn.querySelector(".live-collection-status__bucket");
+    const dstRect = (bucket || targetBtn).getBoundingClientRect();
+    const startSize = Math.max(36, Math.min(srcRect.width, srcRect.height, 84));
+    const endSize = Math.max(14, Math.min(dstRect.width, dstRect.height) - 6);
+
+    const startX = srcRect.left + srcRect.width / 2 - startSize / 2;
+    const startY = srcRect.top + srcRect.height / 2 - startSize / 2;
+    const endX = dstRect.left + dstRect.width / 2 - endSize / 2;
+    const endY = dstRect.top + dstRect.height / 2 - endSize / 2;
+
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const dist = Math.hypot(dx, dy) || 1;
+    const ux = dx / dist;
+    const uy = dy / dist;
+
+    // Anticipation: pull a touch back AWAY from the bucket before launching.
+    const pullback = Math.min(14, Math.max(6, dist * 0.02));
+    const antX = startX - ux * pullback;
+    const antY = startY - uy * pullback;
+
+    const scaleEnd = endSize / startSize;
+
+    const flyEl = document.createElement("div");
+    flyEl.className = "collection-fly-thumb";
+    flyEl.style.width = `${startSize}px`;
+    flyEl.style.height = `${startSize}px`;
+    flyEl.style.backgroundImage = `url("${imageSrc}")`;
+    flyEl.style.transform = `translate3d(${startX}px, ${startY}px, 0) scale(1)`;
+    flyEl.style.transformOrigin = "50% 50%";
+    layer.appendChild(flyEl);
+
+    // Hide the source thumb so the flying clone is clearly "the" image.
+    const prevVisibility = sourceEl.style.visibility;
+    sourceEl.style.visibility = "hidden";
+
+    // Magnetic pull: anticipation (back + lift + tilt away) → accelerate into
+    // bucket → final absorption (overshoots scale-down past bucket size so it
+    // reads as being sucked in, opacity to 0 at the bucket mouth).
+    const frames = [
+      {
+        offset: 0,
+        transform: `translate3d(${startX}px, ${startY}px, 0) scale(1) rotate(0deg)`,
+        opacity: 1,
+        filter: "drop-shadow(0 12px 22px rgba(15,23,42,0.22))",
+        easing: "cubic-bezier(0.22, 1, 0.36, 1)", // ease-out into anticipation peak
+      },
+      {
+        offset: 0.18,
+        transform: `translate3d(${antX}px, ${antY}px, 0) scale(1.04) rotate(-4deg)`,
+        opacity: 1,
+        filter: "drop-shadow(0 14px 26px rgba(15,23,42,0.24))",
+        easing: "cubic-bezier(0.55, 0, 0.78, 0.18)", // strong ease-in: accelerate
+      },
+      {
+        offset: 0.82,
+        transform: `translate3d(${endX}px, ${endY}px, 0) scale(${scaleEnd * 1.15}) rotate(2deg)`,
+        opacity: 1,
+        filter: "drop-shadow(0 4px 8px rgba(15,23,42,0.18))",
+        easing: "cubic-bezier(0.4, 0, 0.6, 1)",
+      },
+      {
+        offset: 1,
+        transform: `translate3d(${endX}px, ${endY}px, 0) scale(${scaleEnd * 0.35}) rotate(0deg)`,
+        opacity: 0,
+        filter: "drop-shadow(0 0 0 rgba(0,0,0,0))",
+      },
+    ];
+
+    const flightDuration = 560;
+    const anim = flyEl.animate(frames, {
+      duration: flightDuration,
+      fill: "forwards",
+    });
+
+    // Lid opens during the acceleration phase so it's already waiting.
+    const lidOpenAt = Math.round(flightDuration * 0.55);
+    const absorbAt = Math.round(flightDuration * 0.82);
+    const lidCloseAt = flightDuration + 90;
+
+    window.setTimeout(() => {
+      targetBtn.classList.add("live-collection-status--open");
+    }, lidOpenAt);
+
+    window.setTimeout(() => {
+      targetBtn.classList.add("live-collection-status--bounce");
+      targetBtn.classList.add("live-collection-status--ripple");
+      pushBucketStackThumb(targetBtn, imageSrc);
+      try { onAbsorb?.(); } catch {}
+    }, absorbAt);
+
+    window.setTimeout(() => {
+      targetBtn.classList.remove("live-collection-status--open");
+    }, lidCloseAt);
+
+    window.setTimeout(() => {
+      targetBtn.classList.remove("live-collection-status--bounce");
+      targetBtn.classList.remove("live-collection-status--ripple");
+    }, lidCloseAt + 600);
+
+    const cleanup = () => {
+      flyEl.remove();
+      sourceEl.style.visibility = prevVisibility;
+      resolve();
+    };
+    anim.onfinish = cleanup;
+    anim.oncancel = cleanup;
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   mountDashboardNav("live", { trailingMount: true });
   mountLiveCollectionIntoNav();
+  attachMagneticHover(document.getElementById("btn-open-collection"));
   mountDashboardFooter();
 
   const token = getToken();
@@ -54,8 +251,52 @@ document.addEventListener("DOMContentLoaded", () => {
   const categoryOtherWrap = document.getElementById("category-other-wrap");
   const categoryOtherDesc = document.getElementById("category-other-desc");
   const selCategory = document.getElementById("sel-category");
+  const subcategoryWrap = document.getElementById("subcategory-wrap");
+  const selSubcategory = document.getElementById("sel-subcategory");
+  const subcategoryOtherWrap = document.getElementById("subcategory-other-wrap");
+  const subcategoryOtherDesc = document.getElementById("subcategory-other-desc");
   const ROOM_OTHERS = "Others";
   const CATEGORY_OTHERS = "Others";
+  const SUBCATEGORY_OTHERS = "Others";
+  const SUBCATEGORIES = {
+    Finishing: [
+      "Core Cutting",
+      "Screed",
+      "Balcony Railing",
+      "Ledge Wall",
+      "Punning",
+      "Dado works",
+      "Flooring",
+      "Granite Works",
+      "Door Frame & Shutter",
+      "Window",
+      "Putty & Paint",
+      "Others",
+    ],
+    Civil: [
+      "Reinforcement",
+      "Shuttering",
+      "Concreting",
+      "Structural Steel",
+      "PT Works",
+      "Cement Plastering",
+      "Waterproofing works",
+      "Others",
+    ],
+    MEP: [
+      "Plumbing - Water Supply",
+      "Plumbing - Drainage",
+      "CP & Sanitary",
+      "Fire Fighting",
+      "HVAC",
+      "FAPA",
+      "Lifts",
+      "STP",
+      "WTP",
+      "Electrical",
+      "Others",
+    ],
+  };
   const uploadProgressEl = document.getElementById("upload-progress");
   const uploadProgressFill = document.getElementById("upload-progress-fill");
   const uploadProgressLabel = document.getElementById("upload-progress-label");
@@ -66,6 +307,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const collectionListEl = document.getElementById("collection-list");
   const collectionEmptyEl = document.getElementById("collection-empty");
   const submitAllBtn = document.getElementById("btn-submit-all");
+  const collectionSubmitFeedback = document.getElementById("collection-submit-feedback");
+  const collectionSubmitFeedbackTitle = document.getElementById("collection-submit-feedback-title");
+  const collectionSubmitFeedbackText = document.getElementById("collection-submit-feedback-text");
   const clearCollectionBtn = document.getElementById("btn-clear-collection");
   const backToCaptureBtn = document.getElementById("btn-back-to-capture");
   const collectionToastEl = document.getElementById("collection-toast");
@@ -81,6 +325,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const collectionEditCategoryOtherWrap = document.getElementById("collection-edit-category-other-wrap");
   const collectionEditCategoryOther = document.getElementById("collection-edit-category-other");
   const collectionRemoveModal = document.getElementById("collection-remove-modal");
+  const collectionDuplicateModal = document.getElementById("collection-duplicate-modal");
+  const collectionDuplicateMessage = document.getElementById("collection-duplicate-message");
 
   let selectedFile = null;
   let previewUrl   = "";
@@ -98,15 +344,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const COLLECTION_STORAGE_KEY = buildUserCollectionStorageKey();
   const DRAFT_STORAGE_KEY = `liveInspectionDraftV2:${String(user?.user_id || user?.email || "anonymous").replace(/[^\w.-]/g, "_")}`;
   const PROJECT_STORAGE_KEY = `liveInspectionProject:${String(user?.user_id || user?.email || "anonymous").replace(/[^\w.-]/g, "_")}`;
-  const PROJECT_EDIT_USED_KEY = `liveInspectionProjectEditUsed:${String(user?.user_id || user?.email || "anonymous").replace(/[^\w.-]/g, "_")}`;
-  const PROJECT_LOCKED_HINT_DEFAULT =
-    "Project is set for this session. You can edit the project name once if needed.";
-  const PROJECT_LOCKED_HINT_EDITING =
-    "Choose the correct project, then confirm your selection. This is your only project change.";
   let collectionItems = [];
   let editingCollectionIdx = null;
   let pendingRemoveIdx = null;
-  let projectEditMode = false;
+  let collectionSuccessReturnTimer = 0;
   /** True only when collection was opened from the details form mid-entry (not after items exist). */
   let collectionBackTargetsDetails = false;
 
@@ -140,7 +381,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   startTips();
 
-  function getLockedProject() {
+  function getSavedProject() {
     try {
       return String(localStorage.getItem(PROJECT_STORAGE_KEY) || "").trim();
     } catch {
@@ -148,7 +389,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function setLockedProject(name) {
+  function saveProjectPreference(name) {
     const value = String(name || "").trim();
     if (!value) return;
     try {
@@ -158,102 +399,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function isProjectEditUsed() {
-    try {
-      return localStorage.getItem(PROJECT_EDIT_USED_KEY) === "1";
-    } catch {
-      return false;
-    }
-  }
-
-  function markProjectEditUsed() {
-    try {
-      localStorage.setItem(PROJECT_EDIT_USED_KEY, "1");
-    } catch {
-      /* ignore quota errors */
-    }
-  }
-
   function getSessionProject() {
-    return getLockedProject() || String(selProject?.value || "").trim();
+    return String(selProject?.value || "").trim() || getSavedProject();
   }
 
+  /** Project stays editable; localStorage only remembers the last choice as a default. */
   function applyProjectFieldState() {
-    const locked = getLockedProject();
     if (!selProject) return;
-    if (locked) {
-      selProject.value = locked;
-      if (!projectEditMode) {
-        selProject.disabled = true;
-        projectFieldWrap?.classList.add("insp-field--locked");
-      }
-      if (projectLockedHint) {
-        projectLockedHint.hidden = false;
-        if (!projectEditMode) {
-          projectLockedHint.textContent = PROJECT_LOCKED_HINT_DEFAULT;
-        }
-      }
-      if (btnEditProject) {
-        btnEditProject.hidden = projectEditMode || isProjectEditUsed();
-      }
-    } else {
-      projectEditMode = false;
-      selProject.disabled = false;
-      projectFieldWrap?.classList.remove("insp-field--locked");
-      if (projectLockedHint) projectLockedHint.hidden = true;
-      if (btnEditProject) btnEditProject.hidden = true;
+    selProject.disabled = false;
+    projectFieldWrap?.classList.remove("insp-field--locked");
+    if (projectLockedHint) projectLockedHint.hidden = true;
+    if (btnEditProject) btnEditProject.hidden = true;
+    const saved = getSavedProject();
+    if (saved && !String(selProject.value || "").trim()) {
+      selProject.value = saved;
     }
   }
 
   applyProjectFieldState();
 
-  btnEditProject?.addEventListener("click", () => {
-    if (!getLockedProject() || isProjectEditUsed() || projectEditMode) return;
-    projectEditMode = true;
-    selProject.disabled = false;
-    projectFieldWrap?.classList.remove("insp-field--locked");
-    if (projectLockedHint) {
-      projectLockedHint.hidden = false;
-      projectLockedHint.textContent = PROJECT_LOCKED_HINT_EDITING;
-    }
-    if (btnEditProject) btnEditProject.hidden = true;
-    selProject?.focus();
-  });
-
-  function finishProjectEdit() {
-    const value = selProject?.value.trim();
-    if (!value || !projectEditMode) return;
-    setLockedProject(value);
-    markProjectEditUsed();
-    projectEditMode = false;
-    applyProjectFieldState();
-    validateForm();
-    scheduleDraftSave();
-  }
-
   selProject?.addEventListener("change", () => {
     const value = selProject.value.trim();
-    if (!value) {
-      validateForm();
-      scheduleDraftSave();
-      return;
-    }
-    if (projectEditMode) {
-      finishProjectEdit();
-      return;
-    }
-    if (!getLockedProject()) {
-      setLockedProject(value);
-      applyProjectFieldState();
-    }
+    if (value) saveProjectPreference(value);
     validateForm();
     scheduleDraftSave();
-  });
-
-  selProject?.addEventListener("blur", () => {
-    if (projectEditMode && selProject?.value.trim()) {
-      finishProjectEdit();
-    }
   });
 
   /* ═══════════════════════════════════════════════
@@ -328,10 +497,25 @@ document.addEventListener("DOMContentLoaded", () => {
     return String(itemOrCategoryOther || maybeDescription || "").trim();
   }
 
+  function subcategoryOtherDetail(itemOrSubcategoryOther, maybeDescription) {
+    if (itemOrSubcategoryOther && typeof itemOrSubcategoryOther === "object") {
+      const item = itemOrSubcategoryOther;
+      return String(item.subcategory_other || "").trim();
+    }
+    return String(itemOrSubcategoryOther || maybeDescription || "").trim();
+  }
+
   function formatCategoryLabel(category, categoryOther) {
     const base = String(category || "").trim() || "Category";
     const detail = categoryOtherDetail(categoryOther);
     if (base === CATEGORY_OTHERS && detail) return `${CATEGORY_OTHERS} — ${detail}`;
+    return base;
+  }
+
+  function formatSubcategoryLabel(subcategory, subcategoryOther) {
+    const base = String(subcategory || "").trim();
+    const detail = subcategoryOtherDetail(subcategoryOther);
+    if (base === SUBCATEGORY_OTHERS && detail) return `${SUBCATEGORY_OTHERS} — ${detail}`;
     return base;
   }
 
@@ -354,6 +538,10 @@ document.addEventListener("DOMContentLoaded", () => {
     syncOtherDetailField(selectEl, wrapEl, inputEl, CATEGORY_OTHERS, categoryValue, categoryOtherValue);
   }
 
+  function syncSubcategoryOtherField(selectEl, wrapEl, inputEl, subcategoryValue, subcategoryOtherValue) {
+    syncOtherDetailField(selectEl, wrapEl, inputEl, SUBCATEGORY_OTHERS, subcategoryValue, subcategoryOtherValue);
+  }
+
   function readOptionalDetailInput(inputEl) {
     return String(inputEl?.value || "").trim();
   }
@@ -361,9 +549,11 @@ document.addEventListener("DOMContentLoaded", () => {
   function buildUploadDescription(item) {
     const roomPart = item.room === ROOM_OTHERS ? roomOtherDetail(item) : "";
     const categoryPart = item.category === CATEGORY_OTHERS ? categoryOtherDetail(item) : "";
+    const subcategoryPart = item.subcategory === SUBCATEGORY_OTHERS ? subcategoryOtherDetail(item) : "";
     const parts = [];
     if (roomPart) parts.push(`Room: ${roomPart}`);
     if (categoryPart) parts.push(`Category: ${categoryPart}`);
+    if (subcategoryPart) parts.push(`Sub category: ${subcategoryPart}`);
     if (parts.length) return parts.join(" · ");
     return String(item.description || "").trim();
   }
@@ -374,6 +564,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function toggleFormCategoryOther() {
     syncCategoryOtherField(selCategory, categoryOtherWrap, categoryOtherDesc, selCategory.value, null);
+  }
+
+  function toggleFormSubcategoryOther(subcategoryOtherValue = null) {
+    syncSubcategoryOtherField(
+      selSubcategory,
+      subcategoryOtherWrap,
+      subcategoryOtherDesc,
+      selSubcategory?.value,
+      subcategoryOtherValue,
+    );
+  }
+
+  function updateSubcategoryOptions(selectedSubcategory = "") {
+    const selectedCategory = selCategory?.value || "";
+    const subcategories = SUBCATEGORIES[selectedCategory] || [];
+    const isEnabled = selectedCategory && subcategories.length > 0;
+    if (selSubcategory) {
+      selSubcategory.disabled = !isEnabled;
+      selSubcategory.required = Boolean(isEnabled);
+      selSubcategory.innerHTML = '<option value="">Select sub category</option>';
+      subcategories.forEach(sub => {
+        const opt = document.createElement("option");
+        opt.value = sub;
+        opt.textContent = sub;
+        selSubcategory.appendChild(opt);
+      });
+      selSubcategory.value = subcategories.includes(selectedSubcategory) ? selectedSubcategory : "";
+    }
+    toggleFormSubcategoryOther();
   }
 
   function toggleCollectionEditRoomOther(roomOtherValue) {
@@ -402,7 +621,13 @@ document.addEventListener("DOMContentLoaded", () => {
     scheduleDraftSave();
   });
   selCategory?.addEventListener("change", () => {
+    updateSubcategoryOptions();
     toggleFormCategoryOther();
+    validateForm();
+    scheduleDraftSave();
+  });
+  selSubcategory?.addEventListener("change", () => {
+    toggleFormSubcategoryOther();
     validateForm();
     scheduleDraftSave();
   });
@@ -500,6 +725,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 1300);
   }
 
+  function setCollectionSubmitFeedback({ visible, count = 0 } = {}) {
+    if (!collectionSubmitFeedback) return;
+    collectionSubmitFeedback.hidden = !visible;
+    if (!visible) return;
+    if (collectionSubmitFeedbackTitle) {
+      collectionSubmitFeedbackTitle.textContent = `Submitted successfully (${count})`;
+    }
+    if (collectionSubmitFeedbackText) {
+      collectionSubmitFeedbackText.textContent =
+        "Your inspections were uploaded and moved to Past uploads.";
+    }
+  }
+
+  function scheduleReturnToCaptureAfterCollectionSuccess() {
+    window.clearTimeout(collectionSuccessReturnTimer);
+    collectionSuccessReturnTimer = window.setTimeout(() => {
+      setCollectionSubmitFeedback({ visible: false });
+      goTo("step-capture");
+    }, 3000);
+  }
+
   async function fileToDataUrl(file) {
     return await new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -520,29 +766,99 @@ document.addEventListener("DOMContentLoaded", () => {
     return new File([arr], fallbackName || `collection-${Date.now()}.${ext}`, { type: mime });
   }
 
-  function saveCollectionToStorage() {
-    try {
-      localStorage.setItem(COLLECTION_STORAGE_KEY, JSON.stringify(collectionItems));
-    } catch {
-      // Ignore storage quota issues; collection still works in-memory.
-    }
-    scheduleDraftSave();
+  function serverItemToClient(row) {
+    const imagePath = row?.image_path || "";
+    return {
+      id: String(row?.id || ""),
+      image_path: imagePath,
+      image_hash: row?.image_hash || "",
+      preview_url: normalizeImageSrc(imagePath),
+      file_name: row?.file_name || "",
+      project: row?.project || "",
+      tower: row?.tower || "",
+      floor: row?.floor || "",
+      flat: row?.flat || "",
+      room: row?.room || "",
+      category: row?.category || "",
+      subcategory: row?.subcategory || "",
+      description: row?.description || "",
+    };
   }
 
-  function loadCollectionFromStorage() {
+  async function loadCollectionFromServer() {
     try {
-      const raw = localStorage.getItem(COLLECTION_STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(parsed)) collectionItems = parsed;
-      else collectionItems = [];
-
-      // Remove old shared drafts key so collections no longer leak across users.
-      if (localStorage.getItem(LEGACY_COLLECTION_STORAGE_KEY) !== null) {
-        localStorage.removeItem(LEGACY_COLLECTION_STORAGE_KEY);
+      const res = await apiFetch("/api/defects/collection");
+      if (!res || !res.ok) {
+        collectionItems = [];
+        return;
       }
+      const rows = await res.json();
+      collectionItems = Array.isArray(rows) ? rows.map(serverItemToClient) : [];
     } catch {
       collectionItems = [];
     }
+  }
+
+  async function migrateLocalCollectionToServer() {
+    try {
+      if (localStorage.getItem(LEGACY_COLLECTION_STORAGE_KEY) !== null) {
+        localStorage.removeItem(LEGACY_COLLECTION_STORAGE_KEY);
+      }
+      const raw = localStorage.getItem(COLLECTION_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed) || !parsed.length) {
+        localStorage.removeItem(COLLECTION_STORAGE_KEY);
+        return;
+      }
+      const existingIds = new Set(collectionItems.map((item) => item.id));
+      for (const item of parsed) {
+        if (item?.id && existingIds.has(String(item.id))) continue;
+        if (!item?.image_data_url) continue;
+        const file = dataUrlToFile(item.image_data_url, item.file_name);
+        const fd = new FormData();
+        fd.append("project", item.project || getSavedProject() || "");
+        fd.append("tower", item.tower || "");
+        fd.append("floor", item.floor || "");
+        fd.append("flat", item.flat || "");
+        fd.append("room", item.room || "");
+        fd.append("category", item.category || "");
+        fd.append("subcategory", item.subcategory || "");
+        fd.append("description", item.description || buildUploadDescription(item));
+        fd.append("file_name", item.file_name || file.name);
+        fd.append("image", file);
+        const res = await apiFetch("/api/defects/collection", { method: "POST", body: fd });
+        if (res?.ok) {
+          const saved = await res.json();
+          collectionItems.unshift(serverItemToClient(saved));
+        }
+      }
+      localStorage.removeItem(COLLECTION_STORAGE_KEY);
+    } catch {
+      /* best-effort migration */
+    }
+  }
+
+  async function addCollectionItemOnServer(item, file) {
+    const fd = new FormData();
+    fd.append("project", item.project || "");
+    fd.append("tower", item.tower || "");
+    fd.append("floor", item.floor || "");
+    fd.append("flat", item.flat || "");
+    fd.append("room", item.room || "");
+    fd.append("category", item.category || "");
+    fd.append("subcategory", item.subcategory || "");
+    fd.append("description", item.description || "");
+    fd.append("file_name", item.file_name || file?.name || "");
+    fd.append("image", file);
+    const res = await apiFetch("/api/defects/collection", { method: "POST", body: fd });
+    if (!res) return null;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      showAlert(typeof data?.detail === "string" ? data.detail : "Could not add to collection.");
+      return null;
+    }
+    return serverItemToClient(data);
   }
 
   let draftSaveTimer = null;
@@ -570,6 +886,8 @@ document.addEventListener("DOMContentLoaded", () => {
       room_other: readOptionalDetailInput(roomOtherDesc),
       category: String(selCategory?.value || "").trim(),
       category_other: readOptionalDetailInput(categoryOtherDesc),
+      subcategory: String(selSubcategory?.value || "").trim(),
+      subcategory_other: readOptionalDetailInput(subcategoryOtherDesc),
     };
   }
 
@@ -583,9 +901,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (selCategory && draft.category) selCategory.value = draft.category;
     if (roomOtherDesc && draft.room_other) roomOtherDesc.value = draft.room_other;
     if (categoryOtherDesc && draft.category_other) categoryOtherDesc.value = draft.category_other;
+    if (subcategoryOtherDesc && draft.subcategory_other) subcategoryOtherDesc.value = draft.subcategory_other;
     applyProjectFieldState();
     toggleFormRoomOther();
+    updateSubcategoryOptions(draft.subcategory || "");
     toggleFormCategoryOther();
+    toggleFormSubcategoryOther(draft.subcategory_other || "");
   }
 
   function persistDraftPayload(payload) {
@@ -948,7 +1269,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function validateForm() {
     const projectOk = Boolean(getSessionProject());
-    const filled = projectOk && selTower.value && selFloor.value && selFlat.value && selRoom.value && selCategory.value && selectedFile;
+    const subcategoryOk = !selSubcategory || selSubcategory.disabled || Boolean(selSubcategory.value);
+    const filled = projectOk
+      && selTower.value
+      && selFloor.value
+      && selFlat.value
+      && selRoom.value
+      && selCategory.value
+      && subcategoryOk
+      && selectedFile;
     submitBtn.disabled = !filled;
   }
 
@@ -956,9 +1285,10 @@ document.addEventListener("DOMContentLoaded", () => {
     validateForm();
     scheduleDraftSave();
   }
-  [selProject, selTower, selFloor, selFlat, selCategory].forEach((sel) => sel?.addEventListener("change", onFormFieldChange));
+  [selProject, selTower, selFloor, selFlat, selCategory, selSubcategory].forEach((sel) => sel?.addEventListener("change", onFormFieldChange));
   roomOtherDesc?.addEventListener("input", onFormFieldChange);
   categoryOtherDesc?.addEventListener("input", onFormFieldChange);
+  subcategoryOtherDesc?.addEventListener("input", onFormFieldChange);
 
   function showAlert(msg) {
     alertEl.textContent = msg;
@@ -967,7 +1297,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateCollectionIndicator() {
     const n = collectionItems.length;
-    if (collectionCountBadgeEl) collectionCountBadgeEl.textContent = String(n);
+    if (collectionCountBadgeEl) {
+      const numEl = collectionCountBadgeEl.querySelector(".live-collection-status__count-num");
+      if (numEl) {
+        numEl.textContent = String(n);
+        numEl.dataset.count = String(n);
+      } else {
+        collectionCountBadgeEl.textContent = String(n);
+      }
+    }
     if (collectionChipBtn) {
       collectionChipBtn.setAttribute(
         "aria-label",
@@ -979,6 +1317,76 @@ document.addEventListener("DOMContentLoaded", () => {
       submitAllBtn.disabled = n === 0;
     }
     if (clearCollectionBtn) clearCollectionBtn.disabled = n === 0;
+  }
+
+  /* Identify duplicate COPIES (every occurrence past the first for any
+     given image_hash). The first occurrence of each hash is kept as the
+     "unique" item; everything else is queued for deletion before submit. */
+  function findDuplicateCollectionImages() {
+    const seen = new Map();
+    const copyIndexes = [];
+    collectionItems.forEach((item, idx) => {
+      const imageHash = String(item?.image_hash || "").trim();
+      if (!imageHash) return;
+      if (seen.has(imageHash)) {
+        copyIndexes.push(idx);
+        return;
+      }
+      seen.set(imageHash, idx);
+    });
+    const uniqueCount = collectionItems.length - copyIndexes.length;
+    return { copyIndexes, uniqueCount };
+  }
+
+  /* Ids of duplicate-copy items captured when the modal opens. Kept by id
+     (not index) so the deletion loop is robust if anything mutates
+     collectionItems in between. Cleared whenever the modal closes. */
+  let pendingDuplicateCopyIds = [];
+
+  function openDuplicateConfirmModal({ copyIndexes, uniqueCount }) {
+    if (!collectionDuplicateModal) return;
+    pendingDuplicateCopyIds = copyIndexes
+      .map((idx) => collectionItems[idx]?.id)
+      .filter(Boolean);
+
+    const dupCount = pendingDuplicateCopyIds.length;
+
+    if (collectionDuplicateMessage) {
+      collectionDuplicateMessage.textContent = dupCount === 1
+        ? "1 duplicate image was excluded to prevent duplicate report entries."
+        : `${dupCount} duplicate images were excluded to prevent duplicate report entries.`;
+    }
+    const statusEl = document.getElementById("collection-duplicate-warning");
+    if (statusEl) {
+      if (uniqueCount === 0) {
+        statusEl.textContent = "No unique images to upload — add new images to continue.";
+      } else if (uniqueCount === 1) {
+        statusEl.textContent = "1 image is ready to upload.";
+      } else {
+        statusEl.textContent = `${uniqueCount} images are ready to upload.`;
+      }
+    }
+    const confirmBtn = document.getElementById("collection-duplicate-confirm");
+    if (confirmBtn) {
+      confirmBtn.disabled = uniqueCount === 0;
+      confirmBtn.textContent = "Upload Images";
+    }
+
+    collectionDuplicateModal.classList.add("collection-modal--open");
+    document.body.style.overflow = "hidden";
+    window.setTimeout(() => confirmBtn?.focus(), 0);
+  }
+
+  function closeDuplicateConfirmModal() {
+    collectionDuplicateModal?.classList.remove("collection-modal--open");
+    pendingDuplicateCopyIds = [];
+    document.body.style.overflow = "";
+    const confirmBtn = document.getElementById("collection-duplicate-confirm");
+    const cancelBtn = document.getElementById("collection-duplicate-cancel");
+    const closeBtn = document.getElementById("collection-duplicate-close");
+    if (confirmBtn) confirmBtn.disabled = false;
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (closeBtn) closeBtn.disabled = false;
   }
 
   function renderCollectionList() {
@@ -1001,8 +1409,8 @@ document.addEventListener("DOMContentLoaded", () => {
           </button>
           <div class="collection-item__summary">
             <div class="collection-item__meta">
-              <p class="collection-item__line collection-item__line--primary">${escapeHtml(item.project || getLockedProject() || "—")} · ${escapeHtml(item.tower || "—")} · Floor ${escapeHtml(item.floor || "—")}</p>
-              <p class="collection-item__line">Flat ${escapeHtml(item.flat || "—")} · ${escapeHtml(formatRoomLabel(item.room, roomOtherDetail(item)) || "—")} · ${escapeHtml(formatCategoryLabel(item.category, categoryOtherDetail(item)) || "—")}</p>
+              <p class="collection-item__line collection-item__line--primary">${escapeHtml(item.project || getSavedProject() || "—")} · ${escapeHtml(item.tower || "—")} · Floor ${escapeHtml(item.floor || "—")}</p>
+              <p class="collection-item__line">Flat ${escapeHtml(item.flat || "—")} · ${escapeHtml(formatRoomLabel(item.room, roomOtherDetail(item)) || "—")} · ${escapeHtml(formatCategoryLabel(item.category, categoryOtherDetail(item)) || "—")}${item.subcategory ? ` · ${escapeHtml(formatSubcategoryLabel(item.subcategory, subcategoryOtherDetail(item)))}` : ""}</p>
             </div>
             <div class="collection-item__actions">
               <button type="button" class="collection-item__edit" data-edit="${idx}" aria-expanded="false">Edit</button>
@@ -1022,7 +1430,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!item || !collectionEditModal) return;
     editingCollectionIdx = idx;
     if (collectionEditProject) {
-      collectionEditProject.textContent = item.project || getLockedProject() || "—";
+      collectionEditProject.textContent = item.project || getSavedProject() || "—";
     }
     setSelectValue(collectionEditTower, item.tower || "");
     setSelectValue(collectionEditFloor, item.floor || "");
@@ -1054,15 +1462,16 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.style.overflow = "";
   }
 
-  function saveCollectionEditModal() {
+  async function saveCollectionEditModal() {
     if (!Number.isInteger(editingCollectionIdx) || !collectionItems[editingCollectionIdx]) return;
+    const current = collectionItems[editingCollectionIdx];
     const editRoom = collectionEditRoom.value.trim();
     const editCategory = collectionEditCategory.value.trim();
     const editRoomOther = editRoom === ROOM_OTHERS ? readOptionalDetailInput(collectionEditRoomOther) : "";
     const editCategoryOther = editCategory === CATEGORY_OTHERS ? readOptionalDetailInput(collectionEditCategoryOther) : "";
     const updated = {
-      ...collectionItems[editingCollectionIdx],
-      project: collectionItems[editingCollectionIdx].project || getLockedProject() || "",
+      ...current,
+      project: current.project || getSavedProject() || "",
       tower: collectionEditTower.value.trim(),
       floor: collectionEditFloor.value.trim(),
       flat: collectionEditFlat.value.trim(),
@@ -1070,12 +1479,31 @@ document.addEventListener("DOMContentLoaded", () => {
       room_other: editRoomOther,
       category: editCategory,
       category_other: editCategoryOther,
+      subcategory: current.subcategory || "",
+      subcategory_other: current.subcategory_other || "",
     };
-    collectionItems[editingCollectionIdx] = {
-      ...updated,
+    const payload = {
+      project: updated.project,
+      tower: updated.tower,
+      floor: updated.floor,
+      flat: updated.flat,
+      room: updated.room,
+      category: updated.category,
+      subcategory: updated.subcategory,
       description: buildUploadDescription(updated),
     };
-    saveCollectionToStorage();
+    const res = await apiFetch(`/api/defects/collection/${current.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res) return;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      showAlert(typeof data?.detail === "string" ? data.detail : "Could not update collection item.");
+      return;
+    }
+    collectionItems[editingCollectionIdx] = serverItemToClient(data);
     renderCollectionList();
     closeCollectionEditModal();
     showCollectionToast("✓ Successfully changed", "success");
@@ -1094,10 +1522,16 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.style.overflow = "";
   }
 
-  function confirmRemoveCollectionItem() {
+  async function confirmRemoveCollectionItem() {
     if (!Number.isInteger(pendingRemoveIdx) || !collectionItems[pendingRemoveIdx]) return;
+    const item = collectionItems[pendingRemoveIdx];
+    const res = await apiFetch(`/api/defects/collection/${item.id}`, { method: "DELETE" });
+    if (!res || !res.ok) {
+      showAlert("Could not remove collection item.");
+      closeRemoveConfirmModal();
+      return;
+    }
     collectionItems.splice(pendingRemoveIdx, 1);
-    saveCollectionToStorage();
     renderCollectionList();
     closeRemoveConfirmModal();
   }
@@ -1111,7 +1545,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const item = collectionItems[previewIdx];
       const src = item?.preview_url || item?.image_data_url || "";
       if (src) {
-        const meta = `${item.project || getLockedProject() || "Project"} • ${item.tower || "Tower"} • Floor ${item.floor || "-"} • Flat ${item.flat || "-"}`;
+        const meta = `${item.project || getSavedProject() || "Project"} • ${item.tower || "Tower"} • Floor ${item.floor || "-"} • Flat ${item.flat || "-"}`;
         openLightbox(src, meta);
       }
       return;
@@ -1132,23 +1566,17 @@ document.addEventListener("DOMContentLoaded", () => {
   submitBtn.addEventListener("click", async () => {
     if (!selectedFile) { showAlert("No image selected."); return; }
     const project = getSessionProject();
-    if (!project || !selTower.value || !selFloor.value || !selFlat.value || !selRoom.value || !selCategory.value) {
-      showAlert("Please select project and fill all location fields including category.");
+    const subcategoryOk = !selSubcategory || selSubcategory.disabled || Boolean(selSubcategory.value);
+    if (!project || !selTower.value || !selFloor.value || !selFlat.value || !selRoom.value || !selCategory.value || !subcategoryOk) {
+      showAlert("Please select project and fill all location fields including category and sub category.");
       return;
     }
-    if (!getLockedProject()) {
-      setLockedProject(project);
-      applyProjectFieldState();
-    }
+    saveProjectPreference(project);
     submitBtn.disabled = true;
     submitText.innerHTML = '<span class="btn-spinner"></span> Adding...';
+    setCollectionSubmitFeedback({ visible: false });
     try {
-      const imageDataUrl = await fileToDataUrl(selectedFile);
       const draft = {
-        id: `col-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        preview_url: imageDataUrl,
-        image_data_url: imageDataUrl,
-        file_name: selectedFile.name || `capture-${Date.now()}.jpg`,
         project,
         tower: selTower.value,
         floor: selFloor.value,
@@ -1157,16 +1585,29 @@ document.addEventListener("DOMContentLoaded", () => {
         room_other: selRoom.value === ROOM_OTHERS ? readOptionalDetailInput(roomOtherDesc) : "",
         category: selCategory.value,
         category_other: selCategory.value === CATEGORY_OTHERS ? readOptionalDetailInput(categoryOtherDesc) : "",
+        subcategory: selSubcategory.value,
+        subcategory_other: selSubcategory.value === SUBCATEGORY_OTHERS ? readOptionalDetailInput(subcategoryOtherDesc) : "",
+        file_name: selectedFile.name || `capture-${Date.now()}.jpg`,
       };
-      collectionItems.push({
-        ...draft,
-        description: buildUploadDescription(draft),
+      const saved = await addCollectionItemOnServer(
+        { ...draft, description: buildUploadDescription(draft) },
+        selectedFile,
+      );
+      if (!saved) return;
+      collectionItems.unshift(saved);
+      const flightSrc =
+        (formThumb && formThumb.src) ||
+        previewUrl ||
+        saved.preview_url ||
+        "";
+      const flightPromise = flyThumbToCollection({
+        sourceEl: formThumb,
+        targetBtn: collectionChipBtn,
+        imageSrc: flightSrc,
+        onAbsorb: () => tickBucketCount(collectionChipBtn, collectionItems.length),
       });
-      saveCollectionToStorage();
+      await flightPromise;
       renderCollectionList();
-      showCollectionToast(`Added ✓ (${collectionItems.length} in collection)`);
-      collectionChipBtn?.classList.add("live-collection-status--pulse");
-      window.setTimeout(() => collectionChipBtn?.classList.remove("live-collection-status--pulse"), 900);
       fullReset();
       goTo("step-capture");
     } finally {
@@ -1175,48 +1616,65 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  /* Top-level submit handler. Detects duplicates client-side and routes to
+     the confirm modal; only if the collection is dupe-free does it post
+     straight through. Server still rejects any duplicate it sees, so this
+     is defense-in-depth, not the only line of defense. */
   async function submitCollectionBatch() {
+    if (!collectionItems.length || !submitAllBtn) return;
+    const { copyIndexes, uniqueCount } = findDuplicateCollectionImages();
+    if (copyIndexes.length) {
+      openDuplicateConfirmModal({ copyIndexes, uniqueCount });
+      return;
+    }
+    await performCollectionSubmit();
+  }
+
+  /* POST the (already-deduplicated) collection. Never sends allow_duplicates
+     — duplicates are removed client-side via removeDuplicateCopiesAndSubmit
+     before this runs. */
+  async function performCollectionSubmit() {
     if (!collectionItems.length || !submitAllBtn) return;
     submitAllBtn.disabled = true;
     submitAllBtn.innerHTML = '<span class="btn-spinner"></span> Submitting...';
     setUploadProgress(true, 0, "Submitting collection...");
     try {
-      const fd = new FormData();
-      const sessionProject = getLockedProject();
-      fd.append("items_json", JSON.stringify(collectionItems.map((item) => ({
-        project: item.project || sessionProject || "",
-        tower: item.tower || "",
-        floor: item.floor || "",
-        flat: item.flat || "",
-        room: item.room || "",
-        category: item.category || "",
-        description: buildUploadDescription(item),
-      }))));
-      for (const item of collectionItems) {
-        fd.append("images", dataUrlToFile(item.image_data_url, item.file_name));
-      }
-
-      const res = await fetch("/api/defects/upload-batch", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      });
+      const res = await apiFetch("/api/defects/collection/submit", { method: "POST" });
+      if (!res) return;
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showAlert(typeof data?.detail === "string" ? data.detail : "Batch submission failed.");
+        const detail = typeof data?.detail === "string" ? data.detail : "Batch submission failed.";
+        if (detail.toLowerCase().includes("duplicate")) {
+          /* Race: a duplicate slipped past our client-side check (e.g. a
+             new dupe was added in another tab). Re-detect and re-open. */
+          await loadCollectionFromServer();
+          renderCollectionList();
+          const detected = findDuplicateCollectionImages();
+          if (detected.copyIndexes.length) {
+            openDuplicateConfirmModal(detected);
+          } else {
+            showAlert(detail);
+          }
+        } else {
+          showAlert(detail);
+        }
         return;
       }
       const failures = Array.isArray(data.results) ? data.results.filter((r) => !r.ok) : [];
       if (failures.length) {
         showAlert(`Submitted with ${failures.length} failure(s). Please review collection and retry.`);
+        await loadCollectionFromServer();
+        renderCollectionList();
         return;
       }
+      const submittedCount = Number(data.success_count || 0);
       collectionItems = [];
-      saveCollectionToStorage();
       renderCollectionList();
       fullReset();
-      showCollectionToast(`✓ Submitted successfully (${data.success_count || 0})`, "success");
-      goTo("step-capture");
+      collectionBackTargetsDetails = false;
+      updateCollectionBackButton();
+      setCollectionSubmitFeedback({ visible: true, count: submittedCount });
+      scheduleReturnToCaptureAfterCollectionSuccess();
       loadUploads();
     } catch (err) {
       showAlert(err instanceof Error ? err.message : "Batch submission failed.");
@@ -1224,6 +1682,52 @@ document.addEventListener("DOMContentLoaded", () => {
       setUploadProgress(false, 0, "");
       updateCollectionIndicator();
     }
+  }
+
+  /* Confirm path from the duplicate modal: server-delete each duplicate
+     copy, then submit the remaining unique images via the normal flow. */
+  async function removeDuplicateCopiesAndSubmit() {
+    if (!pendingDuplicateCopyIds.length) {
+      closeDuplicateConfirmModal();
+      await performCollectionSubmit();
+      return;
+    }
+
+    const confirmBtn = document.getElementById("collection-duplicate-confirm");
+    const cancelBtn = document.getElementById("collection-duplicate-cancel");
+    const closeBtn = document.getElementById("collection-duplicate-close");
+    const restoreModalButtons = () => {
+      if (confirmBtn) confirmBtn.disabled = false;
+      if (cancelBtn) cancelBtn.disabled = false;
+      if (closeBtn) closeBtn.disabled = false;
+    };
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="btn-spinner"></span> Removing duplicates...';
+    }
+    if (cancelBtn) cancelBtn.disabled = true;
+    if (closeBtn) closeBtn.disabled = true;
+
+    const idsToDelete = pendingDuplicateCopyIds.slice();
+    for (const id of idsToDelete) {
+      const res = await apiFetch(`/api/defects/collection/${id}`, { method: "DELETE" });
+      if (!res || !res.ok) {
+        restoreModalButtons();
+        closeDuplicateConfirmModal();
+        /* Refresh from server so the UI matches actual state after a
+           partial deletion, then surface a clear error. */
+        await loadCollectionFromServer();
+        renderCollectionList();
+        showAlert("Could not remove some duplicate images. Please try again.");
+        return;
+      }
+      const localIdx = collectionItems.findIndex((it) => it.id === id);
+      if (localIdx >= 0) collectionItems.splice(localIdx, 1);
+    }
+
+    closeDuplicateConfirmModal();
+    renderCollectionList();
+    await performCollectionSubmit();
   }
 
   function shouldCollectionBackToDetails() {
@@ -1267,10 +1771,21 @@ document.addEventListener("DOMContentLoaded", () => {
     openCollectionView();
   });
   collectionBackBtn?.addEventListener("click", leaveCollectionView);
-  backToCaptureBtn?.addEventListener("click", () => goTo("step-capture"));
-  clearCollectionBtn?.addEventListener("click", () => {
+  backToCaptureBtn?.addEventListener("click", () => {
+    window.clearTimeout(collectionSuccessReturnTimer);
+    setCollectionSubmitFeedback({ visible: false });
+    goTo("step-capture");
+  });
+  clearCollectionBtn?.addEventListener("click", async () => {
+    if (!collectionItems.length) return;
+    window.clearTimeout(collectionSuccessReturnTimer);
+    setCollectionSubmitFeedback({ visible: false });
+    const res = await apiFetch("/api/defects/collection", { method: "DELETE" });
+    if (!res || !res.ok) {
+      showAlert("Could not clear collection.");
+      return;
+    }
     collectionItems = [];
-    saveCollectionToStorage();
     renderCollectionList();
   });
   submitAllBtn?.addEventListener("click", submitCollectionBatch);
@@ -1286,6 +1801,14 @@ document.addEventListener("DOMContentLoaded", () => {
   collectionRemoveModal?.addEventListener("click", (e) => {
     if (e.target === collectionRemoveModal) closeRemoveConfirmModal();
   });
+  document.getElementById("collection-duplicate-close")?.addEventListener("click", closeDuplicateConfirmModal);
+  document.getElementById("collection-duplicate-cancel")?.addEventListener("click", closeDuplicateConfirmModal);
+  document.getElementById("collection-duplicate-confirm")?.addEventListener("click", () => {
+    removeDuplicateCopiesAndSubmit();
+  });
+  collectionDuplicateModal?.addEventListener("click", (e) => {
+    if (e.target === collectionDuplicateModal) closeDuplicateConfirmModal();
+  });
 
   /* ═══════════════════════════════════════════════
      Reset helpers
@@ -1300,7 +1823,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function fullReset() {
     clearDraftFromStorage();
     resetFile();
-    if (!getLockedProject() && selProject) selProject.value = "";
     applyProjectFieldState();
     selTower.value = "";
     selFloor.value = "";
@@ -1311,6 +1833,9 @@ document.addEventListener("DOMContentLoaded", () => {
     selCategory.value = "";
     if (categoryOtherDesc) categoryOtherDesc.value = "";
     toggleFormCategoryOther();
+    updateSubcategoryOptions();
+    if (subcategoryOtherDesc) subcategoryOtherDesc.value = "";
+    toggleFormSubcategoryOther();
     submitBtn.disabled = true;
   }
 
@@ -1349,6 +1874,10 @@ document.addEventListener("DOMContentLoaded", () => {
       closeRemoveConfirmModal();
       return;
     }
+    if (e.key === "Escape" && collectionDuplicateModal?.classList.contains("collection-modal--open")) {
+      closeDuplicateConfirmModal();
+      return;
+    }
     if (e.key === "Escape" && document.getElementById("step-success")?.classList.contains("step-panel--active")) {
       leaveCollectionView();
       return;
@@ -1358,7 +1887,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function wireGridLightbox(container) {
     container.querySelectorAll(".insp-item").forEach((item) => {
-      const img = item.querySelector("img");
+      const img = item.querySelector(".insp-item__media img, .insp-item img");
       const metaEl = item.querySelector(".meta");
       if (!img) return;
       img.addEventListener("click", () => openLightbox(img.src, metaEl?.textContent?.trim() || ""));
@@ -1379,12 +1908,40 @@ document.addEventListener("DOMContentLoaded", () => {
   const activityThumbs = document.getElementById("activity-thumbs");
   const toggleBtn     = document.getElementById("toggle-all");
   const recentSection = document.getElementById("recent-section");
+  const pastUploadsBackdrop = document.getElementById("past-uploads-backdrop");
+  const pastUploadsCountEl = document.getElementById("past-uploads-count");
   const uploadsGrid   = document.getElementById("uploads-grid");
   let recentVisible   = false;
+
+  function syncPastUploadsChrome() {
+    document.body.classList.toggle("live-past-uploads-open", recentVisible);
+    if (pastUploadsBackdrop) {
+      pastUploadsBackdrop.hidden = !recentVisible;
+      pastUploadsBackdrop.classList.toggle("is-visible", recentVisible);
+      pastUploadsBackdrop.setAttribute("aria-hidden", recentVisible ? "false" : "true");
+    }
+    recentSection?.setAttribute("aria-hidden", recentVisible ? "false" : "true");
+  }
+
+  function setPastUploadsOpen(open) {
+    recentVisible = open;
+    syncPastUploadsChrome();
+  }
 
   function todayCount() {
     const today = new Date().toDateString();
     return allUploadItems.filter((d) => new Date(d.created_at).toDateString() === today).length;
+  }
+
+  function updatePastUploadsHeaderCount(total) {
+    if (!pastUploadsCountEl) return;
+    if (!total) {
+      pastUploadsCountEl.hidden = true;
+      pastUploadsCountEl.textContent = "";
+      return;
+    }
+    pastUploadsCountEl.hidden = false;
+    pastUploadsCountEl.innerHTML = `<strong>${total}</strong> total`;
   }
 
   function renderUploads() {
@@ -1393,13 +1950,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const onCollection = document.getElementById("step-success")?.classList.contains("step-panel--active");
 
     if (onCollection) {
-      recentVisible = false;
+      setPastUploadsOpen(false);
       activityBar.style.display = "none";
       recentSection.style.display = "none";
       return;
     }
 
     if (allUploadItems.length === 0) {
+      setPastUploadsOpen(false);
       activityBar.style.display = "none";
       recentSection.style.display = "none";
       return;
@@ -1413,6 +1971,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (total > tc) summaryParts.push(`<strong>${total}</strong> total`);
     if (summaryParts.length === 0) summaryParts.push(`<strong>${total}</strong> inspection${total !== 1 ? "s" : ""} uploaded`);
     activityText.innerHTML = summaryParts.join(" &middot; ");
+    updatePastUploadsHeaderCount(total);
 
     const thumbs = allUploadItems.slice(0, 3);
     activityThumbs.innerHTML = thumbs.map((d) =>
@@ -1420,23 +1979,36 @@ document.addEventListener("DOMContentLoaded", () => {
     ).join("");
 
     activityBar.style.display = recentVisible ? "none" : "flex";
-    activityBar.classList.toggle("activity-bar--open", recentVisible);
-    recentSection.style.display = recentVisible ? "block" : "none";
+    recentSection.style.display = recentVisible ? "flex" : "none";
+    syncPastUploadsChrome();
 
     if (!recentVisible) return;
 
     empty.style.display = "none";
-    grid.innerHTML = allUploadItems.map((d) => `
+    grid.innerHTML = allUploadItems.map((d) => {
+      const locationLine = [
+        d.project ? escapeHtml(d.project) : "",
+        escapeHtml(d.tower || "—"),
+        d.floor ? `Floor ${escapeHtml(d.floor)}` : "",
+        d.flat ? `Flat ${escapeHtml(d.flat)}` : "",
+      ].filter(Boolean).join(" · ");
+      const categoryLine = d.category ? `Category: ${escapeHtml(d.category)}` : "";
+      const descriptionLine = d.description ? escapeHtml(d.description) : "";
+      const when = new Date(d.created_at).toLocaleString();
+      return `
       <div class="insp-item">
-        <img src="${normalizeImageSrc(d.image_path)}" alt="Defect" loading="lazy">
-        <div class="meta">
-          ${d.project ? `<strong>${escapeHtml(d.project)}</strong> &middot; ` : ""}<strong>${escapeHtml(d.tower)}</strong> &middot; Floor ${escapeHtml(d.floor)} &middot; Flat ${escapeHtml(d.flat)}<br>
-          ${d.room}<br>
-          ${d.category ? `Category: ${d.category}<br>` : ""}
-          ${d.description ? `<em>${d.description}</em><br>` : ""}
-          <small>${new Date(d.created_at).toLocaleString()}</small>
+        <div class="insp-item__media">
+          <img src="${normalizeImageSrc(d.image_path)}" alt="Defect upload preview" loading="lazy">
         </div>
-      </div>`).join("");
+        <div class="meta">
+          <p class="meta-line meta-line--primary">${locationLine}</p>
+          ${d.room ? `<p class="meta-line">${escapeHtml(d.room)}</p>` : ""}
+          ${categoryLine ? `<p class="meta-line">${categoryLine}</p>` : ""}
+          ${descriptionLine ? `<p class="meta-line"><em>${descriptionLine}</em></p>` : ""}
+          <p class="meta-line meta-line--muted">${when}</p>
+        </div>
+      </div>`;
+    }).join("");
 
     wireGridLightbox(grid);
 
@@ -1445,7 +2017,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   activityBar.addEventListener("click", () => {
-    recentVisible = true;
+    setPastUploadsOpen(!recentVisible);
     renderUploads();
   });
   activityBar.addEventListener("keydown", (e) => {
@@ -1453,8 +2025,22 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   toggleBtn.addEventListener("click", () => {
-    recentVisible = false;
+    setPastUploadsOpen(false);
     renderUploads();
+  });
+
+  pastUploadsBackdrop?.addEventListener("click", () => {
+    if (!recentVisible) return;
+    setPastUploadsOpen(false);
+    renderUploads();
+  });
+
+  // Close modal with Escape key
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && recentVisible) {
+      setPastUploadsOpen(false);
+      renderUploads();
+    }
   });
 
   async function loadUploads() {
@@ -1469,9 +2055,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   updateCollectionBackButton();
-  loadCollectionFromStorage();
-  renderCollectionList();
   void (async () => {
+    await loadCollectionFromServer();
+    await migrateLocalCollectionToServer();
+    renderCollectionList();
     const restored = await restoreDraftFromStorage();
     if (!restored && collectionItems.length > 0) {
       goTo("step-success");

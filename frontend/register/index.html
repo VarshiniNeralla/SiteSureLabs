@@ -46,6 +46,43 @@
       color: #64748b;
       line-height: 1.35;
     }
+    .register-phone-wrap {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: stretch;
+      border: 1px solid var(--auth-field-border);
+      border-radius: 8px;
+      background: var(--auth-field-bg);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .register-phone-wrap:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+    }
+    .form-group.has-error .register-phone-wrap {
+      border-color: var(--danger);
+    }
+    .register-phone-prefix {
+      display: inline-flex;
+      align-items: center;
+      padding: 0 0.85rem;
+      border-right: 1px solid var(--auth-field-border);
+      color: #0f172a;
+      font-weight: 600;
+      font-size: var(--auth-size-input);
+      background: rgba(248, 250, 252, 0.85);
+      border-radius: 7px 0 0 7px;
+    }
+    .register-phone-wrap input {
+      border: 0;
+      box-shadow: none;
+      background: transparent;
+      border-radius: 0 7px 7px 0;
+    }
+    .register-phone-wrap input:focus {
+      box-shadow: none;
+      outline: none;
+    }
   </style>
 </head>
 <body class="auth-page">
@@ -108,16 +145,20 @@
         </div>
         <div class="form-group">
           <label for="mobile">Mobile Number</label>
-          <input
-            id="mobile"
-            type="tel"
-            inputmode="numeric"
-            maxlength="10"
-            placeholder="Enter your mobile number"
-            required
-            autocomplete="tel"
-            aria-describedby="mobile-error"
-          />
+          <div class="register-phone-wrap">
+            <span class="register-phone-prefix" aria-hidden="true">+91</span>
+            <input
+              id="mobile"
+              type="tel"
+              inputmode="numeric"
+              maxlength="10"
+              placeholder="Enter your mobile number"
+              required
+              autocomplete="tel-national"
+              aria-label="Mobile number without country code"
+              aria-describedby="mobile-error"
+            />
+          </div>
           <span id="mobile-error" class="field-error" role="alert"></span>
         </div>
         <div class="register-nav">

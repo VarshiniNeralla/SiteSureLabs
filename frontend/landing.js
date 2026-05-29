@@ -14,6 +14,28 @@ function applyImageAnalysisVisibility() {
     el.setAttribute("aria-hidden", "true");
   });
 }
+
+function initAdminTipMarquee() {
+  const track = document.getElementById("admin-tip-track");
+  const viewport = track?.closest(".admin-tip-cards");
+  if (!track || !viewport || track.dataset.marqueeReady === "true") return;
+
+  const cards = Array.from(track.children).filter((el) => el.classList.contains("admin-tip-card"));
+  if (!cards.length) return;
+
+  cards.forEach((card) => {
+    const clone = card.cloneNode(true);
+    clone.setAttribute("aria-hidden", "true");
+    clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+    clone.querySelectorAll("a, button").forEach((el) => {
+      el.setAttribute("tabindex", "-1");
+    });
+    track.appendChild(clone);
+  });
+
+  track.dataset.marqueeReady = "true";
+  viewport.classList.add("is-ready");
+}
 let _profileNavModulePromise = null;
 let _assistantModulePromise = null;
 let _formatApiDetailPromise = null;
@@ -58,6 +80,7 @@ function runWhenIdle(fn) {
 
 document.addEventListener("DOMContentLoaded", () => {
   applyImageAnalysisVisibility();
+  initAdminTipMarquee();
 
   /* ═══ AUTH GATE ═══ */
   const overlay       = document.getElementById("login-overlay");
@@ -213,6 +236,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const HERO_CURSOR_LEAD_BLINKS = 1;
   const HERO_CURSOR_BLINK_MS = 400;
 
+  const BRAND_REVEAL_SEEN_KEY = "defectraHeroBrandSeen";
+  /* Premium easing: Material "emphasized" / Google motion standard. */
+  const BRAND_EASE_PRECISE = "cubic-bezier(0.2, 0, 0, 1)";
+  /* Hand-off pause between brand reveal completing and typewriter starting. */
+  const BRAND_TO_TYPEWRITER_MS = 220;
+
   const heroTypewriterDelay = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
   function isPageReload() {
@@ -252,6 +281,161 @@ document.addEventListener("DOMContentLoaded", () => {
     if (reveal2) setLineReveal(reveal2, 0, null);
     cursor?.classList.add("is-off");
     document.getElementById("hero-typewriter-live")?.classList.remove("is-typing");
+  }
+
+  function hasSeenBrandReveal() {
+    try {
+      return sessionStorage.getItem(BRAND_REVEAL_SEEN_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function markBrandRevealSeen() {
+    try {
+      sessionStorage.setItem(BRAND_REVEAL_SEEN_KEY, "1");
+    } catch {
+      /* private mode / quota — animation simply runs again next visit */
+    }
+  }
+
+  function snapBrandRevealToFinal(els) {
+    const { root, site, sure, sureS, svg } = els;
+    root.style.transform = "translate3d(0, 0, 0) scale(1)";
+    site.style.opacity = "1";
+    site.style.transform = "translate3d(0, 0, 0)";
+    sure.style.opacity = "1";
+    sure.style.transform = "translate3d(0, 0, 0)";
+    sureS.style.opacity = "1";
+    svg.style.opacity = "0";
+    root.classList.add("is-complete");
+    getHeroIntroRoot()?.classList.add("is-brand-ready");
+  }
+
+  function brandIntroTransform(root) {
+    const title = document.querySelector(".hero-section--landing .hero-title");
+    if (!root || !title) {
+      return { transform: "translate3d(0, 0, 0) scale(2.2)" };
+    }
+
+    const rootRect = root.getBoundingClientRect();
+    const titleRect = title.getBoundingClientRect();
+    const brandSize = parseFloat(getComputedStyle(root).fontSize) || 34;
+    const titleSize = parseFloat(getComputedStyle(title).fontSize) || brandSize * 2.2;
+    const scale = Math.max(1.65, Math.min(3.2, titleSize / brandSize));
+    const rootCenterY = rootRect.top + rootRect.height / 2;
+    const titleFocusY = titleRect.top + titleRect.height * 0.34;
+    const translateY = Math.round(titleFocusY - rootCenterY);
+
+    return { transform: `translate3d(0, ${translateY}px, 0) scale(${scale})` };
+  }
+
+  /* Brand reveal sequence — calm wordmark entrance.
+     Keep it simple and product-like: no path drawing, no split-letter theatrics,
+     just a soft material fade/settle that feels intentional and fast. */
+  async function runBrandReveal() {
+    const root = document.getElementById("brand-reveal");
+    const heroRoot = getHeroIntroRoot();
+    if (!root || !heroRoot) return;
+
+    const site = root.querySelector(".brand-reveal__site");
+    const sure = root.querySelector(".brand-reveal__sure");
+    const sureS = root.querySelector(".brand-reveal__sure-s");
+    const svg = root.querySelector(".brand-reveal__svg");
+    const words = root.querySelector(".brand-reveal__words");
+    if (!site || !sure || !sureS || !svg || !words) {
+      heroRoot.classList.add("is-brand-ready");
+      return;
+    }
+
+    const els = { root, site, sure, sureS, svg };
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const shouldSkip = (hasSeenBrandReveal() && !isPageReload()) || reducedMotion;
+
+    if (shouldSkip) {
+      snapBrandRevealToFinal(els);
+      markBrandRevealSeen();
+      return;
+    }
+
+    /* Wait briefly for webfonts so the wordmark paints with the intended metrics. */
+    if (document.fonts && document.fonts.ready) {
+      try {
+        await Promise.race([
+          document.fonts.ready,
+          new Promise((r) => window.setTimeout(r, 1500)),
+        ]);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    site.style.opacity = "";
+    site.style.transform = "";
+    sure.style.opacity = "";
+    sure.style.transform = "";
+    sureS.style.opacity = "1";
+    svg.style.opacity = "0";
+    const introPose = brandIntroTransform(root);
+    root.style.transform = introPose.transform;
+    words.style.opacity = "0";
+    words.style.transform = "translate3d(0, 8px, 0) scale(0.985)";
+    words.style.filter = "blur(6px)";
+    words.style.letterSpacing = "-0.045em";
+
+    /* Reveal the brand-reveal container now that initial state is set. */
+    heroRoot.classList.add("is-brand-ready");
+
+    /* Yield two frames to ensure layout / initial styles are committed
+       before the first keyframe runs (prevents a one-frame flash). */
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
+
+    await words.animate(
+      [
+        {
+          opacity: 0,
+          transform: "translate3d(0, 8px, 0) scale(0.985)",
+          filter: "blur(6px)",
+          letterSpacing: "-0.045em",
+        },
+        {
+          opacity: 1,
+          transform: "translate3d(0, 0, 0) scale(1)",
+          filter: "blur(0)",
+          letterSpacing: "-0.025em",
+        },
+      ],
+      { duration: 680, easing: BRAND_EASE_PRECISE, fill: "forwards" }
+    ).finished;
+
+    words.style.opacity = "1";
+    words.style.transform = "translate3d(0, 0, 0) scale(1)";
+    words.style.filter = "blur(0)";
+    words.style.letterSpacing = "";
+    svg.style.opacity = "0";
+
+    await root.animate(
+      [
+        { transform: introPose.transform },
+        { transform: "translate3d(0, 0, 0) scale(1)" },
+      ],
+      { duration: 760, easing: BRAND_EASE_PRECISE, fill: "forwards" }
+    ).finished;
+
+    root.style.transform = "translate3d(0, 0, 0) scale(1)";
+    await root.animate(
+      [
+        { transform: "translate3d(0, 0, 0) scale(1)" },
+        { transform: "translate3d(0, -1px, 0) scale(1)" },
+        { transform: "translate3d(0, 0, 0) scale(1)" },
+      ],
+      { duration: 120, easing: BRAND_EASE_PRECISE, fill: "forwards" }
+    ).finished;
+
+    root.style.transform = "translate3d(0, 0, 0) scale(1)";
+    root.classList.add("is-complete");
+    markBrandRevealSeen();
   }
 
   async function waitForHeroIntroDelay() {
@@ -367,6 +551,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!live || !reveal1 || !reveal2 || !cursor || !line1Inner) return;
 
     prepareHeroIntroHidden();
+    await runBrandReveal();
+    await heroTypewriterDelay(BRAND_TO_TYPEWRITER_MS);
     await waitForHeroIntroDelay();
 
     if (shouldSkipHeroAnimation()) {
@@ -405,6 +591,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!e.persisted || !shouldSkipHeroAnimation()) return;
     void (async () => {
       prepareHeroIntroHidden();
+      const brandRoot = document.getElementById("brand-reveal");
+      const heroRoot = getHeroIntroRoot();
+      if (brandRoot && heroRoot) {
+        const site = brandRoot.querySelector(".brand-reveal__site");
+        const sure = brandRoot.querySelector(".brand-reveal__sure");
+        const sureS = brandRoot.querySelector(".brand-reveal__sure-s");
+        const svg = brandRoot.querySelector(".brand-reveal__svg");
+        if (site && sure && sureS && svg) {
+          snapBrandRevealToFinal({ root: brandRoot, site, sure, sureS, svg });
+        }
+      }
       await waitForHeroIntroDelay();
       showHeroTypewriterInstant();
     })();

@@ -7,6 +7,9 @@ This file defines:
 - Context builder (inject optional site details cleanly)
 """
 
+# Bump when PMO / executive / classifier prompts change materially (invalidates analysis cache).
+VISION_CACHE_VERSION = "v1"
+
 # --------------------------------------------------
 # VISION ANALYSIS PROMPT (IMAGE → REPORT)
 # --------------------------------------------------
@@ -67,7 +70,26 @@ No prose outside JSON.
 No code fences.
 
 Required JSON shape (exact keys):
-{"observations":["..."],"recommendations":["..."],"severity":"LOW|MEDIUM|HIGH"}
+{"defect":"...","defect_confidence":"HIGH|MEDIUM|LOW","observations":["..."],"recommendations":["..."],"severity":"LOW|MEDIUM|HIGH"}
+
+## defect
+
+* One concise defect label only, 1 to 4 words.
+* Use standard construction defect terminology such as "Honeycomb", "Cracks", "Seepage", "Spalling", "Corrosion", "Housekeeping", "Exposed rebar", or "Debris".
+* If multiple distinct defects are visible, separate labels with comma + space, e.g. "Cracks, Seepage".
+* Do NOT write a sentence, location, severity, cause, or recommendation in this field.
+* If no visible defect exists, use "No defect observed".
+* **IMPORTANT — when you are not sure:** If the image is blurry, dark, low-resolution, taken at an awkward angle, partially obstructed, or the visible signal is too weak to name a specific construction defect with engineering certainty, set defect to exactly "Unclear". DO NOT guess a defect just to fill the field. A wrong confident label is much worse than an honest "Unclear".
+
+## defect_confidence
+
+Self-assess how certain you are about the `defect` value above. Choose exactly one:
+
+* HIGH → the defect is clearly and unambiguously visible; an engineer reviewing this image would name the same defect.
+* MEDIUM → a defect is visible, but partial obstruction, lighting, or angle leaves some doubt about which standard category fits best.
+* LOW → image quality is poor (blurry / dark / extreme angle / heavily cropped) OR the visible evidence is too ambiguous to confidently name a specific defect. When confidence is LOW, the `defect` field MUST be "Unclear".
+
+Be honest. It is correct and expected to output `{"defect":"Unclear","defect_confidence":"LOW", ...}` on ambiguous or low-quality images. Do not inflate confidence to look decisive.
 
 ## observations
 
@@ -107,7 +129,7 @@ Severity must be based ONLY on visible evidence from the image.
 * Never output null values.
 * Use empty arrays only when no visible defect exists.
 * If the image is unrelated to construction/site inspection, return:
-  {"observations":[],"recommendations":["Upload a valid construction/site inspection image."],"severity":"LOW"}
+  {"defect":"Invalid image","observations":[],"recommendations":["Upload a valid construction/site inspection image."],"severity":"LOW"}
 * Ensure outputs are concise, technically accurate, professional, and glance-readable for executive walkthrough reports. """
 
 

@@ -5,6 +5,7 @@
 
 import { marked } from "marked";
 
+import { getToken } from "/shared/auth.js";
 import { isHeicLike, normalizeImageFileForUpload } from "./heic-utils.js";
 
 marked.setOptions({ breaks: true, gfm: true });
@@ -30,6 +31,10 @@ function chatMessageStreamUrl() {
 }
 function chatDeleteUrl(id) {
   return `${apiBase()}/api/chat/session/${encodeURIComponent(id)}`;
+}
+function authHeaders() {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 function isLikelyNetworkFailure(err) {
@@ -783,7 +788,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const createSession = async () => {
-    const res = await fetch(chatSessionUrl(), { method: "POST" });
+    const res = await fetch(chatSessionUrl(), { method: "POST", headers: authHeaders() });
     if (!res.ok) throw new Error(await parseErrorDetail(res));
     const j = await res.json();
     if (!j.session_id) throw new Error("No session from server.");
@@ -809,7 +814,7 @@ document.addEventListener("DOMContentLoaded", () => {
     busy = false;
     if (sessionId) {
       try {
-        await fetch(chatDeleteUrl(sessionId), { method: "DELETE" });
+        await fetch(chatDeleteUrl(sessionId), { method: "DELETE", headers: authHeaders() });
       } catch {
         /* ignore */
       }
@@ -1002,6 +1007,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch(chatMessageStreamUrl(), {
         method: "POST",
         body: form,
+        headers: authHeaders(),
         signal: activeController.signal,
       });
       const outcome = await consumeChatSse(res, mdEl, streamRow);

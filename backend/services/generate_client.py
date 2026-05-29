@@ -18,6 +18,14 @@ from prompt import (
     PMO_DEFECT_INSPECTION_PROMPT,
 )
 from services.report_defect_extract import fields_from_parsed, parse_executive_defect_json
+from services import vision_analysis_cache as vac
+from services.http_client import (
+    VLLMUnavailable,
+    ensure_circuit_closed,
+    get_client,
+    post_json_with_retry,
+    vllm_breaker,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +112,23 @@ def _extract_assistant_text(data: dict[str, Any]) -> str:
     return text
 
 
+def _vision_temperature() -> float:
+    """Temperature 0 for repeatable vision outputs (cache misses still stay stable)."""
+    return 0.0
+
+
+def _optional_llm_seed() -> int | None:
+    import os
+
+    raw = os.getenv("VLLM_SEED", "").strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
 def _build_chat_body(
     *,
     model: str,
@@ -127,9 +152,20 @@ def _build_chat_body(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
+    seed = _optional_llm_seed()
+    if seed is not None:
+        body["seed"] = seed
     if stream:
         body["stream"] = True
     return body
+
+
+def _stream_cached_text(text: str, *, chunk_size: int = 160) -> list[str]:
+    if not text:
+        return []
+    if len(text) <= chunk_size:
+        return [text]
+    return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 
 def _parse_construction_relevance_json(text: str) -> bool | None:
@@ -176,6 +212,17 @@ async def classify_construction_site_image(
     On transport/parse errors, returns True (fail open) so real site photos still analyze.
     """
     settings = get_settings()
+    if vac.cache_enabled():
+        cache_key = vac.build_cache_key(
+            kind=vac.KIND_CONSTRUCTION,
+            image_bytes=image_bytes,
+            prompt=CONSTRUCTION_RELEVANCE_CLASSIFIER_PROMPT,
+            model=settings.vllm_model,
+        )
+        cached = await vac.get_construction_relevance(cache_key)
+        if cached is not None:
+            return cached
+
     url = settings.chat_completions_url()
     body = _build_chat_body(
         model=settings.vllm_model,
@@ -190,33 +237,38 @@ async def classify_construction_site_image(
     if settings.vllm_api_key.strip():
         headers["Authorization"] = f"Bearer {settings.vllm_api_key.strip()}"
 
-    async with httpx.AsyncClient(timeout=settings.http_timeout_s) as client:
-        try:
-            resp = await client.post(url, json=body, headers=headers)
-        except httpx.RequestError:
-            logger.exception("construction relevance classifier: vLLM request failed")
-            return True
+    try:
+        resp = await post_json_with_retry(
+            url,
+            json=body,
+            headers=headers,
+            timeout=httpx.Timeout(30.0, connect=10.0),
+        )
+    except VLLMUnavailable:
+        logger.warning("construction relevance classifier: vLLM circuit open — failing open")
+        return True
+    except httpx.RequestError:
+        logger.exception("construction relevance classifier: vLLM request failed")
+        return True
 
-        if resp.status_code >= 400:
-            logger.warning(
-                "construction relevance classifier: HTTP %s", resp.status_code
-            )
-            return True
+    if resp.status_code >= 400:
+        logger.warning("construction relevance classifier: HTTP %s", resp.status_code)
+        return True
 
-        try:
-            data = resp.json()
-        except json.JSONDecodeError:
-            logger.warning("construction relevance classifier: non-JSON body")
-            return True
+    try:
+        data = resp.json()
+    except json.JSONDecodeError:
+        logger.warning("construction relevance classifier: non-JSON body")
+        return True
 
-        if not isinstance(data, dict):
-            return True
+    if not isinstance(data, dict):
+        return True
 
-        try:
-            raw = _extract_assistant_text(data)
-        except RuntimeError as e:
-            logger.warning("construction relevance classifier: %s", e)
-            return True
+    try:
+        raw = _extract_assistant_text(data)
+    except RuntimeError as e:
+        logger.warning("construction relevance classifier: %s", e)
+        return True
 
     parsed = _parse_construction_relevance_json(raw)
     if parsed is None:
@@ -224,6 +276,19 @@ async def classify_construction_site_image(
             "construction relevance classifier: could not parse: %r", raw[:500]
         )
         return True
+
+    if vac.cache_enabled():
+        cache_key = vac.build_cache_key(
+            kind=vac.KIND_CONSTRUCTION,
+            image_bytes=image_bytes,
+            prompt=CONSTRUCTION_RELEVANCE_CLASSIFIER_PROMPT,
+            model=settings.vllm_model,
+        )
+        await vac.store_construction_relevance(
+            cache_key=cache_key,
+            model=settings.vllm_model,
+            relevant=parsed,
+        )
     return parsed
 
 
@@ -250,12 +315,24 @@ async def generate_inspection_report(
     prompt: str | None = None,
 ) -> str:
     settings = get_settings()
+    instructions = prompt or PMO_DEFECT_INSPECTION_PROMPT
+    if vac.cache_enabled():
+        cache_key = vac.build_cache_key(
+            kind=vac.KIND_PMO_MARKDOWN,
+            image_bytes=image_bytes,
+            prompt=instructions,
+            model=settings.vllm_model,
+        )
+        cached = await vac.get_pmo_markdown(cache_key)
+        if cached is not None:
+            return cached
+
     url = settings.chat_completions_url()
     body = _build_chat_body(
         model=settings.vllm_model,
-        instructions=prompt or PMO_DEFECT_INSPECTION_PROMPT,
+        instructions=instructions,
         data_url=_data_url(image_bytes, mime_type),
-        temperature=settings.vllm_temperature,
+        temperature=_vision_temperature(),
         max_tokens=settings.vllm_max_tokens,
     )
 
@@ -263,34 +340,46 @@ async def generate_inspection_report(
     if settings.vllm_api_key.strip():
         headers["Authorization"] = f"Bearer {settings.vllm_api_key.strip()}"
 
-    async with httpx.AsyncClient(timeout=settings.http_timeout_s) as client:
-        try:
-            resp = await client.post(url, json=body, headers=headers)
-        except httpx.RequestError as e:
-            logger.exception("vLLM request failed")
-            raise RuntimeError(
-                f"Could not reach vLLM at {url}. Is the server running and reachable? ({e})"
-            ) from e
+    try:
+        resp = await post_json_with_retry(url, json=body, headers=headers)
+    except httpx.RequestError as e:
+        logger.exception("vLLM request failed")
+        raise RuntimeError(
+            f"Could not reach vLLM at {url}. Is the server running and reachable? ({e})"
+        ) from e
 
-        if resp.status_code >= 400:
-            raise RuntimeError(_format_http_error(resp) + _vllm_404_hint(resp.status_code, url))
+    if resp.status_code >= 400:
+        raise RuntimeError(_format_http_error(resp) + _vllm_404_hint(resp.status_code, url))
 
-        try:
-            data = resp.json()
-        except json.JSONDecodeError as e:
-            raw = (resp.text or "")[:2000]
-            logger.warning("vLLM non-JSON body: %s", raw)
-            raise RuntimeError(
-                "The vision server returned a response that was not valid JSON. "
-                f"First bytes: {raw[:500]!r}"
-            ) from e
+    try:
+        data = resp.json()
+    except json.JSONDecodeError as e:
+        raw = (resp.text or "")[:2000]
+        logger.warning("vLLM non-JSON body: %s", raw)
+        raise RuntimeError(
+            "The vision server returned a response that was not valid JSON. "
+            f"First bytes: {raw[:500]!r}"
+        ) from e
 
-        if not isinstance(data, dict):
-            raise RuntimeError(
-                "The vision server returned JSON that was not an object; cannot read choices."
-            )
+    if not isinstance(data, dict):
+        raise RuntimeError(
+            "The vision server returned JSON that was not an object; cannot read choices."
+        )
 
-        return _extract_assistant_text(data)
+    text = _extract_assistant_text(data)
+    if vac.cache_enabled():
+        cache_key = vac.build_cache_key(
+            kind=vac.KIND_PMO_MARKDOWN,
+            image_bytes=image_bytes,
+            prompt=instructions,
+            model=settings.vllm_model,
+        )
+        await vac.store_pmo_markdown(
+            cache_key=cache_key,
+            model=settings.vllm_model,
+            text=text,
+        )
+    return text
 
 
 async def generate_executive_defect_report(
@@ -298,12 +387,24 @@ async def generate_executive_defect_report(
     image_bytes: bytes,
     mime_type: str,
     prompt: str | None = None,
-) -> tuple[str, str, str]:
+) -> tuple[str, str, str, str]:
     """
-    Vision call for admin reports: structured JSON → observation, recommendation, severity.
+    Vision call for admin reports: structured JSON → defect, observation, recommendation, severity.
     Retries once if JSON parse or validation yields no usable bullets.
     """
+    settings = get_settings()
     instructions = prompt or EXECUTIVE_DEFECT_REPORT_PROMPT
+    if vac.cache_enabled():
+        cache_key = vac.build_cache_key(
+            kind=vac.KIND_EXECUTIVE,
+            image_bytes=image_bytes,
+            prompt=instructions,
+            model=settings.vllm_model,
+        )
+        cached = await vac.get_executive_fields(cache_key)
+        if cached is not None:
+            return cached
+
     last_raw = ""
 
     for attempt in range(2):
@@ -312,8 +413,9 @@ async def generate_executive_defect_report(
             attempt_prompt = (
                 f"{instructions.strip()}\n\n"
                 "Your previous reply was invalid. Reply with ONLY one JSON object using keys "
-                "observations, recommendations, and severity (LOW|MEDIUM|HIGH). Each array "
-                "item must be one complete short sentence with no trailing conjunctions."
+                "defect, observations, recommendations, and severity (LOW|MEDIUM|HIGH). "
+                "The defect value must be a short 1 to 4 word label. Each array item must "
+                "be one complete short sentence with no trailing conjunctions."
             )
         raw = await generate_inspection_report(
             image_bytes=image_bytes,
@@ -323,11 +425,26 @@ async def generate_executive_defect_report(
         last_raw = raw
         parsed = parse_executive_defect_json(raw)
         if parsed is not None:
-            obs_field, rec_field, severity = fields_from_parsed(parsed)
+            obs_field, rec_field, severity, defect = fields_from_parsed(parsed)
             has_obs = bool(parsed.get("observations"))
             has_rec = bool(parsed.get("recommendations"))
             if has_obs or has_rec or "• No defect observed" in obs_field:
-                return obs_field, rec_field, severity
+                if vac.cache_enabled():
+                    cache_key = vac.build_cache_key(
+                        kind=vac.KIND_EXECUTIVE,
+                        image_bytes=image_bytes,
+                        prompt=instructions,
+                        model=settings.vllm_model,
+                    )
+                    await vac.store_executive_fields(
+                        cache_key=cache_key,
+                        model=settings.vllm_model,
+                        observation=obs_field,
+                        recommendation=rec_field,
+                        severity=severity,
+                        defect=defect,
+                    )
+                return obs_field, rec_field, severity, defect
         logger.warning(
             "executive defect report: parse/validation failed (attempt %s): %r",
             attempt + 1,
@@ -340,9 +457,41 @@ async def generate_executive_defect_report(
     )
     fallback = parse_executive_defect_json(last_raw) if last_raw else None
     if fallback:
-        return fields_from_parsed(fallback)
-    obs, rec, sev = fields_from_parsed({"observations": [], "recommendations": [], "severity": "MEDIUM"})
-    return ("• No defect observed", rec, sev)
+        obs_field, rec_field, severity, defect = fields_from_parsed(fallback)
+        if vac.cache_enabled():
+            cache_key = vac.build_cache_key(
+                kind=vac.KIND_EXECUTIVE,
+                image_bytes=image_bytes,
+                prompt=instructions,
+                model=settings.vllm_model,
+            )
+            await vac.store_executive_fields(
+                cache_key=cache_key,
+                model=settings.vllm_model,
+                observation=obs_field,
+                recommendation=rec_field,
+                severity=severity,
+                defect=defect,
+            )
+        return obs_field, rec_field, severity, defect
+    obs, rec, sev, defect = fields_from_parsed({"observations": [], "recommendations": [], "severity": "MEDIUM"})
+    obs_field, rec_field, severity = ("• No defect observed", rec, sev)
+    if vac.cache_enabled():
+        cache_key = vac.build_cache_key(
+            kind=vac.KIND_EXECUTIVE,
+            image_bytes=image_bytes,
+            prompt=instructions,
+            model=settings.vllm_model,
+        )
+        await vac.store_executive_fields(
+            cache_key=cache_key,
+            model=settings.vllm_model,
+            observation=obs_field,
+            recommendation=rec_field,
+            severity=severity,
+            defect=defect,
+        )
+    return obs_field, rec_field, severity, defect
 
 
 async def stream_inspection_report_deltas(
@@ -353,12 +502,26 @@ async def stream_inspection_report_deltas(
 ) -> AsyncIterator[str]:
     """Yield assistant text fragments from vLLM OpenAI-compatible SSE stream."""
     settings = get_settings()
+    instructions = prompt or PMO_DEFECT_INSPECTION_PROMPT
+    if vac.cache_enabled():
+        cache_key = vac.build_cache_key(
+            kind=vac.KIND_PMO_MARKDOWN,
+            image_bytes=image_bytes,
+            prompt=instructions,
+            model=settings.vllm_model,
+        )
+        cached = await vac.get_pmo_markdown(cache_key)
+        if cached is not None:
+            for piece in _stream_cached_text(cached):
+                yield piece
+            return
+
     url = settings.chat_completions_url()
     body = _build_chat_body(
         model=settings.vllm_model,
-        instructions=prompt or PMO_DEFECT_INSPECTION_PROMPT,
+        instructions=instructions,
         data_url=_data_url(image_bytes, mime_type),
-        temperature=settings.vllm_temperature,
+        temperature=_vision_temperature(),
         max_tokens=settings.vllm_max_tokens,
         stream=True,
     )
@@ -367,50 +530,73 @@ async def stream_inspection_report_deltas(
     if settings.vllm_api_key.strip():
         headers["Authorization"] = f"Bearer {settings.vllm_api_key.strip()}"
 
-    async with httpx.AsyncClient(timeout=settings.http_timeout_s) as client:
-        try:
-            async with client.stream("POST", url, json=body, headers=headers) as resp:
-                if resp.status_code >= 400:
-                    err_bytes = await resp.aread()
-                    try:
-                        err_json = json.loads(err_bytes.decode("utf-8"))
-                        detail = err_json.get("error", err_json)
-                        if isinstance(detail, dict) and "message" in detail:
-                            detail = detail["message"]
-                    except Exception:
-                        detail = err_bytes.decode("utf-8", errors="replace")[:2000]
-                    raise RuntimeError(
-                        f"vLLM error ({resp.status_code}): {detail}"
-                        + _vllm_404_hint(resp.status_code, url)
-                    )
+    collected: list[str] = []
+    completed = False  # True only when the stream ends with [DONE]
+    ensure_circuit_closed()
+    client = await get_client()
+    try:
+        async with client.stream("POST", url, json=body, headers=headers) as resp:
+            if resp.status_code >= 400:
+                err_bytes = await resp.aread()
+                try:
+                    err_json = json.loads(err_bytes.decode("utf-8"))
+                    detail = err_json.get("error", err_json)
+                    if isinstance(detail, dict) and "message" in detail:
+                        detail = detail["message"]
+                except Exception:
+                    detail = err_bytes.decode("utf-8", errors="replace")[:2000]
+                raise RuntimeError(
+                    f"vLLM error ({resp.status_code}): {detail}"
+                    + _vllm_404_hint(resp.status_code, url)
+                )
 
-                async for line in resp.aiter_lines():
-                    raw = line.strip()
-                    if not raw or raw.startswith(":"):
-                        continue
-                    if not raw.startswith("data:"):
-                        continue
-                    payload = raw[5:].lstrip()
-                    if payload == "[DONE]":
-                        break
-                    try:
-                        obj: Any = json.loads(payload)
-                    except json.JSONDecodeError:
-                        continue
-                    if not isinstance(obj, dict):
-                        continue
-                    err = obj.get("error")
-                    if isinstance(err, dict):
-                        msg = err.get("message", json.dumps(err))
-                        raise RuntimeError(f"vLLM stream error: {msg}")
-                    piece = _delta_content_from_sse_payload(obj)
-                    if piece:
-                        yield piece
-        except httpx.RequestError as e:
-            logger.exception("vLLM stream request failed")
-            raise RuntimeError(
-                f"Could not reach vLLM at {url}. Is the server running and reachable? ({e})"
-            ) from e
+            async for line in resp.aiter_lines():
+                raw = line.strip()
+                if not raw or raw.startswith(":"):
+                    continue
+                if not raw.startswith("data:"):
+                    continue
+                payload = raw[5:].lstrip()
+                if payload == "[DONE]":
+                    completed = True
+                    break
+                try:
+                    obj: Any = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(obj, dict):
+                    continue
+                err = obj.get("error")
+                if isinstance(err, dict):
+                    msg = err.get("message", json.dumps(err))
+                    raise RuntimeError(f"vLLM stream error: {msg}")
+                piece = _delta_content_from_sse_payload(obj)
+                if piece:
+                    collected.append(piece)
+                    yield piece
+        vllm_breaker.record_success()
+    except httpx.RequestError as e:
+        vllm_breaker.record_failure()
+        logger.exception("vLLM stream request failed")
+        raise RuntimeError(
+            f"Could not reach vLLM at {url}. Is the server running and reachable? ({e})"
+        ) from e
+
+    # Only cache a fully-completed response. A stream that ends early (upstream truncation, vLLM
+    # crash, client disconnect) leaves `completed=False`, so partial output is never cached and
+    # later served as if it were the deterministic result.
+    if vac.cache_enabled() and completed and collected:
+        cache_key = vac.build_cache_key(
+            kind=vac.KIND_PMO_MARKDOWN,
+            image_bytes=image_bytes,
+            prompt=instructions,
+            model=settings.vllm_model,
+        )
+        await vac.store_pmo_markdown(
+            cache_key=cache_key,
+            model=settings.vllm_model,
+            text="".join(collected),
+        )
 
 
 async def stream_text_chat_completion_deltas(
@@ -437,50 +623,53 @@ async def stream_text_chat_completion_deltas(
     if settings.vllm_api_key.strip():
         headers["Authorization"] = f"Bearer {settings.vllm_api_key.strip()}"
 
-    async with httpx.AsyncClient(timeout=settings.http_timeout_s) as client:
-        try:
-            async with client.stream("POST", url, json=body, headers=headers) as resp:
-                if resp.status_code >= 400:
-                    err_bytes = await resp.aread()
-                    try:
-                        err_json = json.loads(err_bytes.decode("utf-8"))
-                        detail = err_json.get("error", err_json)
-                        if isinstance(detail, dict) and "message" in detail:
-                            detail = detail["message"]
-                    except Exception:
-                        detail = err_bytes.decode("utf-8", errors="replace")[:2000]
-                    raise RuntimeError(
-                        f"vLLM error ({resp.status_code}): {detail}"
-                        + _vllm_404_hint(resp.status_code, url)
-                    )
+    ensure_circuit_closed()
+    client = await get_client()
+    try:
+        async with client.stream("POST", url, json=body, headers=headers) as resp:
+            if resp.status_code >= 400:
+                err_bytes = await resp.aread()
+                try:
+                    err_json = json.loads(err_bytes.decode("utf-8"))
+                    detail = err_json.get("error", err_json)
+                    if isinstance(detail, dict) and "message" in detail:
+                        detail = detail["message"]
+                except Exception:
+                    detail = err_bytes.decode("utf-8", errors="replace")[:2000]
+                raise RuntimeError(
+                    f"vLLM error ({resp.status_code}): {detail}"
+                    + _vllm_404_hint(resp.status_code, url)
+                )
 
-                async for line in resp.aiter_lines():
-                    raw = line.strip()
-                    if not raw or raw.startswith(":"):
-                        continue
-                    if not raw.startswith("data:"):
-                        continue
-                    payload = raw[5:].lstrip()
-                    if payload == "[DONE]":
-                        break
-                    try:
-                        obj: Any = json.loads(payload)
-                    except json.JSONDecodeError:
-                        continue
-                    if not isinstance(obj, dict):
-                        continue
-                    err = obj.get("error")
-                    if isinstance(err, dict):
-                        msg = err.get("message", json.dumps(err))
-                        raise RuntimeError(f"vLLM stream error: {msg}")
-                    piece = _delta_content_from_sse_payload(obj)
-                    if piece:
-                        yield piece
-        except httpx.RequestError as e:
-            logger.exception("vLLM text stream request failed")
-            raise RuntimeError(
-                f"Could not reach vLLM at {url}. Is the server running and reachable? ({e})"
-            ) from e
+            async for line in resp.aiter_lines():
+                raw = line.strip()
+                if not raw or raw.startswith(":"):
+                    continue
+                if not raw.startswith("data:"):
+                    continue
+                payload = raw[5:].lstrip()
+                if payload == "[DONE]":
+                    break
+                try:
+                    obj: Any = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(obj, dict):
+                    continue
+                err = obj.get("error")
+                if isinstance(err, dict):
+                    msg = err.get("message", json.dumps(err))
+                    raise RuntimeError(f"vLLM stream error: {msg}")
+                piece = _delta_content_from_sse_payload(obj)
+                if piece:
+                    yield piece
+        vllm_breaker.record_success()
+    except httpx.RequestError as e:
+        vllm_breaker.record_failure()
+        logger.exception("vLLM text stream request failed")
+        raise RuntimeError(
+            f"Could not reach vLLM at {url}. Is the server running and reachable? ({e})"
+        ) from e
 
 
 async def generate_text_chat_completion(
@@ -507,27 +696,26 @@ async def generate_text_chat_completion(
     if settings.vllm_api_key.strip():
         headers["Authorization"] = f"Bearer {settings.vllm_api_key.strip()}"
 
-    async with httpx.AsyncClient(timeout=settings.http_timeout_s) as client:
-        try:
-            resp = await client.post(url, json=body, headers=headers)
-        except httpx.RequestError as e:
-            logger.exception("vLLM text chat request failed")
-            raise RuntimeError(
-                f"Could not reach vLLM at {url}. Is the server running and reachable? ({e})"
-            ) from e
+    try:
+        resp = await post_json_with_retry(url, json=body, headers=headers)
+    except httpx.RequestError as e:
+        logger.exception("vLLM text chat request failed")
+        raise RuntimeError(
+            f"Could not reach vLLM at {url}. Is the server running and reachable? ({e})"
+        ) from e
 
-        if resp.status_code >= 400:
-            raise RuntimeError(_format_http_error(resp) + _vllm_404_hint(resp.status_code, url))
+    if resp.status_code >= 400:
+        raise RuntimeError(_format_http_error(resp) + _vllm_404_hint(resp.status_code, url))
 
-        try:
-            data = resp.json()
-        except json.JSONDecodeError as e:
-            raw = (resp.text or "")[:2000]
-            raise RuntimeError(
-                "The model server returned a response that was not valid JSON. "
-                f"First bytes: {raw[:500]!r}"
-            ) from e
+    try:
+        data = resp.json()
+    except json.JSONDecodeError as e:
+        raw = (resp.text or "")[:2000]
+        raise RuntimeError(
+            "The model server returned a response that was not valid JSON. "
+            f"First bytes: {raw[:500]!r}"
+        ) from e
 
-        if not isinstance(data, dict):
-            raise RuntimeError("The model returned JSON that was not an object.")
-        return _extract_assistant_text(data)
+    if not isinstance(data, dict):
+        raise RuntimeError("The model returned JSON that was not an object.")
+    return _extract_assistant_text(data)

@@ -7,6 +7,7 @@ Start from repo root:
 from __future__ import annotations
 
 import logging
+import os
 import re
 import shutil
 import sys
@@ -20,18 +21,17 @@ if _backend_dir not in sys.path:
 from beanie import PydanticObjectId
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from config import get_settings
 
 from db import init_db
 from models import Defect, User
+from utils.logging_setup import RequestIdMiddleware, configure_logging
 from utils.security import hash_password, verify_password
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
-)
+configure_logging()
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -43,6 +43,48 @@ _HEX_RE = re.compile(r"^[0-9a-f]{24}$")
 _settings = get_settings()
 _cors_origins = list(_settings.cors_origins)
 _cors_allow_credentials = "*" not in _cors_origins
+
+
+async def _seed_developer() -> None:
+    """Sync bootstrap developer from DEVELOPER_EMAIL / DEVELOPER_PASSWORD into MongoDB on startup.
+
+    The developer role sits above admin in the hierarchy (Developer → Admin → Standard User)
+    and has full system-level access via /api/dev/* endpoints.
+    """
+    cfg = get_settings()
+    email = cfg.developer_email
+    password = cfg.developer_password
+    if not email:
+        logger.warning("DEVELOPER_EMAIL is empty; skipping bootstrap developer sync")
+        return
+    if not password:
+        logger.warning("DEVELOPER_PASSWORD is empty; skipping bootstrap developer sync")
+        return
+
+    existing = await User.find_one(User.email == email)
+    if existing:
+        changed = False
+        if existing.role != "developer":
+            existing.role = "developer"
+            changed = True
+        if existing.is_disabled:
+            existing.is_disabled = False
+            changed = True
+        if not verify_password(password, existing.password):
+            existing.password = hash_password(password)
+            changed = True
+            logger.info("Bootstrap developer password synced from DEVELOPER_PASSWORD for %s", email)
+        if changed:
+            await existing.save()
+        return
+
+    user = User(
+        email=email,
+        password=hash_password(password),
+        role="developer",
+    )
+    await user.insert()
+    logger.info("Bootstrap developer created → %s", email)
 
 
 async def _seed_admin() -> None:
@@ -187,16 +229,52 @@ async def _migrate_unverified_users() -> None:
         logger.info("migration: marked %d pre-existing users as verified", result.modified_count)
 
 
+def _migrations_enabled() -> bool:
+    return os.getenv("RUN_MIGRATIONS", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _enforce_secure_secrets() -> None:
+    """Abort startup in production if insecure bundled defaults are still in use."""
+    cfg = get_settings()
+    problems = cfg.insecure_defaults()
+    if not problems:
+        return
+    if cfg.is_production():
+        for p in problems:
+            logger.critical("INSECURE CONFIG (env=%s): %s", cfg.env, p)
+        raise RuntimeError(
+            "Refusing to start in a production environment with insecure default secrets: "
+            + " | ".join(problems)
+        )
+    for p in problems:
+        logger.warning("INSECURE CONFIG (env=%s, dev only): %s", cfg.env, p)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    _enforce_secure_secrets()
     await init_db()
+    await _seed_developer()
     await _seed_admin()
-    await _migrate_image_paths()
-    await _migrate_unverified_users()
+    # One-time data migrations do a full-collection scan + per-record lookups (N+1). Running them on
+    # every boot makes startup scale with data size and can block/OOM deploys and rollbacks. Gate
+    # them behind RUN_MIGRATIONS=1 so they run only when explicitly requested.
+    if _migrations_enabled():
+        logger.info("RUN_MIGRATIONS enabled — running one-time data migrations")
+        await _migrate_image_paths()
+        await _migrate_unverified_users()
+    else:
+        logger.info("RUN_MIGRATIONS not set — skipping one-time data migrations")
     yield
+    # Shutdown: release the shared outbound HTTP client / connection pool.
+    from services.http_client import aclose_client
+
+    await aclose_client()
 
 
 app = FastAPI(title="Defectra API", version="1.0.0", lifespan=lifespan)
+
+app.add_middleware(RequestIdMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -213,14 +291,35 @@ from routes.defect import router as defect_router
 from routes.admin import router as admin_router
 from routes.chat import router as chat_router
 from routes.assistant import router as assistant_router
+from routes.dev import router as dev_router
 
 app.include_router(auth_router)
 app.include_router(defect_router)
 app.include_router(admin_router)
 app.include_router(chat_router)
 app.include_router(assistant_router)
+app.include_router(dev_router)
 
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok"}
+    """Liveness + dependency check: 503 if MongoDB is unreachable so load balancers can react."""
+    import asyncio
+
+    from services.http_client import vllm_breaker
+
+    mongo_ok = True
+    try:
+        await asyncio.wait_for(
+            User.get_motor_collection().database.command("ping"), timeout=2.0
+        )
+    except Exception:
+        mongo_ok = False
+        logger.warning("health: MongoDB ping failed", exc_info=True)
+
+    payload = {
+        "status": "ok" if mongo_ok else "degraded",
+        "mongo": "ok" if mongo_ok else "down",
+        "vllm_circuit": "open" if vllm_breaker.is_open() else "closed",
+    }
+    return payload if mongo_ok else JSONResponse(payload, status_code=503)

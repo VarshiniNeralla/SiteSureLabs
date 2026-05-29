@@ -46,10 +46,10 @@
       box-shadow: 0 1px 0 rgba(255,255,255,.78) inset, 0 8px 24px rgba(15,23,42,.055), 0 1px 6px rgba(148,163,184,.1);
     }
     .admin-nav__inner {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      display: flex;
       align-items: center;
-      min-height: 58px;
+      justify-content: space-between;
+      min-height: 52px;
       padding-left: clamp(0.75rem, 3vw, 2rem);
       padding-right: clamp(0.75rem, 3vw, 2rem);
       gap: 12px;
@@ -64,11 +64,11 @@
       text-decoration: none;
     }
     .admin-nav__logo-text {
-      font-family: var(--font-brand, "Tangerine", cursive) !important;
-      font-weight: 700 !important;
+      font-family: var(--font-brand, "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif) !important;
+      font-weight: 500 !important;
       font-style: normal !important;
-      font-size: clamp(1.35rem, 2.5vw, 1.65rem);
-      letter-spacing: 0;
+      font-size: clamp(0.875rem, 1.35vw, 1.05rem);
+      letter-spacing: -0.03em;
       line-height: 1;
       color: #0f172a;
     }
@@ -120,13 +120,12 @@
 
     @media (max-width: 640px) {
       .admin-nav__inner {
-        grid-template-columns: auto minmax(0, 1fr) auto;
         gap: 0.5rem;
         padding-left: 0.55rem;
         padding-right: 0.55rem;
       }
       .admin-nav__logo { gap: 0.4rem; }
-      .admin-nav__logo-text { font-size: clamp(1.2rem, 2.5vw, 1.5rem); }
+      .admin-nav__logo-text { font-size: clamp(0.82rem, 2.8vw, 0.98rem); }
       .admin-nav__title {
         font-size: 0.88rem;
         letter-spacing: -0.01em;
@@ -200,33 +199,6 @@
     }
     .workspace-dashboard__live-dot { display: none; }
 
-    .ws-insights {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 2rem 2.75rem;
-      padding: 0;
-    }
-    .ws-insight {
-      display: flex;
-      flex-direction: column;
-      gap: 0.2rem;
-      min-width: 4.5rem;
-    }
-    .ws-insight__val {
-      font-size: 1.5rem;
-      font-weight: 600;
-      letter-spacing: -0.03em;
-      color: var(--ws-ink);
-      font-variant-numeric: tabular-nums;
-      line-height: 1.1;
-    }
-    .ws-insight__val--accent { color: var(--ws-accent); }
-    .ws-insight__lbl {
-      font-size: 0.8125rem;
-      font-weight: 400;
-      color: var(--ws-muted);
-      letter-spacing: -0.01em;
-    }
     .ws-note {
       font-size: 0.8125rem;
       color: var(--ws-muted);
@@ -401,6 +373,144 @@
       opacity: 0.45;
       pointer-events: none;
       transition: opacity 0.25s ease;
+    }
+
+    /* ── Intelligence Banner ── */
+    .intel-banner {
+      display: flex; align-items: center; gap: 1.5rem;
+      background: #fff;
+      border: 1px solid rgba(15,23,42,0.08);
+      border-radius: 14px; padding: 1.1rem 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+    }
+    .intel-banner__score { font-size: 2rem; font-weight: 700; line-height: 1; color: #1a73e8; }
+    .intel-banner__score-label { font-size: 0.6rem; letter-spacing: 0.07em; color: #80868b; text-transform: uppercase; margin-top: 3px; }
+    .intel-banner__score-wrap { text-align: center; flex-shrink: 0; min-width: 4.25rem; padding-right: 1.25rem; border-right: 1px solid rgba(15,23,42,0.08); }
+    .intel-banner__body { flex: 1; min-width: 0; }
+    .intel-banner__briefing { font-size: 0.875rem; color: #202124; margin: 0 0 0.55rem; line-height: 1.5; }
+    .intel-banner__chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .intel-chip { font-size: 0.7rem; padding: 0.2rem 0.55rem; border-radius: 999px; font-weight: 500; }
+    .intel-chip--red { background: #fce8e6; color: #c5221f; }
+    .intel-chip--amber { background: #fef7e0; color: #b06000; }
+    .intel-chip--blue { background: #e8f0fe; color: #1a73e8; }
+    .intel-chip--green { background: #e6f4ea; color: #137333; }
+
+    /* ── KPI Pulse Row ── */
+    .kpi-pulse-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .kpi-card {
+      background: #fff; border: 1px solid rgba(15,23,42,0.07);
+      border-radius: 12px; padding: 1rem 1.1rem;
+      display: flex; align-items: flex-start; gap: 0.75rem;
+      transition: box-shadow 0.18s ease;
+    }
+    .kpi-card:hover { box-shadow: 0 4px 16px rgba(15,23,42,0.08); }
+    .kpi-card__icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .kpi-card--critical .kpi-card__icon { background: #fef2f2; color: #ef4444; }
+    .kpi-card--pulse .kpi-card__icon { background: #eff6ff; color: #3b82f6; }
+    .kpi-card--coverage .kpi-card__icon { background: #fffbeb; color: #f59e0b; }
+    .kpi-card--team .kpi-card__icon { background: #f0fdf4; color: #22c55e; }
+    .kpi-card__value { font-size: 1.5rem; font-weight: 700; line-height: 1; color: #0f172a; }
+    .kpi-card__label { font-size: 0.7rem; color: #64748b; margin-top: 0.25rem; letter-spacing: 0.01em; }
+    .kpi-card__sub { font-size: 0.68rem; color: #94a3b8; margin-top: 0.3rem; }
+    .kpi-card--critical.kpi-card--has-issues .kpi-card__value { color: #ef4444; }
+
+    /* ── Intelligence Feed / Tower Health split ── */
+    .intel-split { display: grid; grid-template-columns: 1fr 0.55fr; gap: 1.25rem; margin-bottom: 1.5rem; }
+    .intel-feed { display: flex; flex-direction: column; gap: 0.45rem; }
+    .feed-entry {
+      display: grid; grid-template-columns: auto 1fr auto;
+      align-items: start; gap: 0.6rem;
+      padding: 0.65rem 0.8rem; border-radius: 10px;
+      background: #fafbfc; border: 1px solid rgba(15,23,42,0.06);
+      font-size: 0.8rem;
+    }
+    .feed-entry__dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+    .feed-entry--critical .feed-entry__dot { background: #ef4444; }
+    .feed-entry--gap .feed-entry__dot { background: #f59e0b; }
+    .feed-entry--spike .feed-entry__dot { background: #8b5cf6; }
+    .feed-entry--pattern .feed-entry__dot { background: #3b82f6; }
+    .feed-entry__content { min-width: 0; }
+    .feed-entry__title { font-weight: 600; color: #0f172a; margin-bottom: 0.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .feed-entry__sub { color: #64748b; font-size: 0.73rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .feed-entry__badge { font-size: 0.67rem; padding: 0.15rem 0.42rem; border-radius: 999px; white-space: nowrap; align-self: start; font-weight: 500; }
+    .feed-entry--critical .feed-entry__badge { background: #fef2f2; color: #ef4444; }
+    .feed-entry--gap .feed-entry__badge { background: #fffbeb; color: #b45309; }
+    .feed-entry--spike .feed-entry__badge { background: #f5f3ff; color: #7c3aed; }
+    .feed-entry--pattern .feed-entry__badge { background: #eff6ff; color: #1d4ed8; }
+
+    /* ── Tower Health Grid ── */
+    .tower-health-grid { display: flex; flex-direction: column; gap: 0.45rem; }
+    .tower-card {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.55rem 0.7rem; border-radius: 9px;
+      border: 1px solid rgba(15,23,42,0.07); background: #fafbfc;
+    }
+    .tower-card__name { font-size: 0.78rem; font-weight: 600; color: #0f172a; min-width: 4.25rem; }
+    .tower-card__bar-track { flex: 1; height: 4px; border-radius: 2px; background: rgba(15,23,42,0.07); overflow: hidden; }
+    .tower-card__bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+    .tower-card--low .tower-card__bar-fill { background: #22c55e; }
+    .tower-card--mid .tower-card__bar-fill { background: #f59e0b; }
+    .tower-card--high .tower-card__bar-fill { background: #ef4444; }
+    .tower-card__count { font-size: 0.73rem; font-weight: 600; color: #475569; min-width: 2.25rem; text-align: right; }
+
+    /* ── Defect Patterns velocity ── */
+    .ws-row__velocity { font-size: 0.7rem; font-weight: 600; margin-left: 0.3rem; }
+    .ws-row__velocity--up { color: #ef4444; }
+    .ws-row__velocity--down { color: #22c55e; }
+    .ws-row__velocity--flat { color: #94a3b8; }
+    .ws-row__systemic { font-size: 0.63rem; color: #7c3aed; margin-left: 0.3rem; font-weight: 600; }
+
+    /* ── Team Activity ── */
+    .team-activity { display: flex; flex-direction: column; gap: 0; }
+    .team-member {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.5rem 0; border-bottom: 1px solid rgba(15,23,42,0.05);
+    }
+    .team-member:last-child { border-bottom: 0; }
+    .team-member__avatar { width: 27px; height: 27px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.68rem; font-weight: 700; color: #475569; flex-shrink: 0; }
+    .team-member__name { font-size: 0.8rem; font-weight: 500; color: #0f172a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .team-member__count { font-size: 0.75rem; font-weight: 600; color: #0f172a; }
+    .team-member__last { font-size: 0.68rem; color: #94a3b8; text-align: right; white-space: nowrap; }
+    .team-member--inactive .team-member__name { color: #94a3b8; }
+    .team-member--inactive .team-member__count { color: #f59e0b; }
+
+    /* ── Trend WoW ── */
+    .trend-wow { display: flex; gap: 1.25rem; margin-top: 0.4rem; font-size: 0.73rem; color: #64748b; padding: 0 2px; }
+    .trend-wow__item { display: flex; align-items: center; gap: 0.25rem; }
+    .trend-wow__arrow--up { color: #ef4444; }
+    .trend-wow__arrow--down { color: #22c55e; }
+
+    /* ── Heatmap toggle ── */
+    .heatmap-toggle { display: flex; }
+    .heatmap-toggle__btn { font-size: 0.7rem; padding: 0.2rem 0.55rem; border: 1px solid rgba(15,23,42,0.12); background: #fff; cursor: pointer; color: #64748b; transition: background 0.15s; }
+    .heatmap-toggle__btn:first-child { border-radius: 5px 0 0 5px; }
+    .heatmap-toggle__btn:last-child { border-radius: 0 5px 5px 0; border-left: 0; }
+    .heatmap-toggle__btn.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+    .ws-heatmap__cell--gap { background: rgba(245,158,11,0.12) !important; border: 1px dashed rgba(245,158,11,0.5); color: #b45309 !important; }
+
+    /* ── Activity Timeline ── */
+    .activity-timeline { display: flex; flex-direction: column; }
+    .timeline-entry { display: flex; align-items: flex-start; gap: 0.7rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(15,23,42,0.05); font-size: 0.8rem; }
+    .timeline-entry:last-child { border-bottom: 0; }
+    .timeline-entry__dot { width: 6px; height: 6px; border-radius: 50%; background: #cbd5e1; margin-top: 5px; flex-shrink: 0; }
+    .timeline-entry--upload .timeline-entry__dot { background: #3b82f6; }
+    .timeline-entry--system .timeline-entry__dot { background: #94a3b8; }
+    .timeline-entry__label { flex: 1; color: #334155; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .timeline-entry__actor { color: #94a3b8; font-size: 0.7rem; white-space: nowrap; }
+    .timeline-entry__time { color: #94a3b8; font-size: 0.7rem; white-space: nowrap; }
+    .ws-section__link { font-size: 0.73rem; color: #3b82f6; background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
+    .ws-section__link:hover { text-decoration: underline; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .kpi-pulse-row { grid-template-columns: repeat(2, 1fr); }
+      .intel-split { grid-template-columns: 1fr; }
+      .intel-banner { flex-direction: column; align-items: flex-start; }
+      .intel-banner__score-wrap { border-right: none; border-bottom: 1px solid rgba(15,23,42,0.08); padding-right: 0; padding-bottom: 0.75rem; display: flex; align-items: baseline; gap: 0.5rem; }
+    }
+    @media (max-width: 640px) {
+      .kpi-pulse-row { grid-template-columns: 1fr 1fr; }
     }
     .stats-row--metric {
       display: grid;
@@ -1347,6 +1457,13 @@
       line-height: 1.35;
       flex: 1 1 auto;
     }
+    #tab-all-uploads .upload-item__project {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 0.1rem;
+    }
     @media (max-width: 1100px) {
       #tab-all-uploads .upload-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1460,13 +1577,15 @@
       flex: 0 1 auto;
     }
     .all-uploads-filter-field--day,
-    .all-uploads-filter-field--user {
+    .all-uploads-filter-field--user,
+    .all-uploads-filter-field--project {
       flex: 0 0 auto;
       width: 148px;
       max-width: 148px;
     }
     .all-uploads-filter-field--day select,
-    .all-uploads-filter-field--user select {
+    .all-uploads-filter-field--user select,
+    .all-uploads-filter-field--project select {
       width: 100%;
       max-width: 148px;
     }
@@ -1544,12 +1663,6 @@
       gap: .75rem;
       margin-left: auto;
     }
-    .all-uploads-sort-stack {
-      display: flex;
-      flex-direction: column;
-      gap: .35rem;
-      align-items: flex-start;
-    }
     .all-uploads-clear-actions {
       display: flex;
       flex-wrap: wrap;
@@ -1567,14 +1680,6 @@
       max-width: 52rem;
       font-family: Montserrat, system-ui, sans-serif;
     }
-    .all-uploads-sort-toggle {
-      flex-shrink: 0;
-    }
-    .all-uploads-sort-toggle.is-sort-oldest {
-      border-color: rgba(37, 99, 235, 0.35);
-      background: rgba(239, 246, 255, 0.9);
-      color: #1d4ed8;
-    }
     @media (max-width: 720px) {
       .all-uploads-toolbar__side {
         width: 100%;
@@ -1590,32 +1695,13 @@
         border-top: none;
       }
       .all-uploads-filter-field--day,
-      .all-uploads-filter-field--user {
+      .all-uploads-filter-field--user,
+      .all-uploads-filter-field--project {
         width: min(148px, calc(50% - 0.35rem));
         max-width: none;
         flex: 1 1 calc(50% - 0.35rem);
       }
     }
-    .all-uploads-sort-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: .45rem;
-      margin-top: .1rem;
-    }
-    .all-uploads-sort-actions button {
-      border: none;
-      border-radius: 8px;
-      font-size: .76rem;
-      font-weight: 600;
-      font-family: Montserrat, system-ui, sans-serif;
-      padding: .45rem .75rem;
-      cursor: pointer;
-    }
-    .all-uploads-sort-apply {
-      background: #2563eb;
-      color: #fff;
-    }
-
     /* ── Upload card delete button ── */
     .upload-item {
       position: relative;
@@ -1770,25 +1856,27 @@
       cursor: not-allowed;
     }
 
-    /* ── Report preview modal (subtle — matches report panels) ── */
+    /* ── Report preview modal (minimal, single-canvas) ── */
     #reportPreviewModal .user-uploads-modal__card.report-preview-modal {
       display: flex;
       flex-direction: column;
-      width: min(680px, calc(100vw - 2rem));
-      max-height: min(78vh, 620px);
-      border-radius: 16px;
-      border: 1px solid #e8edf2;
+      width: min(900px, calc(100vw - 2rem));
+      max-height: min(95vh, 950px);
+      border-radius: 18px;
+      border: 1px solid rgba(15, 23, 42, 0.06);
       background: #fff;
-      box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
+      box-shadow: 0 24px 60px -28px rgba(15, 23, 42, 0.22),
+        0 6px 18px -10px rgba(15, 23, 42, 0.1);
+      overflow: hidden;
     }
     #reportPreviewModal .report-preview-modal__chrome {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
       gap: 0.65rem;
-      padding: 0.85rem 1rem;
+      padding: 1.1rem 1.25rem 0.85rem;
       background: transparent;
-      border-bottom: 1px solid #e8edf2;
+      border-bottom: 0;
       flex-shrink: 0;
     }
     #reportPreviewModal .report-preview-modal__title-wrap {
@@ -1798,14 +1886,14 @@
     #reportPreviewModal .report-preview-modal__title {
       margin: 0;
       font-family: Montserrat, system-ui, sans-serif;
-      font-size: 0.95rem;
+      font-size: 1rem;
       font-weight: 600;
       letter-spacing: -0.02em;
       color: #0f172a;
     }
     #reportPreviewModal .report-preview-modal__meta {
-      margin: 0.2rem 0 0;
-      font-size: 0.78rem;
+      margin: 0.25rem 0 0;
+      font-size: 0.8rem;
       color: #64748b;
       font-family: Montserrat, system-ui, sans-serif;
       letter-spacing: 0;
@@ -1815,80 +1903,46 @@
     }
     #reportPreviewModal .report-preview-modal__close {
       flex-shrink: 0;
-      width: 32px;
-      height: 32px;
+      width: 30px;
+      height: 30px;
       padding: 0;
       border: none;
       border-radius: 8px;
       background: transparent;
       color: #94a3b8;
-      font-size: 1.15rem;
+      font-size: 1.05rem;
       line-height: 1;
       cursor: pointer;
       box-shadow: none;
       transition: background 0.15s ease, color 0.15s ease;
     }
     #reportPreviewModal .report-preview-modal__close:hover {
-      color: #475569;
-      background: #f1f5f9;
+      color: #0f172a;
+      background: rgba(15, 23, 42, 0.04);
     }
     #reportPreviewModal .report-preview-modal__body {
-      padding: 1rem;
+      padding: 0 1.25rem 0.5rem;
       overflow: hidden;
       display: flex;
       flex-direction: column;
       min-height: 0;
       flex: 1 1 auto;
-      background: #fcfcfd;
+      background: transparent;
     }
-    .report-preview-modal-grid-wrap {
-      max-height: min(42vh, 360px);
-      overflow: auto;
-      padding: 0.65rem;
-      margin-top: 0.15rem;
-      background: #fff;
-      border: 1px solid #e8edf2;
-      border-radius: 12px;
-      -webkit-overflow-scrolling: touch;
-    }
-    #reportPreviewModal .report-preview-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
-      gap: 10px;
-    }
+    /* Toolbar: flat single row, text-link actions, hairline separator below */
     #reportPreviewModal .report-preview-toolbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 0.65rem;
+      gap: 0.85rem;
       flex-wrap: wrap;
-      margin-bottom: 0.65rem;
       flex-shrink: 0;
-      padding: 0.65rem 0.75rem;
-      background: #fff;
-      border: 1px solid #e8edf2;
-      border-radius: 12px;
-    }
-    #reportPreviewModal .report-preview-toolbar__actions {
-      display: flex;
-      align-items: center;
-      gap: 0.45rem;
-      flex-wrap: wrap;
-    }
-    #reportPreviewModal .report-preview-toolbar__btn {
-      min-height: 32px;
-      padding: 0.35rem 0.7rem;
-      font-size: 0.78rem;
-      border-radius: 999px;
-      border-color: #e2e8f0;
-      background: #fff;
-      color: #475569;
-      box-shadow: none;
-    }
-    #reportPreviewModal .report-preview-toolbar__btn:hover {
-      background: #f8fafc;
-      border-color: #cbd5e1;
-      color: #0f172a;
+      margin: 0 0 0.85rem;
+      padding: 0 0 0.85rem;
+      background: transparent;
+      border: 0;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+      border-radius: 0;
     }
     .report-preview-toolbar__hint {
       margin: 0;
@@ -1896,57 +1950,142 @@
       color: #64748b;
       font-family: Montserrat, system-ui, sans-serif;
       letter-spacing: 0;
-      line-height: 1.4;
+      line-height: 1.45;
     }
+    #reportPreviewModal .report-preview-toolbar__actions {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      flex-wrap: nowrap;
+    }
+    #reportPreviewModal .report-preview-toolbar__btn {
+      min-height: auto;
+      padding: 0.3rem 0.55rem;
+      font-family: Montserrat, system-ui, sans-serif;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+      border-radius: 7px;
+      border: 0;
+      background: transparent;
+      color: #475569;
+      box-shadow: none;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    #reportPreviewModal .report-preview-toolbar__btn:hover {
+      background: rgba(15, 23, 42, 0.045);
+      border-color: transparent;
+      color: #0f172a;
+    }
+    #reportPreviewModal .report-preview-toolbar__btn:focus-visible {
+      outline: 2px solid #2563eb;
+      outline-offset: 2px;
+    }
+    /* Grid: lives directly on the modal background, with soft scroll fade */
+    .report-preview-modal-grid-wrap {
+      max-height: min(70vh, 650px);
+      overflow: auto;
+      padding: 2px 2px 12px;
+      margin: 0;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(15, 23, 42, 0.18) transparent;
+      mask-image: linear-gradient(
+        to bottom,
+        transparent 0,
+        #000 10px,
+        #000 calc(100% - 14px),
+        transparent 100%
+      );
+      -webkit-mask-image: linear-gradient(
+        to bottom,
+        transparent 0,
+        #000 10px,
+        #000 calc(100% - 14px),
+        transparent 100%
+      );
+    }
+    .report-preview-modal-grid-wrap::-webkit-scrollbar {
+      width: 8px;
+    }
+    .report-preview-modal-grid-wrap::-webkit-scrollbar-thumb {
+      background: rgba(15, 23, 42, 0.14);
+      border-radius: 999px;
+    }
+    .report-preview-modal-grid-wrap::-webkit-scrollbar-thumb:hover {
+      background: rgba(15, 23, 42, 0.24);
+    }
+    #reportPreviewModal .report-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    /* Image cells: unselected = clearly faded; selected = clean image, no extra ring */
     #reportPreviewModal .report-preview-item {
       display: block;
       position: relative;
-      border: 1px solid #e8edf2;
+      border: 1px solid rgba(15, 23, 42, 0.06);
       border-radius: 10px;
       overflow: hidden;
-      background: #f8fafc;
-      aspect-ratio: 4 / 3;
-      max-height: 88px;
+      background: #f6f7f9;
+      aspect-ratio: 1 / 1;
+      max-height: none;
       box-shadow: none;
       cursor: pointer;
-      transition: border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+      transition: transform 0.18s ease, box-shadow 0.18s ease,
+        border-color 0.18s ease, opacity 0.18s ease, filter 0.18s ease;
     }
-    #reportPreviewModal .report-preview-item--selected {
-      border-color: #93c5fd;
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    #reportPreviewModal .report-preview-item:hover {
+      border-color: rgba(15, 23, 42, 0.14);
+      box-shadow: 0 6px 14px -8px rgba(15, 23, 42, 0.18);
+      transform: translateY(-1px);
     }
     #reportPreviewModal .report-preview-item:not(.report-preview-item--selected) {
-      opacity: 0.72;
+      opacity: 0.5;
+      filter: grayscale(35%);
     }
+    #reportPreviewModal .report-preview-item:not(.report-preview-item--selected):hover {
+      opacity: 0.75;
+      filter: grayscale(15%);
+    }
+    /* Small corner check badge: white circle with thin blue check when selected,
+       hollow outline circle when unselected. No big blue square. */
     #reportPreviewModal .report-preview-item__toggle {
       position: absolute;
       top: 6px;
-      left: 6px;
+      right: 6px;
+      left: auto;
       z-index: 2;
       width: 18px;
       height: 18px;
       margin: 0;
       padding: 0;
-      border: 1.5px solid rgba(255, 255, 255, 0.9);
-      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 999px;
       background: rgba(15, 23, 42, 0.28);
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
       cursor: pointer;
       appearance: none;
       -webkit-appearance: none;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
     #reportPreviewModal .report-preview-item__toggle:checked {
-      background: #2563eb;
+      background: #fff;
       border-color: #fff;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.22);
     }
     #reportPreviewModal .report-preview-item__toggle:checked::after {
       content: "";
       position: absolute;
-      left: 4px;
-      top: 1px;
+      left: 5px;
+      top: 2px;
       width: 4px;
       height: 8px;
-      border: solid #fff;
+      border: solid #2563eb;
       border-width: 0 1.5px 1.5px 0;
       transform: rotate(45deg);
     }
@@ -1957,25 +2096,27 @@
     #reportPreviewModal .report-preview-item img {
       width: 100%;
       height: 100%;
-      max-height: 88px;
+      max-height: none;
       object-fit: cover;
       display: block;
     }
     .report-preview-empty {
-      font-size: 0.78rem;
+      font-size: 0.82rem;
       color: #64748b;
       font-family: Montserrat, system-ui, sans-serif;
-      margin: 0.35rem 0 0;
+      margin: 1.5rem 0 0;
+      text-align: center;
     }
+    /* Footer: no harsh border-top, soft whitespace separator */
     #reportPreviewModal .report-preview-modal__footer {
       display: none;
       flex-shrink: 0;
       flex-direction: column;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.85rem 1rem 1rem;
-      border-top: 1px solid #e8edf2;
-      background: #fff;
+      padding: 0.95rem 1.25rem 1.15rem;
+      border-top: 0;
+      background: transparent;
     }
     #reportPreviewModal .report-preview-modal__footer--visible {
       display: flex;
@@ -1992,27 +2133,257 @@
     #reportPreviewModal .report-preview-modal__status--visible {
       display: block;
     }
+
+    /* ═══ Premium progress widget (Material-style) ═══ */
+    #reportPreviewModal .report-progress {
+      display: none;
+      width: 100%;
+      max-width: 340px;
+      margin: 0 auto;
+      padding: 0;
+      font-family: "Google Sans Flex", "Google Sans", Montserrat, system-ui, sans-serif;
+      --rp-accent: #1a73e8;
+      --rp-accent-soft: rgba(26, 115, 232, 0.12);
+      --rp-track: #e8eaed;
+      animation: rp-fade-in 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #reportPreviewModal .report-progress--visible {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+    #reportPreviewModal .report-progress[data-phase="analyzing"] { --rp-accent: #1a73e8; --rp-accent-soft: rgba(26, 115, 232, 0.12); }
+    #reportPreviewModal .report-progress[data-phase="excel"]     { --rp-accent: #107C41; --rp-accent-soft: rgba(16, 124, 65, 0.12); }
+    #reportPreviewModal .report-progress[data-phase="pptx"]      { --rp-accent: #C43E1C; --rp-accent-soft: rgba(196, 62, 28, 0.12); }
+    #reportPreviewModal .report-progress[data-phase="prep"]      { --rp-accent: #5f6368; --rp-accent-soft: rgba(95, 99, 104, 0.12); }
+    #reportPreviewModal .report-progress[data-phase="error"]     { --rp-accent: #d93025; --rp-accent-soft: rgba(217, 48, 37, 0.12); }
+
+    #reportPreviewModal .report-progress__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      min-height: 22px;
+    }
+    #reportPreviewModal .report-progress__chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 4px 11px 4px 8px;
+      border-radius: 999px;
+      background: var(--rp-accent-soft);
+      color: var(--rp-accent);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #reportPreviewModal .report-progress__chip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      position: relative;
+    }
+    #reportPreviewModal .report-progress__svg {
+      position: absolute;
+      inset: 0;
+      width: 14px;
+      height: 14px;
+      opacity: 0;
+      transform: scale(0.7);
+      transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.32s cubic-bezier(0.34, 1.25, 0.64, 1);
+    }
+    #reportPreviewModal .report-progress[data-phase="prep"]      .report-progress__svg--prep,
+    #reportPreviewModal .report-progress[data-phase="analyzing"] .report-progress__svg--analyzing,
+    #reportPreviewModal .report-progress[data-phase="excel"]     .report-progress__svg--excel,
+    #reportPreviewModal .report-progress[data-phase="pptx"]      .report-progress__svg--pptx,
+    #reportPreviewModal .report-progress[data-phase="error"]     .report-progress__svg--error {
+      opacity: 1;
+      transform: scale(1);
+    }
+    /* Analyzing — gentle rotate on the magnifying glass for "scanning" feel */
+    #reportPreviewModal .report-progress[data-phase="analyzing"] .report-progress__svg--analyzing {
+      animation: rp-scan 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      transform-box: fill-box;
+      transform-origin: 7px 7px;
+    }
+    /* Excel — branded green app tile with subtle lift + shine sweep */
+    #reportPreviewModal .report-progress__svg--excel,
+    #reportPreviewModal .report-progress__svg--pptx {
+      filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.18));
+    }
+    #reportPreviewModal .report-progress[data-phase="excel"] .report-progress__svg--excel {
+      animation: rp-tile-lift 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+    /* PPTX — branded orange app tile, same lift pattern offset for variety */
+    #reportPreviewModal .report-progress[data-phase="pptx"] .report-progress__svg--pptx {
+      animation: rp-tile-lift 2s cubic-bezier(0.4, 0, 0.2, 1) infinite 0.2s;
+    }
+    /* Prep — clock hands tick */
+    #reportPreviewModal .report-progress[data-phase="prep"] .report-progress__svg--prep {
+      animation: rp-pulse-soft 1.4s ease-in-out infinite;
+    }
+
+    #reportPreviewModal .report-progress__chip-label {
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    #reportPreviewModal .report-progress__count {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: #5f6368;
+      letter-spacing: 0.01em;
+      font-variant-numeric: tabular-nums;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 3px;
+    }
+    #reportPreviewModal .report-progress__count[hidden] { display: none; }
+    #reportPreviewModal .report-progress__count-current {
+      color: var(--rp-accent);
+      font-weight: 600;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      display: inline-block;
+    }
+    #reportPreviewModal .report-progress__count-current.is-bump {
+      transform: translateY(-1px) scale(1.08);
+    }
+    #reportPreviewModal .report-progress__count-sep { opacity: 0.55; }
+    #reportPreviewModal .report-progress__count-total { color: #5f6368; }
+
+    #reportPreviewModal .report-progress__bar {
+      position: relative;
+      width: 100%;
+      height: 4px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: transparent;
+    }
+    #reportPreviewModal .report-progress__bar-track {
+      position: absolute;
+      inset: 0;
+      background: var(--rp-track);
+      border-radius: inherit;
+    }
+    #reportPreviewModal .report-progress__bar-fill {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: var(--p, 0%);
+      background: linear-gradient(90deg, var(--rp-accent) 0%, var(--rp-accent) 60%, color-mix(in srgb, var(--rp-accent) 80%, white) 100%);
+      border-radius: inherit;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    /* Shimmer on the determinate fill — Google-style live surface */
+    #reportPreviewModal .report-progress[data-mode="determinate"] .report-progress__bar-fill::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.45) 50%, transparent 100%);
+      animation: rp-shimmer 1.8s linear infinite;
+    }
+    #reportPreviewModal .report-progress__bar-blob {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 30%;
+      background: linear-gradient(90deg, transparent, var(--rp-accent) 40%, var(--rp-accent) 60%, transparent);
+      border-radius: inherit;
+      opacity: 0;
+      will-change: transform, width;
+    }
+    /* Material indeterminate — the signature sliding blob pattern */
+    #reportPreviewModal .report-progress[data-mode="indeterminate"] .report-progress__bar-fill { display: none; }
+    #reportPreviewModal .report-progress[data-mode="indeterminate"] .report-progress__bar-blob {
+      opacity: 1;
+      animation: rp-indeterminate 2.1s cubic-bezier(0.65, 0.815, 0.735, 0.395) infinite;
+    }
+    #reportPreviewModal .report-progress[data-mode="determinate"] .report-progress__bar-blob { display: none; }
+
+    #reportPreviewModal .report-progress__msg {
+      margin: 0;
+      font-size: 0.72rem;
+      color: #5f6368;
+      letter-spacing: 0;
+      text-align: center;
+      min-height: 0;
+      transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #reportPreviewModal .report-progress[data-phase="error"] .report-progress__msg { color: #d93025; }
+
+    @keyframes rp-fade-in {
+      from { opacity: 0; transform: translateY(2px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes rp-shimmer {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    @keyframes rp-indeterminate {
+      0%   { left: -35%; width: 30%; }
+      55%  { left: 60%;  width: 55%; }
+      100% { left: 110%; width: 30%; }
+    }
+    @keyframes rp-scan {
+      0%, 100% { transform: rotate(0deg) scale(1); }
+      50%      { transform: rotate(-10deg) scale(1.06); }
+    }
+    @keyframes rp-pulse-soft {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(1.08); }
+    }
+    @keyframes rp-tile-lift {
+      0%, 100% { transform: scale(1) translateY(0) rotate(0deg); }
+      50%      { transform: scale(1.1) translateY(-0.6px) rotate(-3deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #reportPreviewModal .report-progress,
+      #reportPreviewModal .report-progress__svg,
+      #reportPreviewModal .report-progress__count-current,
+      #reportPreviewModal .report-progress__bar-fill,
+      #reportPreviewModal .report-progress__bar-fill::after,
+      #reportPreviewModal .report-progress__bar-blob {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
     #reportPreviewModal #reportGenerateBtn {
-      min-width: 10.5rem;
-      min-height: 40px;
-      padding: 0.62rem 1.25rem;
+      min-width: 11rem;
+      min-height: 42px;
+      padding: 0.65rem 1.4rem;
       border-radius: 999px;
       border: 1px solid #2563eb;
       background: #2563eb;
       color: #fff;
       font-family: Montserrat, system-ui, sans-serif;
-      font-size: 0.84rem;
+      font-size: 0.85rem;
       font-weight: 600;
-      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.18);
+      letter-spacing: -0.005em;
+      box-shadow: 0 6px 18px -8px rgba(37, 99, 235, 0.45);
+      transition: background 0.15s ease, transform 0.12s ease,
+        box-shadow 0.18s ease;
     }
     #reportPreviewModal #reportGenerateBtn:hover:not(:disabled) {
       background: #1d4ed8;
       border-color: #1d4ed8;
+      box-shadow: 0 10px 24px -10px rgba(37, 99, 235, 0.55);
+    }
+    #reportPreviewModal #reportGenerateBtn:active:not(:disabled) {
+      transform: translateY(1px);
+      box-shadow: 0 4px 12px -8px rgba(37, 99, 235, 0.45);
     }
     #reportPreviewModal #reportGenerateBtn:disabled {
-      opacity: 0.48;
-      background: #94a3b8;
-      border-color: #94a3b8;
+      opacity: 0.55;
+      background: #cbd5e1;
+      border-color: #cbd5e1;
+      color: #fff;
       box-shadow: none;
     }
     .report-preview-grid {
@@ -2112,6 +2483,7 @@
     }
     .report-workflow-hero__filters .form-group--day,
     .report-workflow-hero__filters .form-group--user,
+    .report-workflow-hero__filters .form-group--project,
     .report-workflow-hero__filters .form-group--date {
       flex: none;
       min-width: 0;
@@ -2337,6 +2709,11 @@
       flex: 1 1 200px;
       min-width: 160px;
       max-width: 280px;
+    }
+    .report-workflow-filters .form-group--project {
+      flex: 1 1 180px;
+      min-width: 140px;
+      max-width: 240px;
     }
     .report-workflow-filters .form-group--date {
       flex: 0 1 auto;
@@ -2648,6 +3025,55 @@
       color: #6e6e73;
       padding: 0 0.45rem;
       letter-spacing: -0.01em;
+    }
+    .logs-pagination__jump {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.32rem;
+      min-height: 32px;
+      margin-left: 0.25rem;
+      padding: 0.18rem 0.24rem 0.18rem 0.55rem;
+      border: 0.5px solid rgba(0, 0, 0, 0.12);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.03);
+    }
+    .logs-pagination__jump-label,
+    .logs-pagination__jump-total {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: #6e6e73;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+    .logs-pagination__jump-input {
+      width: 3.2rem;
+      height: 26px;
+      padding: 0 0.35rem;
+      border: 0.5px solid rgba(0, 0, 0, 0.16);
+      border-radius: 7px;
+      background: linear-gradient(180deg, #fff 0%, #f8f8fa 100%);
+      color: #1d1d1f;
+      font: inherit;
+      font-size: 0.76rem;
+      font-weight: 600;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .logs-pagination__jump-input:focus {
+      border-color: rgba(37, 99, 235, 0.62);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+    }
+    .logs-pagination__jump-go {
+      width: auto;
+      min-width: 34px;
+      height: 26px;
+      padding: 0 0.55rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 650;
     }
 
     /* Activity Logs — compact outer card */
@@ -3162,7 +3588,8 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .report-workflow-filters .form-group--day,
-      .report-workflow-filters .form-group--user {
+      .report-workflow-filters .form-group--user,
+      .report-workflow-filters .form-group--project {
         max-width: none;
       }
     }
@@ -3172,6 +3599,7 @@
       }
       .report-workflow-filters .form-group--day,
       .report-workflow-filters .form-group--user,
+      .report-workflow-filters .form-group--project,
       .report-workflow-filters .form-group--date {
         flex: 1 1 auto;
         min-width: 0;
@@ -3663,15 +4091,6 @@
         font-size: 1.45rem;
       }
 
-      .ws-insights {
-        gap: 1.35rem 1.75rem;
-      }
-
-      .ws-insight {
-        min-width: calc(50% - 0.9rem);
-        flex: 1 1 calc(50% - 0.9rem);
-      }
-
       .ws-duo {
         grid-template-columns: 1fr;
         gap: 2rem;
@@ -3775,6 +4194,7 @@
 
       .all-uploads-filter-field--day,
       .all-uploads-filter-field--user,
+      .all-uploads-filter-field--project,
       .all-uploads-filter-field--custom-date {
         width: 100%;
         max-width: none;
@@ -3783,6 +4203,7 @@
 
       .all-uploads-filter-field--day select,
       .all-uploads-filter-field--user select,
+      .all-uploads-filter-field--project select,
       .all-uploads-toolbar.admin-mac-toolbar select,
       .all-uploads-toolbar.admin-mac-toolbar input[type="date"] {
         width: 100%;
@@ -3797,14 +4218,10 @@
         gap: 0.5rem;
       }
 
-      .all-uploads-sort-stack,
       .all-uploads-clear-actions {
         width: 100%;
         border: none;
         padding: 0;
-      }
-
-      .all-uploads-clear-actions {
         flex-direction: column;
         align-items: stretch;
       }
@@ -3812,11 +4229,6 @@
       .all-uploads-clear-actions .admin-macos-btn {
         width: 100%;
         justify-content: center;
-        min-height: 44px;
-      }
-
-      .all-uploads-sort-toggle {
-        width: 100%;
         min-height: 44px;
       }
 
@@ -3927,11 +4339,6 @@
     }
 
     @media (max-width: 380px) {
-      .ws-insight {
-        min-width: 100%;
-        flex: 1 1 100%;
-      }
-
       .users-summary {
         grid-template-columns: 1fr;
       }
@@ -4310,7 +4717,8 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       #admin-report-view .report-workflow-filters .form-group--day,
-      #admin-report-view .report-workflow-filters .form-group--user {
+      #admin-report-view .report-workflow-filters .form-group--user,
+      #admin-report-view .report-workflow-filters .form-group--project {
         max-width: none;
       }
       #admin-report-view .report-preview-grid {
@@ -4326,6 +4734,7 @@
       }
       #admin-report-view .report-workflow-filters .form-group--day,
       #admin-report-view .report-workflow-filters .form-group--user,
+      #admin-report-view .report-workflow-filters .form-group--project,
       #admin-report-view .report-workflow-filters .form-group--date {
         flex: none;
         min-width: 0;
@@ -4743,46 +5152,79 @@
 
     <div class="workspace-dashboard" id="workspaceDashboard">
       <header class="workspace-dashboard__head">
-        <h2 class="workspace-dashboard__title">Overview</h2>
+        <h2 class="workspace-dashboard__title">Intelligence</h2>
         <span class="workspace-dashboard__live" id="workspaceLiveText">Syncing…</span>
       </header>
 
-      <div class="ws-insights" id="workspaceInsights"></div>
-      <p class="ws-note ws-note--alert" id="wsCriticalNote" hidden></p>
-
-      <div class="ws-stack" id="workspaceGrid">
-        <section class="ws-section">
-          <div class="ws-section__head">
-            <h3 class="ws-section__title">Upload volume</h3>
-            <span class="ws-section__meta" id="wsVolumeMeta">14 days</span>
-          </div>
-          <div class="ws-line-wrap" id="wsUploadTrend"></div>
-        </section>
-
-        <div class="ws-duo">
-          <section class="ws-section">
-            <div class="ws-section__head">
-              <h3 class="ws-section__title">Top categories</h3>
-            </div>
-            <div class="ws-rows" id="wsCategories"></div>
-          </section>
-          <section class="ws-section">
-            <div class="ws-section__head">
-              <h3 class="ws-section__title">Busiest areas</h3>
-              <span class="ws-section__meta">Defect count</span>
-            </div>
-            <div class="ws-rows" id="wsHotspots"></div>
-          </section>
+      <!-- BAND 1: Intelligence Banner -->
+      <div class="intel-banner" id="intelBanner">
+        <div class="intel-banner__score-wrap">
+          <div class="intel-banner__score" id="siteHealthScore">—</div>
+          <div class="intel-banner__score-label">Site Health</div>
         </div>
+        <div class="intel-banner__body">
+          <p class="intel-banner__briefing" id="intelBriefing">Loading intelligence…</p>
+          <div class="intel-banner__chips" id="intelChips"></div>
+        </div>
+      </div>
 
+      <!-- BAND 3: Intelligence Feed -->
+      <section class="ws-section">
+        <div class="ws-section__head">
+          <h3 class="ws-section__title">Intelligence Feed</h3>
+          <span class="ws-section__meta" id="feedMeta"></span>
+        </div>
+        <div class="intel-feed" id="intelFeed"></div>
+      </section>
+
+      <!-- BAND 4: Defect Patterns + Team Activity -->
+      <div class="ws-duo">
         <section class="ws-section">
           <div class="ws-section__head">
-            <h3 class="ws-section__title">Location density</h3>
-            <span class="ws-section__meta">30 days</span>
+            <h3 class="ws-section__title">Defect Patterns</h3>
+            <span class="ws-section__meta">7d vs prev week</span>
           </div>
-          <div id="wsHeatmap"></div>
+          <div class="ws-rows" id="wsDefectPatterns"></div>
+        </section>
+        <section class="ws-section">
+          <div class="ws-section__head">
+            <h3 class="ws-section__title">Team Activity</h3>
+            <span class="ws-section__meta">Last 7 days</span>
+          </div>
+          <div class="team-activity" id="wsTeamActivity"></div>
         </section>
       </div>
+
+      <!-- BAND 5: Upload Trend -->
+      <section class="ws-section">
+        <div class="ws-section__head">
+          <h3 class="ws-section__title">Upload Trend</h3>
+          <span class="ws-section__meta" id="wsVolumeMeta">14 days</span>
+        </div>
+        <div class="ws-line-wrap" id="wsUploadTrend"></div>
+        <div class="trend-wow" id="trendWoW"></div>
+      </section>
+
+      <!-- BAND 6: Coverage Heatmap -->
+      <section class="ws-section">
+        <div class="ws-section__head">
+          <h3 class="ws-section__title">Location Coverage</h3>
+          <div class="heatmap-toggle" id="heatmapToggle">
+            <button class="heatmap-toggle__btn active" data-mode="density">Defect Density</button>
+            <button class="heatmap-toggle__btn" data-mode="coverage">Coverage Gaps</button>
+          </div>
+        </div>
+        <div id="wsHeatmap"></div>
+      </section>
+
+      <!-- BAND 7: Activity Timeline -->
+      <section class="ws-section">
+        <div class="ws-section__head">
+          <h3 class="ws-section__title">Recent Activity</h3>
+          <button class="ws-section__link" id="timelineViewAll">View all logs →</button>
+        </div>
+        <div class="activity-timeline" id="wsTimeline"></div>
+      </section>
     </div>
     </div>
 
@@ -4896,6 +5338,12 @@
               <option value="all">All users</option>
             </select>
           </div>
+          <div class="all-uploads-filter-field all-uploads-filter-field--project">
+            <label for="allUploadsProjectFilter">Project</label>
+            <select id="allUploadsProjectFilter">
+              <option value="all">All projects</option>
+            </select>
+          </div>
           <div class="all-uploads-filter-field all-uploads-filter-field--custom-date" id="allUploadsDateFromWrap" style="display:none">
             <label for="allUploadsDateFrom">From</label>
             <input type="date" id="allUploadsDateFrom" />
@@ -4906,21 +5354,6 @@
           </div>
         </div>
         <div class="all-uploads-toolbar__side">
-          <button
-            type="button"
-            class="admin-macos-btn admin-macos-btn--secondary admin-macos-btn--icon all-uploads-sort-toggle"
-            id="allUploadsSortToggle"
-            aria-label="Sort: Newest first"
-            title="Sort: Newest first"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-            </svg>
-          </button>
-          <select id="allUploadsSortOrder" hidden aria-hidden="true" tabindex="-1">
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-          </select>
           <div class="all-uploads-clear-actions">
             <button type="button" class="admin-macos-btn admin-macos-btn--secondary admin-macos-btn--icon" id="clearFilteredUploadsBtn" aria-label="Clear matching uploads" title="Clear matching">
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -4935,7 +5368,7 @@
           </div>
         </div>
       </div>
-      <p class="all-uploads-bulk-hint">The filter-clear icon removes uploads matching the Day and User filters (including custom dates). The trash icon removes every upload in the system and ignores filters.</p>
+      <p class="all-uploads-bulk-hint">The filter-clear icon removes uploads matching the Day, User, and Project filters (including custom dates). The trash icon removes every upload in the system and ignores filters.</p>
       <div id="allUploadsContainer"></div>
       <div class="logs-pagination" id="allUploadsPagination" aria-label="All uploads pagination"></div>
       <div id="allUploadsEmpty" class="empty" style="display:none">No uploads found.</div>
@@ -5000,6 +5433,13 @@
             </div>
             <div class="report-workflow-hero__filters">
               <div class="report-workflow-filters">
+                <div class="form-group form-group--project">
+                  <label for="reportProject">Project</label>
+                  <select id="reportProject">
+                    <option value="">Select project</option>
+                    <option value="all">All Projects</option>
+                  </select>
+                </div>
                 <div class="form-group form-group--day">
                   <label for="reportDayFilter">Day</label>
                   <select id="reportDayFilter">
@@ -5097,7 +5537,49 @@
         <p class="report-preview-empty" id="reportPreviewEmpty" style="display:none">No images found for current selection.</p>
       </div>
       <div class="report-preview-modal__footer" id="reportGenerateWrap">
-        <p class="report-preview-modal__status" id="reportGenerateStatus"></p>
+        <div class="report-progress" id="reportGenerateStatus" role="status" aria-live="polite">
+          <div class="report-progress__header">
+            <div class="report-progress__chip" data-phase="prep">
+              <span class="report-progress__chip-icon" aria-hidden="true">
+                <svg class="report-progress__svg report-progress__svg--prep" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="8" cy="8" r="6"/>
+                  <path d="M8 5v3l2 1.4"/>
+                </svg>
+                <svg class="report-progress__svg report-progress__svg--analyzing" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="7" cy="7" r="3.6"/>
+                  <path d="M12.8 12.8L10 10"/>
+                  <path d="M12.2 2.3l0.45 1.35 1.35 0.45-1.35 0.45-0.45 1.35-0.45-1.35-1.35-0.45 1.35-0.45z" fill="currentColor" stroke="none"/>
+                </svg>
+                <svg class="report-progress__svg report-progress__svg--excel" viewBox="0 0 16 16" fill="none">
+                  <rect x="2" y="2" width="12" height="12" rx="2.4" fill="#107C41"/>
+                  <rect x="2" y="2" width="12" height="5.5" rx="2.4" fill="#1ba961" opacity="0.35"/>
+                  <path d="M5.5 5.5L10.5 10.5M10.5 5.5L5.5 10.5" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
+                <svg class="report-progress__svg report-progress__svg--pptx" viewBox="0 0 16 16" fill="none">
+                  <rect x="2" y="2" width="12" height="12" rx="2.4" fill="#C43E1C"/>
+                  <rect x="2" y="2" width="12" height="5.5" rx="2.4" fill="#ed6c47" opacity="0.45"/>
+                  <path d="M6 4.5v7M6 4.5h3a2 2 0 0 1 0 4H6" stroke="#ffffff" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                </svg>
+                <svg class="report-progress__svg report-progress__svg--error" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="8" cy="8" r="6"/>
+                  <path d="M8 4.8v3.4M8 11h.01" stroke-width="1.8"/>
+                </svg>
+              </span>
+              <span class="report-progress__chip-label" id="reportProgressLabel">Preparing</span>
+            </div>
+            <div class="report-progress__count" id="reportProgressCount" hidden>
+              <span class="report-progress__count-current" id="reportProgressCurrent">0</span>
+              <span class="report-progress__count-sep">/</span>
+              <span class="report-progress__count-total" id="reportProgressTotal">0</span>
+            </div>
+          </div>
+          <div class="report-progress__bar" data-mode="indeterminate" id="reportProgressBar">
+            <div class="report-progress__bar-track"></div>
+            <div class="report-progress__bar-fill" id="reportProgressFill" style="--p: 0%"></div>
+            <div class="report-progress__bar-blob" aria-hidden="true"></div>
+          </div>
+          <p class="report-progress__msg" id="reportProgressMsg"></p>
+        </div>
         <button type="button" class="admin-macos-btn admin-macos-btn--primary" id="reportGenerateBtn" disabled>Generate Report</button>
       </div>
     </div>
@@ -5880,46 +6362,13 @@
       return 4;
     }
 
-    function wsRenderInsights(kpis, ai) {
-      const el = document.getElementById("workspaceInsights");
-      if (!el || !kpis) return;
-      const reportsWeek = ai?.reports_week ?? kpis.ai_success_week ?? 0;
-      const items = [
-        { val: kpis.uploads_today ?? 0, label: "Uploads today", accent: true },
-        { val: kpis.active_uploaders_7d ?? 0, label: "Active uploaders" },
-        { val: reportsWeek, label: "Reports this week" },
-        { val: kpis.reports_today ?? 0, label: "Reports today" },
-      ];
-      el.innerHTML = items.map((item) => `
-        <div class="ws-insight">
-          <span class="ws-insight__val${item.accent ? " ws-insight__val--accent" : ""}">${item.val}</span>
-          <span class="ws-insight__lbl">${item.label}</span>
-        </div>
-      `).join("");
-
-      const note = document.getElementById("wsCriticalNote");
-      if (note) {
-        const n = kpis.critical_count ?? 0;
-        if (n > 0) {
-          note.hidden = false;
-          note.innerHTML = `<strong>${n}</strong> observation${n === 1 ? "" : "s"} flagged for structural or safety review in the last 30 days.`;
-        } else {
-          note.hidden = true;
-          note.textContent = "";
-        }
-      }
-    }
-
     function wsRenderLineChart(container, rows) {
       if (!container) return;
       if (!rows?.length) {
         container.innerHTML = `<div class="ws-empty">No upload data yet.</div>`;
         return;
       }
-      const w = 320;
-      const h = 56;
-      const padX = 4;
-      const padY = 6;
+      const w = 320; const h = 56; const padX = 4; const padY = 6;
       const counts = rows.map((r) => r.count);
       const max = Math.max(...counts, 1);
       const n = rows.length;
@@ -5933,13 +6382,10 @@
       const total = counts.reduce((s, c) => s + c, 0);
       const meta = document.getElementById("wsVolumeMeta");
       if (meta) meta.textContent = `${total} in 14 days`;
-
       const labelEvery = Math.max(1, Math.floor(n / 5));
       const labels = rows
         .filter((_, i) => i === 0 || i === n - 1 || i % labelEvery === 0)
-        .map((r) => `<span>${escapeHtml(r.label || "")}</span>`)
-        .join("");
-
+        .map((r) => `<span>${escapeHtml(r.label || "")}</span>`).join("");
       container.innerHTML = `
         <svg class="ws-line-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
           <defs>
@@ -5951,34 +6397,10 @@
           <polygon class="ws-line-area" points="${areaPts}"/>
           <polyline points="${linePts}"/>
         </svg>
-        <div class="ws-line-labels">${labels}</div>
-      `;
+        <div class="ws-line-labels">${labels}</div>`;
     }
 
-    function wsRenderMonoRows(container, rows, emptyLabel, opts = {}) {
-      if (!container) return;
-      const limit = opts.limit ?? 5;
-      const accentTop = !!opts.accentTop;
-      const slice = (rows || []).slice(0, limit);
-      if (!slice.length) {
-        container.innerHTML = `<div class="ws-empty">${emptyLabel}</div>`;
-        return;
-      }
-      const max = Math.max(...slice.map((r) => r.count), 1);
-      container.innerHTML = slice.map((row, i) => {
-        const pct = Math.max(4, Math.round((row.count / max) * 100));
-        const fillCls = accentTop && i === 0 ? " ws-row__fill--accent" : "";
-        return `
-          <div class="ws-row">
-            <span class="ws-row__label" title="${escapeHtml(row.name)}">${escapeHtml(row.name)}</span>
-            <div class="ws-row__track"><div class="ws-row__fill${fillCls}" style="width:${pct}%"></div></div>
-            <span class="ws-row__n">${row.count}</span>
-          </div>
-        `;
-      }).join("");
-    }
-
-    function wsRenderHeatmap(container, heatmap) {
+    function wsRenderHeatmap(container, heatmap, gapSet) {
       if (!container) return;
       const towers = heatmap?.towers || [];
       const floors = heatmap?.floors || [];
@@ -5996,28 +6418,284 @@
         floors.forEach((floor) => {
           const count = cellMap.get(`${tower}|${floor}`) || 0;
           const level = wsHeatLevel(count, max);
-          html += `<div class="ws-heatmap__cell" data-level="${level}" title="${count}">${count || ""}</div>`;
+          const isGap = gapSet?.has(`${tower}|${floor}`);
+          const gapCls = isGap ? " ws-heatmap__cell--gap" : "";
+          const title = isGap ? `${count} defects · inspection gap` : String(count);
+          html += `<div class="ws-heatmap__cell${gapCls}" data-level="${level}" title="${title}">${count || ""}</div>`;
         });
       });
       html += `</div>`;
       container.innerHTML = html;
     }
 
+    function wsRelTime(isoStr) {
+      if (!isoStr) return "";
+      const diff = Date.now() - new Date(isoStr).getTime();
+      if (diff < 60000) return "just now";
+      if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+      if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+      return `${Math.floor(diff / 86400000)}d ago`;
+    }
+
+    function computeSiteHealthScore(data) {
+      let score = 100;
+      const critical = data.kpis?.critical_count ?? 0;
+      score -= Math.min(30, critical * 5);
+      const gaps = (data.coverage_gaps || []).length;
+      score -= Math.min(20, gaps * 4);
+      const uploads7d = data.stats?.uploads_week ?? 0;
+      if (uploads7d === 0) score -= 20;
+      else if (uploads7d < 5) score -= 10;
+      const topCatShare = (data.by_category?.[0]?.count ?? 0) / Math.max(1, data.stats?.total_uploads ?? 1);
+      if (topCatShare > 0.5) score -= 10;
+      return Math.max(0, Math.min(100, score));
+    }
+
+    function buildBriefing(data) {
+      const uploads = data.stats?.uploads_week ?? 0;
+      const critical = data.kpis?.critical_count ?? 0;
+      const topCat = data.by_category?.[0]?.name ?? null;
+      const topTower = data.heatmap?.towers?.[0] ?? null;
+      let text = `${uploads} upload${uploads !== 1 ? "s" : ""} this week`;
+      if (topCat) text += ` — ${topCat} is the leading issue type`;
+      if (topTower && topTower !== "—") text += ` · Tower ${topTower} most active`;
+      if (critical > 0) text += ` · ${critical} critical item${critical !== 1 ? "s" : ""} need${critical === 1 ? "s" : ""} attention`;
+      return text + ".";
+    }
+
+    function buildIntelligenceFeed(data) {
+      const entries = [];
+      (data.critical?.recent || []).slice(0, 3).forEach(item => {
+        entries.push({ type: "critical", title: item.label || "Critical defect", sub: item.area || "", badge: "Critical", at: item.at });
+      });
+      (data.coverage_gaps || []).slice(0, 3).forEach(gap => {
+        const loc = gap.floor ? `Tower ${gap.tower}, Floor ${gap.floor}` : `Tower ${gap.tower}`;
+        entries.push({ type: "gap", title: "Inspection blind spot", sub: `${loc} — no uploads in 7 days`, badge: "Gap" });
+      });
+      (data.category_velocity || []).forEach(cat => {
+        const curr = cat.curr_week ?? cat.count ?? 0;
+        const prev = cat.prev_week ?? 0;
+        if (prev > 0 && curr > prev * 1.5 && curr >= 3) {
+          entries.push({ type: "spike", title: `${cat.name} surging`, sub: `${curr} this week vs ${prev} last week`, badge: "Spike" });
+        }
+      });
+      const threeDaysAgo = new Date(Date.now() - 3 * 86400000).toISOString();
+      (data.user_activity || []).slice(0, 3).forEach(u => {
+        if (u.count === 0 || (u.last_at && u.last_at < threeDaysAgo)) {
+          const name = u.name || u.email || "A team member";
+          entries.push({ type: "gap", title: `${name} inactive`, sub: "No uploads in 3+ days", badge: "Inactive" });
+        }
+      });
+      const order = { critical: 0, spike: 1, gap: 2, pattern: 3 };
+      return entries.sort((a, b) => (order[a.type] ?? 9) - (order[b.type] ?? 9)).slice(0, 8);
+    }
+
+    function renderIntelBanner(data, score) {
+      const scoreEl = document.getElementById("siteHealthScore");
+      const briefingEl = document.getElementById("intelBriefing");
+      const chipsEl = document.getElementById("intelChips");
+      if (scoreEl) scoreEl.textContent = score;
+      if (briefingEl) briefingEl.textContent = buildBriefing(data);
+      if (!chipsEl) return;
+      const chips = [];
+      const critical = data.kpis?.critical_count ?? 0;
+      if (critical > 0) chips.push({ label: `${critical} critical`, cls: "intel-chip--red" });
+      const gaps = (data.coverage_gaps || []).length;
+      if (gaps > 0) chips.push({ label: `${gaps} gap${gaps > 1 ? "s" : ""}`, cls: "intel-chip--amber" });
+      const active = (data.user_activity || []).filter(u => u.count > 0).length;
+      if (active > 0) chips.push({ label: `${active} active inspector${active > 1 ? "s" : ""}`, cls: "intel-chip--blue" });
+      if (score >= 80) chips.push({ label: "Site healthy", cls: "intel-chip--green" });
+      chipsEl.innerHTML = chips.map(c => `<span class="intel-chip ${c.cls}">${escapeHtml(c.label)}</span>`).join("");
+    }
+
+    function renderKpiPulseRow(data) {
+      const critical = data.kpis?.critical_count ?? 0;
+      const critCard = document.getElementById("kpiCritical");
+      if (critCard) {
+        if (critical > 0) critCard.classList.add("kpi-card--has-issues");
+        else critCard.classList.remove("kpi-card--has-issues");
+      }
+      const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+      el("kpiCriticalVal", critical);
+      el("kpiCriticalSub", critical > 0 ? "Needs review" : "All clear");
+      const today = data.kpis?.uploads_today ?? data.stats?.uploads_today ?? 0;
+      const week = data.stats?.uploads_week ?? 0;
+      el("kpiPulseVal", today);
+      el("kpiPulseSub", week > 0 ? `${week} this week` : "No uploads this week");
+      const gaps = (data.coverage_gaps || []).length;
+      el("kpiCoverageVal", gaps);
+      el("kpiCoverageSub", gaps > 0 ? "Locations unmonitored" : "Full coverage");
+      const active = data.kpis?.active_uploaders_7d ?? (data.user_activity || []).filter(u => u.count > 0).length;
+      const total = data.stats?.total_users ?? "—";
+      el("kpiTeamVal", active);
+      el("kpiTeamSub", `of ${total} total users`);
+    }
+
+    function renderIntelFeed(entries) {
+      const container = document.getElementById("intelFeed");
+      const meta = document.getElementById("feedMeta");
+      if (!container) return;
+      if (meta) meta.textContent = entries.length ? `${entries.length} signal${entries.length > 1 ? "s" : ""}` : "";
+      if (!entries.length) {
+        container.innerHTML = `<div class="ws-empty">No active signals — site looks clean.</div>`;
+        return;
+      }
+      container.innerHTML = entries.map(e => `
+        <div class="feed-entry feed-entry--${escapeHtml(e.type)}">
+          <div class="feed-entry__dot"></div>
+          <div class="feed-entry__content">
+            <div class="feed-entry__title">${escapeHtml(e.title)}</div>
+            <div class="feed-entry__sub">${escapeHtml(e.sub || "")}</div>
+          </div>
+          <span class="feed-entry__badge">${escapeHtml(e.badge || "")}</span>
+        </div>`).join("");
+    }
+
+    function renderTowerHealthGrid(data) {
+      const container = document.getElementById("towerHealthGrid");
+      if (!container) return;
+      const towerMap = {};
+      (data.tower_floor || []).forEach(row => {
+        const tower = (row.name || "").split(" / ")[0] || row.name;
+        towerMap[tower] = (towerMap[tower] || 0) + row.count;
+      });
+      const entries = Object.entries(towerMap).sort((a, b) => b[1] - a[1]).slice(0, 8);
+      if (!entries.length) {
+        container.innerHTML = `<div class="ws-empty">No tower data yet.</div>`;
+        return;
+      }
+      const maxCount = entries[0][1];
+      container.innerHTML = entries.map(([name, count]) => {
+        const pct = Math.max(5, Math.round((count / maxCount) * 100));
+        const level = pct >= 70 ? "high" : pct >= 35 ? "mid" : "low";
+        return `<div class="tower-card tower-card--${level}">
+          <span class="tower-card__name">${escapeHtml(name)}</span>
+          <div class="tower-card__bar-track"><div class="tower-card__bar-fill" style="width:${pct}%"></div></div>
+          <span class="tower-card__count">${count}</span>
+        </div>`;
+      }).join("");
+    }
+
+    function renderDefectPatterns(data) {
+      const container = document.getElementById("wsDefectPatterns");
+      if (!container) return;
+      const rows = (data.category_velocity || data.by_category || []).slice(0, 6);
+      if (!rows.length) {
+        container.innerHTML = `<div class="ws-empty">No categories recorded yet.</div>`;
+        return;
+      }
+      const max = Math.max(...rows.map(r => r.count), 1);
+      container.innerHTML = rows.map((row, i) => {
+        const curr = row.curr_week ?? 0;
+        const prev = row.prev_week ?? 0;
+        let velHtml = "";
+        if (prev > 0) {
+          if (curr > prev * 1.3) velHtml = `<span class="ws-row__velocity ws-row__velocity--up">↑</span>`;
+          else if (curr < prev * 0.7) velHtml = `<span class="ws-row__velocity ws-row__velocity--down">↓</span>`;
+          else velHtml = `<span class="ws-row__velocity ws-row__velocity--flat">→</span>`;
+        }
+        const pct = Math.max(4, Math.round((row.count / max) * 100));
+        const fillCls = i === 0 ? " ws-row__fill--accent" : "";
+        return `<div class="ws-row">
+          <span class="ws-row__label" title="${escapeHtml(row.name)}">${escapeHtml(row.name)}${velHtml}</span>
+          <div class="ws-row__track"><div class="ws-row__fill${fillCls}" style="width:${pct}%"></div></div>
+          <span class="ws-row__n">${row.count}</span>
+        </div>`;
+      }).join("");
+    }
+
+    function renderTeamActivity(data) {
+      const container = document.getElementById("wsTeamActivity");
+      if (!container) return;
+      const members = (data.user_activity || []).slice(0, 8);
+      if (!members.length) {
+        container.innerHTML = `<div class="ws-empty">No team activity data yet.</div>`;
+        return;
+      }
+      const threeDaysAgo = new Date(Date.now() - 3 * 86400000).toISOString();
+      container.innerHTML = members.map(u => {
+        const name = u.name || u.email || "Unknown";
+        const initials = name.split(/[\s@.]+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join("");
+        const inactive = u.count === 0 || (u.last_at && u.last_at < threeDaysAgo);
+        const inactiveCls = inactive ? " team-member--inactive" : "";
+        const lastStr = u.last_at ? wsRelTime(u.last_at) : "—";
+        return `<div class="team-member${inactiveCls}">
+          <div class="team-member__avatar">${escapeHtml(initials)}</div>
+          <span class="team-member__name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
+          <span class="team-member__count">${u.count}</span>
+          <span class="team-member__last">${escapeHtml(lastStr)}</span>
+        </div>`;
+      }).join("");
+    }
+
+    function renderTrendWoW(data) {
+      const container = document.getElementById("trendWoW");
+      if (!container) return;
+      const weekly = data.upload_trend_weekly || [];
+      if (weekly.length < 2) { container.innerHTML = ""; return; }
+      const thisWeek = weekly[0]?.count ?? 0;
+      const lastWeek = weekly[1]?.count ?? 0;
+      const diff = thisWeek - lastWeek;
+      const arrowCls = diff > 0 ? "trend-wow__arrow--up" : diff < 0 ? "trend-wow__arrow--down" : "";
+      const arrow = diff > 0 ? "↑" : diff < 0 ? "↓" : "→";
+      container.innerHTML = `
+        <span class="trend-wow__item">This week: <strong>${thisWeek}</strong></span>
+        <span class="trend-wow__item">Last week: <strong>${lastWeek}</strong></span>
+        <span class="trend-wow__item ${arrowCls}">${arrow} ${Math.abs(diff)} ${diff === 0 ? "flat" : diff > 0 ? "more" : "fewer"}</span>`;
+    }
+
+    function renderCoverageHeatmap(data, mode) {
+      const container = document.getElementById("wsHeatmap");
+      if (!container) return;
+      let gapSet = null;
+      if (mode === "coverage") {
+        gapSet = new Set((data.coverage_gaps || []).map(g => `${g.tower}|${g.floor}`));
+      }
+      wsRenderHeatmap(container, data.heatmap, gapSet);
+    }
+
+    function renderActivityTimeline(data) {
+      const container = document.getElementById("wsTimeline");
+      if (!container) return;
+      const items = (data.timeline || []).slice(0, 12);
+      if (!items.length) {
+        container.innerHTML = `<div class="ws-empty">No recent activity.</div>`;
+        return;
+      }
+      container.innerHTML = items.map(item => `
+        <div class="timeline-entry timeline-entry--${escapeHtml(item.type || "system")}">
+          <div class="timeline-entry__dot"></div>
+          <span class="timeline-entry__label" title="${escapeHtml(item.label || "")}">${escapeHtml(item.label || "Activity")}</span>
+          <span class="timeline-entry__actor">${escapeHtml(item.actor || "")}</span>
+          <span class="timeline-entry__time">${escapeHtml(wsRelTime(item.at))}</span>
+        </div>`).join("");
+    }
+
+    let currentHeatmapMode = "density";
+
     function renderWorkspaceDashboard(data) {
-      wsRenderInsights(data.kpis, data.ai_metrics);
+      const score = computeSiteHealthScore(data);
+      renderIntelBanner(data, score);
+      const feedEntries = buildIntelligenceFeed(data);
+      renderIntelFeed(feedEntries);
+      renderDefectPatterns(data);
+      renderTeamActivity(data);
       wsRenderLineChart(document.getElementById("wsUploadTrend"), data.upload_trend_daily || []);
-      wsRenderMonoRows(
-        document.getElementById("wsCategories"),
-        data.by_category || [],
-        "No categories recorded yet.",
-        { accentTop: true },
-      );
-      wsRenderMonoRows(
-        document.getElementById("wsHotspots"),
-        data.tower_floor || [],
-        "No repeated defect areas yet.",
-      );
-      wsRenderHeatmap(document.getElementById("wsHeatmap"), data.heatmap);
+      renderTrendWoW(data);
+      renderCoverageHeatmap(data, currentHeatmapMode);
+      renderActivityTimeline(data);
+
+      document.getElementById("heatmapToggle")?.querySelectorAll(".heatmap-toggle__btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentHeatmapMode = btn.dataset.mode;
+          document.querySelectorAll(".heatmap-toggle__btn").forEach(b => b.classList.toggle("active", b === btn));
+          renderCoverageHeatmap(data, currentHeatmapMode);
+        });
+      });
+
+      document.getElementById("timelineViewAll")?.addEventListener("click", () => {
+        document.querySelector('[data-tab="logs"]')?.click();
+      });
 
       const liveText = document.getElementById("workspaceLiveText");
       if (liveText) {
@@ -6181,7 +6859,7 @@
     let usersFilterRole = "all";
     let usersSearchQuery = "";
     let usersLastActiveSort = "recent";
-    const USERS_PER_PAGE = 6;
+    const USERS_PER_PAGE = 9;
     let usersCurrentPage = 1;
     let usersViewMode = localStorage.getItem("admin_users_view_mode") || "card";
 
@@ -6190,6 +6868,39 @@
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/"/g, "&quot;");
+    }
+
+    function paginationJumpMarkup(scope, currentPage, totalPages) {
+      const safeScope = escapeHtml(scope);
+      return `
+        <form class="logs-pagination__jump" data-pagination-jump="${safeScope}" aria-label="Go to page">
+          <label class="logs-pagination__jump-label" for="${safeScope}PageJump">Page</label>
+          <input
+            class="logs-pagination__jump-input"
+            id="${safeScope}PageJump"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            max="${totalPages}"
+            value="${currentPage}"
+            aria-label="Page number"
+          />
+          <span class="logs-pagination__jump-total">of ${totalPages}</span>
+          <button type="submit" class="logs-pagination__btn logs-pagination__jump-go">Go</button>
+        </form>`;
+    }
+
+    function wirePaginationJump(container, scope, totalPages, onJump) {
+      const form = container?.querySelector(`[data-pagination-jump="${scope}"]`);
+      if (!form) return;
+      const input = form.querySelector(".logs-pagination__jump-input");
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const rawPage = Number.parseInt(input?.value || "", 10);
+        const page = Math.min(totalPages, Math.max(1, Number.isFinite(rawPage) ? rawPage : 1));
+        if (input) input.value = String(page);
+        onJump(page);
+      });
     }
 
     function formatAdminLogAction(l) {
@@ -6213,6 +6924,29 @@
       if (!email) return "Unknown user";
       return email.split("@")[0];
     }
+
+    async function fetchAdminPagedArray(path, params = {}, pageSize = 500) {
+      const all = [];
+      const baseParams = new URLSearchParams(params);
+      let page = 1;
+      for (let guard = 0; guard < 10000; guard += 1) {
+        const qs = new URLSearchParams(baseParams);
+        qs.set("page", String(page));
+        qs.set("limit", String(pageSize));
+        const res = await apiFetch(`${path}?${qs.toString()}`);
+        if (!res) return all;
+        if (!res.ok) throw new Error(`Failed to load ${path} (HTTP ${res.status})`);
+        const batch = await res.json().catch(() => []);
+        if (!Array.isArray(batch) || batch.length === 0) break;
+        all.push(...batch);
+        const total = Number(res.headers.get("X-Total-Count") || 0);
+        if (total && all.length >= total) break;
+        if (batch.length < pageSize) break;
+        page += 1;
+      }
+      return all;
+    }
+
     function avatarColor(email) {
       let hash = 0;
       for (let i = 0; i < email.length; i++) hash = ((hash << 5) - hash) + email.charCodeAt(i);
@@ -6452,6 +7186,7 @@
       }
       html += `<span class="logs-pagination__info">${startIdx}–${endIdx} of ${total}</span>`;
       html += `<button type="button" class="logs-pagination__btn" id="pgNext" ${usersCurrentPage === totalPages ? "disabled" : ""} aria-label="Next page">&raquo;</button>`;
+      html += paginationJumpMarkup("users", usersCurrentPage, totalPages);
 
       container.innerHTML = html;
 
@@ -6472,6 +7207,10 @@
           usersCurrentPage++;
           renderUsersGrid();
         }
+      });
+      wirePaginationJump(container, "users", totalPages, (page) => {
+        usersCurrentPage = page;
+        renderUsersGrid();
       });
     }
 
@@ -6541,9 +7280,7 @@
     async function loadUsers(opts = {}) {
       const silent = !!opts.silent;
       try {
-        const res = await apiFetch("/api/admin/users");
-        if (!res) return;
-        const users = await res.json();
+        const users = await fetchAdminPagedArray("/api/admin/users");
 
         const fp = usersListFingerprint(users);
         if (silent && fp === lastUsersListFingerprint) return;
@@ -6621,13 +7358,25 @@
     let allUploadsCurrentPage = 1;
 
     let allUploadsData = [];
+    const ALL_UPLOADS_PROJECT_UNASSIGNED = "__unassigned__";
+
     let allUploadsFilters = {
       day: "all",
       user: "all",
+      project: "all",
       dateFrom: "",
       dateTo: "",
-      sortOrder: "newest",
     };
+
+    function uploadProjectKey(d) {
+      const name = String(d?.project || "").trim();
+      return name || ALL_UPLOADS_PROJECT_UNASSIGNED;
+    }
+
+    function uploadProjectLabel(key) {
+      if (key === ALL_UPLOADS_PROJECT_UNASSIGNED) return "Unassigned";
+      return key;
+    }
     const flaggedUploadIds = new Set();
 
     function isSameDate(a, b) {
@@ -6649,6 +7398,17 @@
       return new Date(y, m - 1, d, 23, 59, 59, 999);
     }
 
+    function localDateInputKey(value) {
+      const [y, m, d] = String(value || "").split("-").map(Number);
+      if (!y || !m || !d) return "";
+      return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+
+    function localDateKeyFromDate(dt) {
+      if (!(dt instanceof Date) || isNaN(dt.getTime())) return "";
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    }
+
     function matchesUploadDayFilters(dt) {
       if (isNaN(dt.getTime())) return false;
       const now = new Date();
@@ -6665,8 +7425,11 @@
         if (dt < sevenDaysAgo) return false;
       }
       if (allUploadsFilters.day === "custom") {
-        if (fromDate && dt < fromDate) return false;
-        if (toDate && dt > toDate) return false;
+        const key = localDateKeyFromDate(dt);
+        const fromKey = localDateInputKey(allUploadsFilters.dateFrom);
+        const toKey = localDateInputKey(allUploadsFilters.dateTo);
+        if (fromKey && key < fromKey) return false;
+        if (toKey && key > toKey) return false;
       }
       return true;
     }
@@ -6676,6 +7439,7 @@
         const dt = new Date(d.created_at);
         if (!matchesUploadDayFilters(dt)) return false;
         if (allUploadsFilters.user !== "all" && (d.email || "unknown") !== allUploadsFilters.user) return false;
+        if (allUploadsFilters.project !== "all" && uploadProjectKey(d) !== allUploadsFilters.project) return false;
         return true;
       });
     }
@@ -6693,6 +7457,11 @@
         parts.push(`Custom ${a} → ${b}`);
       }
       parts.push(allUploadsFilters.user === "all" ? "All users" : `User ${allUploadsFilters.user}`);
+      parts.push(
+        allUploadsFilters.project === "all"
+          ? "All projects"
+          : `Project ${uploadProjectLabel(allUploadsFilters.project)}`,
+      );
       return parts.join(" · ");
     }
 
@@ -6713,7 +7482,9 @@
         const expected = allUploadsData.filter((d) => {
           if (d.user_id !== uid) return false;
           const dt = new Date(d.created_at);
-          return matchesUploadDayFilters(dt);
+          if (!matchesUploadDayFilters(dt)) return false;
+          if (allUploadsFilters.project !== "all" && uploadProjectKey(d) !== allUploadsFilters.project) return false;
+          return true;
         });
         const ok =
           expected.length === filtered.length &&
@@ -6728,15 +7499,36 @@
       if (!userSelect) return;
       const users = Array.from(
         new Map(
-          items.map((d) => [
-            (d.email || "unknown"),
-            { email: (d.email || "unknown"), name: displayUserName(d) },
-          ]),
+          items
+            .filter((d) => d.email && d.email !== "unknown")
+            .map((d) => [
+              d.email,
+              { email: d.email, name: displayUserName(d) },
+            ]),
         ).values(),
       ).sort((a, b) => a.name.localeCompare(b.name));
       const existing = allUploadsFilters.user;
-      userSelect.innerHTML = `<option value="all">All users</option>${users.map((u) => `<option value="${u.email}">${u.name}</option>`).join("")}`;
+      userSelect.innerHTML = `<option value="all">All users</option>${users.map((u) => `<option value="${escapeHtml(u.email)}">${escapeHtml(u.name)}</option>`).join("")}`;
       userSelect.value = users.some((u) => u.email === existing) ? existing : "all";
+    }
+
+    function refreshAllUploadsProjectOptions(items) {
+      const projectSelect = document.getElementById("allUploadsProjectFilter");
+      if (!projectSelect) return;
+      const keys = Array.from(new Set(items.map((d) => uploadProjectKey(d)))).sort((a, b) => {
+        if (a === ALL_UPLOADS_PROJECT_UNASSIGNED) return 1;
+        if (b === ALL_UPLOADS_PROJECT_UNASSIGNED) return -1;
+        return a.localeCompare(b);
+      });
+      const existing = allUploadsFilters.project;
+      projectSelect.innerHTML = `<option value="all">All projects</option>${keys
+        .map(
+          (key) =>
+            `<option value="${escapeHtml(key)}">${escapeHtml(uploadProjectLabel(key))}</option>`,
+        )
+        .join("")}`;
+      projectSelect.value = keys.includes(existing) ? existing : "all";
+      if (projectSelect.value !== existing) allUploadsFilters.project = projectSelect.value;
     }
 
 
@@ -6744,8 +7536,15 @@
       return getFilteredAllUploads(items).sort((a, b) => {
         const da = new Date(a.created_at).getTime();
         const db = new Date(b.created_at).getTime();
-        return allUploadsFilters.sortOrder === "oldest" ? da - db : db - da;
+        return db - da;
       });
+    }
+
+    function allUploadsTimelineMeta(upload, today, yesterday) {
+      const dt = new Date(upload.created_at);
+      if (isSameDate(dt, today)) return { key: "today", label: "Today" };
+      if (isSameDate(dt, yesterday)) return { key: "yesterday", label: "Yesterday" };
+      return { key: "earlier", label: "Earlier" };
     }
 
     function renderAllUploadsPagination(total) {
@@ -6777,6 +7576,7 @@
       }
       html += `<span class="logs-pagination__info">${startIdx}–${endIdx} of ${total}</span>`;
       html += `<button type="button" class="logs-pagination__btn" id="allUploadsPgNext" ${allUploadsCurrentPage === totalPages ? "disabled" : ""} aria-label="Next page">&raquo;</button>`;
+      html += paginationJumpMarkup("allUploads", allUploadsCurrentPage, totalPages);
 
       container.innerHTML = html;
 
@@ -6800,6 +7600,11 @@
           renderAllUploads(allUploadsData);
           document.getElementById("allUploadsContainer")?.scrollIntoView({ behavior: "smooth", block: "start" });
         }
+      });
+      wirePaginationJump(container, "allUploads", totalPages, (page) => {
+        allUploadsCurrentPage = page;
+        renderAllUploads(allUploadsData);
+        document.getElementById("allUploadsContainer")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
 
@@ -6827,17 +7632,20 @@
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+      const timelineCounts = new Map([["today", 0], ["yesterday", 0], ["earlier", 0]]);
+      for (const d of filtered) {
+        const { key } = allUploadsTimelineMeta(d, today, yesterday);
+        timelineCounts.set(key, (timelineCounts.get(key) || 0) + 1);
+      }
       const timelineGroups = new Map([["today", []], ["yesterday", []], ["earlier", []]]);
       for (const d of pageItems) {
-        const dt = new Date(d.created_at);
-        if (isSameDate(dt, today)) timelineGroups.get("today").push(d);
-        else if (isSameDate(dt, yesterday)) timelineGroups.get("yesterday").push(d);
-        else timelineGroups.get("earlier").push(d);
+        const { key } = allUploadsTimelineMeta(d, today, yesterday);
+        timelineGroups.get(key).push(d);
       }
       const groups = [
-        { key: "today", label: "Today", items: timelineGroups.get("today") },
-        { key: "yesterday", label: "Yesterday", items: timelineGroups.get("yesterday") },
-        { key: "earlier", label: "Earlier", items: timelineGroups.get("earlier") },
+        { key: "today", label: "Today", items: timelineGroups.get("today"), total: timelineCounts.get("today") || 0 },
+        { key: "yesterday", label: "Yesterday", items: timelineGroups.get("yesterday"), total: timelineCounts.get("yesterday") || 0 },
+        { key: "earlier", label: "Earlier", items: timelineGroups.get("earlier"), total: timelineCounts.get("earlier") || 0 },
       ].filter((g) => g.items.length > 0);
       let html = "";
       for (const group of groups) {
@@ -6845,7 +7653,7 @@
         html += `
           <div class="upload-date-group">
             <div class="upload-date-header">
-              <span class="upload-date-header__label${isToday ? " upload-date-header__label--today" : ""}">${group.label} (${group.items.length})</span>
+              <span class="upload-date-header__label${isToday ? " upload-date-header__label--today" : ""}">${group.label} (${group.total})</span>
               <span class="upload-date-header__line"></span>
             </div>
             <div class="upload-grid">${group.items.map((d) => `
@@ -6855,9 +7663,10 @@
                 </button>
                 <img src="/${d.image_path}" alt="Defect" loading="lazy" />
                 <div class="meta">
-                  <strong>${d.tower}</strong> · Floor ${d.floor} · Flat ${d.flat}<br/>
-                  ${d.room}<br/>
-                  <small>${displayUserName(d)} · ${new Date(d.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</small>
+                  <strong class="upload-item__project">${escapeHtml(uploadProjectLabel(uploadProjectKey(d)))}</strong>
+                  ${escapeHtml(d.tower || "")} · Floor ${escapeHtml(String(d.floor ?? ""))} · Flat ${escapeHtml(String(d.flat ?? ""))}<br/>
+                  ${escapeHtml(d.room || "")}<br/>
+                  <small>${escapeHtml(displayUserName(d))} · ${new Date(d.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</small>
                 </div>
               </div>`).join("")}
             </div>
@@ -6876,9 +7685,7 @@
       empty.style.display = "none";
 
       try {
-        const res = await apiFetch("/api/admin/uploads");
-        if (!res) return;
-        const raw = await res.json();
+        const raw = await fetchAdminPagedArray("/api/admin/uploads");
         const items = raw.filter((d) => !d.image_path.startsWith("missing/"));
 
         if (items.length === 0) {
@@ -6889,6 +7696,7 @@
 
         allUploadsData = items;
         refreshAllUploadsUserOptions(items);
+        refreshAllUploadsProjectOptions(items);
         renderAllUploads(allUploadsData);
       } catch (err) {
         console.error("Failed to load all uploads:", err);
@@ -7635,26 +8443,11 @@
 
     const allUploadsDayFilter = document.getElementById("allUploadsDayFilter");
     const allUploadsUserFilter = document.getElementById("allUploadsUserFilter");
+    const allUploadsProjectFilter = document.getElementById("allUploadsProjectFilter");
     const allUploadsDateFrom = document.getElementById("allUploadsDateFrom");
     const allUploadsDateTo = document.getElementById("allUploadsDateTo");
     const allUploadsDateFromWrap = document.getElementById("allUploadsDateFromWrap");
     const allUploadsDateToWrap = document.getElementById("allUploadsDateToWrap");
-    const allUploadsSortOrder = document.getElementById("allUploadsSortOrder");
-    const allUploadsSortToggle = document.getElementById("allUploadsSortToggle");
-    function updateAllUploadsSortToggleUi() {
-      const order = allUploadsSortOrder?.value || "newest";
-      const label = order === "oldest" ? "Sort: Oldest first" : "Sort: Newest first";
-      allUploadsSortToggle?.setAttribute("aria-label", label);
-      allUploadsSortToggle?.setAttribute("title", label);
-      allUploadsSortToggle?.classList.toggle("is-sort-oldest", order === "oldest");
-    }
-    allUploadsSortToggle?.addEventListener("click", () => {
-      if (!allUploadsSortOrder) return;
-      allUploadsSortOrder.value = allUploadsSortOrder.value === "newest" ? "oldest" : "newest";
-      updateAllUploadsSortToggleUi();
-      applyAllUploadsFiltersFromUi();
-    });
-    updateAllUploadsSortToggleUi();
     function syncCustomDateVisibility() {
       const isCustom = allUploadsDayFilter?.value === "custom";
       if (allUploadsDateFromWrap) allUploadsDateFromWrap.style.display = isCustom ? "" : "none";
@@ -7663,20 +8456,24 @@
     function applyAllUploadsFiltersFromUi() {
       allUploadsFilters.day = allUploadsDayFilter?.value || "all";
       allUploadsFilters.user = allUploadsUserFilter?.value || "all";
+      allUploadsFilters.project = allUploadsProjectFilter?.value || "all";
       allUploadsFilters.dateFrom = allUploadsDateFrom?.value || "";
       allUploadsFilters.dateTo = allUploadsDateTo?.value || "";
-      allUploadsFilters.sortOrder = allUploadsSortOrder?.value || "newest";
       syncCustomDateVisibility();
       allUploadsCurrentPage = 1;
       renderAllUploads(allUploadsData);
     }
-    [allUploadsDayFilter, allUploadsUserFilter, allUploadsDateFrom, allUploadsDateTo]
-      .forEach((el) => el?.addEventListener("change", applyAllUploadsFiltersFromUi));
+    [allUploadsDayFilter, allUploadsUserFilter, allUploadsProjectFilter, allUploadsDateFrom, allUploadsDateTo]
+      .forEach((el) => {
+        el?.addEventListener("change", applyAllUploadsFiltersFromUi);
+        el?.addEventListener("input", applyAllUploadsFiltersFromUi);
+      });
     syncCustomDateVisibility();
 
     const reportDateFrom = document.getElementById("reportDateFrom");
     const reportDateTo = document.getElementById("reportDateTo");
     const reportUser = document.getElementById("reportUser");
+    const reportProject = document.getElementById("reportProject");
     const reportDayFilter = document.getElementById("reportDayFilter");
     const reportImageCount = document.getElementById("reportImageCount");
     const reportPreviewModal = document.getElementById("reportPreviewModal");
@@ -7857,8 +8654,15 @@
             req.onerror = () => reject(req.error || new Error("Could not read report history."));
           });
         });
+        const currentGenerator = resolveCurrentReportGenerator();
         generatedReports = reports
           .filter((report) => report?.id && report?.blob)
+          .map((report) => ({
+            ...report,
+            generatedByUserId: report.generatedByUserId || currentGenerator.generatedByUserId,
+            generatedByEmail: report.generatedByEmail || currentGenerator.generatedByEmail,
+            generatedByDisplayName: report.generatedByDisplayName || currentGenerator.generatedByDisplayName,
+          }))
           .sort((a, b) => (b.generatedAt || 0) - (a.generatedAt || 0));
       } catch (err) {
         console.warn("Could not load report history:", err);
@@ -7890,6 +8694,7 @@
         const payload = {
           day: reportDayFilter?.value || "",
           user: reportUser?.value || "",
+          project: reportProject?.value || "",
           dateFrom: reportDateFrom?.value || "",
           dateTo: reportDateTo?.value || "",
         };
@@ -7918,6 +8723,27 @@
       if (reportUser && user && optionExists(reportUser, user)) {
         reportUser.value = user;
       }
+      const project = String(saved.project ?? "").trim();
+      if (reportProject && project && optionExists(reportProject, project)) {
+        reportProject.value = project;
+      }
+    }
+
+    function refreshReportProjectOptions(items) {
+      if (!reportProject) return;
+      const keys = Array.from(new Set(items.map((d) => uploadProjectKey(d)))).sort((a, b) => {
+        if (a === ALL_UPLOADS_PROJECT_UNASSIGNED) return 1;
+        if (b === ALL_UPLOADS_PROJECT_UNASSIGNED) return -1;
+        return a.localeCompare(b);
+      });
+      const existing = reportProject.value || "";
+      reportProject.innerHTML = `<option value="">Select project</option><option value="all">All Projects</option>${keys
+        .map(
+          (key) =>
+            `<option value="${escapeHtml(key)}">${escapeHtml(uploadProjectLabel(key))}</option>`,
+        )
+        .join("")}`;
+      reportProject.value = existing === "all" || keys.includes(existing) ? existing : "";
     }
 
     function syncReportCustomDateVisibility() {
@@ -7934,15 +8760,105 @@
 
     function setReportGenerateStatus(message = "") {
       if (!reportGenerateStatus) return;
+      const root = reportGenerateStatus;
       const text = String(message || "").trim();
-      reportGenerateStatus.textContent = text;
-      reportGenerateStatus.classList.toggle("report-preview-modal__status--visible", !!text);
+
+      if (!text) {
+        root.classList.remove("report-progress--visible");
+        return;
+      }
+      root.classList.add("report-progress--visible");
+
+      let phase = "prep";
+      let mode = "indeterminate";
+      let label = "Preparing";
+      let subMsg = "";
+      let current = null;
+      let total = null;
+
+      const analyzeMatch = text.match(/^Analyzing\s+(\d+)\s+of\s+(\d+)\s+image/i);
+      const prepMatch = text.match(/^Preparing.*?(\d+)\s+image/i);
+      if (analyzeMatch) {
+        phase = "analyzing";
+        mode = "determinate";
+        label = "Analyzing images";
+        current = parseInt(analyzeMatch[1], 10);
+        total = parseInt(analyzeMatch[2], 10);
+        subMsg = "AI is reviewing each photo";
+      } else if (prepMatch) {
+        phase = "prep";
+        mode = "indeterminate";
+        label = "Preparing";
+        total = parseInt(prepMatch[1], 10);
+        current = 0;
+        subMsg = "Setting things up";
+      } else if (/Compiling Excel/i.test(text)) {
+        phase = "excel";
+        mode = "indeterminate";
+        label = "Compiling Excel";
+        subMsg = "Crafting your spreadsheet";
+      } else if (/Compiling PowerPoint|PowerPoint deck/i.test(text)) {
+        phase = "pptx";
+        mode = "indeterminate";
+        label = "Compiling PowerPoint";
+        subMsg = "Composing your slides";
+      } else if (/^Failed/i.test(text)) {
+        phase = "error";
+        mode = "determinate";
+        label = "Failed";
+        subMsg = text.replace(/^Failed:\s*/i, "") || "Report generation failed";
+      } else {
+        // Fallback: indeterminate generic with raw text as sub message.
+        subMsg = text;
+      }
+
+      root.setAttribute("data-phase", phase);
+      root.setAttribute("data-mode", mode);
+
+      const labelEl = document.getElementById("reportProgressLabel");
+      if (labelEl) labelEl.textContent = label;
+
+      const countWrap = document.getElementById("reportProgressCount");
+      const currentEl = document.getElementById("reportProgressCurrent");
+      const totalEl = document.getElementById("reportProgressTotal");
+      if (countWrap && currentEl && totalEl) {
+        if (phase === "analyzing" && current !== null && total !== null) {
+          countWrap.hidden = false;
+          const prevCurrent = parseInt(currentEl.textContent || "0", 10);
+          currentEl.textContent = String(current);
+          totalEl.textContent = String(total);
+          if (current !== prevCurrent) {
+            currentEl.classList.remove("is-bump");
+            // eslint-disable-next-line no-unused-expressions
+            void currentEl.offsetWidth;
+            currentEl.classList.add("is-bump");
+            window.setTimeout(() => currentEl.classList.remove("is-bump"), 220);
+          }
+        } else {
+          countWrap.hidden = true;
+        }
+      }
+
+      const fillEl = document.getElementById("reportProgressFill");
+      if (fillEl) {
+        if (phase === "analyzing" && current !== null && total > 0) {
+          const pct = Math.min(100, Math.max(0, Math.round((current / total) * 100)));
+          fillEl.style.setProperty("--p", pct + "%");
+        } else if (phase === "error") {
+          fillEl.style.setProperty("--p", "100%");
+        } else if (mode === "determinate") {
+          fillEl.style.setProperty("--p", "0%");
+        }
+      }
+
+      const msgEl = document.getElementById("reportProgressMsg");
+      if (msgEl) msgEl.textContent = subMsg;
     }
 
     function updateReportGenerateVisibility() {
       const custom = reportDayFilter?.value === "custom";
       const hasDates = custom ? !!(reportDateFrom?.value && reportDateTo?.value) : true;
-      const ready = !!(reportDayFilter?.value && reportUser?.value && hasDates);
+      const ready = !!(reportDayFilter?.value && reportUser?.value && reportProject?.value && hasDates);
       if (reportGenerateWrap) {
         reportGenerateWrap.classList.toggle("report-preview-modal__footer--visible", ready);
       }
@@ -7961,7 +8877,8 @@
     function getReportFilteredUploads() {
       const day = reportDayFilter?.value || "all";
       const user = reportUser?.value || "";
-      if (!user) return [];
+      const project = reportProject?.value || "";
+      if (!user || !project) return [];
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
@@ -7972,6 +8889,7 @@
         const dt = new Date(d.created_at);
         if (isNaN(dt.getTime())) return false;
         if (user !== "all" && (d.email || "") !== user) return false;
+        if (project !== "all" && uploadProjectKey(d) !== project) return false;
         if (day === "today" && !isSameDate(dt, today)) return false;
         if (day === "yesterday" && !isSameDate(dt, yesterday)) return false;
         if (day === "last7") {
@@ -8023,9 +8941,10 @@
       if (!reportImageCount) return;
       const day = reportDayFilter?.value || "";
       const user = reportUser?.value || "";
+      const project = reportProject?.value || "";
       const custom = day === "custom";
       const hasDates = custom ? !!(reportDateFrom?.value && reportDateTo?.value) : true;
-      const ready = !!(day && user && hasDates);
+      const ready = !!(day && user && project && hasDates);
       if (!ready) {
         if (reportPreviewBtn) {
           reportPreviewBtn.disabled = true;
@@ -8059,9 +8978,10 @@
     function renderReportPreviewGrid() {
       if (!reportPreviewGrid || !reportPreviewEmpty) return;
       const user = reportUser?.value || "";
+      const project = reportProject?.value || "";
       const custom = reportDayFilter?.value === "custom";
       const hasDates = custom ? !!(reportDateFrom?.value && reportDateTo?.value) : true;
-      if (!user || !hasDates) {
+      if (!user || !project || !hasDates) {
         reportPreviewGrid.innerHTML = "";
         reportPreviewEmpty.style.display = "none";
         return;
@@ -8093,28 +9013,34 @@
       openReportPreviewModal();
     }
 
+    // Page through EVERY admin upload. /api/admin/uploads is paginated and defaults to 100 rows per
+    // page, so fetching it once only ever surfaced the first 100 images in the report builder (a day
+    // with 225 uploads showed "Get Images (100)"). Loop until a short/empty page marks the end so the
+    // report can include all N images, whatever N is.
+    async function fetchAllReportUploads() {
+      return fetchAdminPagedArray("/api/admin/uploads");
+    }
+
     async function initReportTab() {
       const savedFilters = loadReportFiltersState();
-      if (!reportUsersLoaded) {
-        try {
-          const res = await apiFetch("/api/admin/uploads");
-          if (res) {
-            const raw = await res.json();
-            reportUploadsData = raw.filter((d) => !String(d.image_path || "").startsWith("missing/"));
-            const users = Array.from(new Map(
-              reportUploadsData
-                .filter((d) => d.email)
-                .map((d) => [d.email, { email: d.email, name: displayUserName(d) }]),
-            ).values()).sort((a, b) => a.name.localeCompare(b.name));
-            reportUser.innerHTML = `<option value="">Select user</option><option value="all">All users</option>${
-              users.map((u) => `<option value="${u.email}">${u.name}</option>`).join("")
-            }`;
-          }
-        } catch (e) {
-          console.error("Failed to load report users:", e);
-        }
-        reportUsersLoaded = true;
+      try {
+        const currentUser = reportUser?.value || "";
+        const raw = await fetchAllReportUploads();
+        reportUploadsData = raw.filter((d) => !String(d.image_path || "").startsWith("missing/"));
+        const users = Array.from(new Map(
+          reportUploadsData
+            .filter((d) => d.email && d.email !== "unknown")
+            .map((d) => [d.email, { email: d.email, name: displayUserName(d) }]),
+        ).values()).sort((a, b) => a.name.localeCompare(b.name));
+        reportUser.innerHTML = `<option value="">Select user</option><option value="all">All users</option>${
+          users.map((u) => `<option value="${escapeHtml(u.email)}">${escapeHtml(u.name)}</option>`).join("")
+        }`;
+        if (currentUser && optionExists(reportUser, currentUser)) reportUser.value = currentUser;
+        refreshReportProjectOptions(reportUploadsData);
+      } catch (e) {
+        console.error("Failed to load report users:", e);
       }
+      reportUsersLoaded = true;
       applySavedReportFilters(savedFilters);
       syncReportCustomDateVisibility();
       updateReportGenerateVisibility();
@@ -8137,7 +9063,7 @@
       syncReportCustomDateVisibility();
       onReportFiltersChanged(reportDayFilter);
     });
-    [reportDateFrom, reportDateTo, reportUser].forEach((el) => {
+    [reportDateFrom, reportDateTo, reportUser, reportProject].forEach((el) => {
       el?.addEventListener("change", () => onReportFiltersChanged(el));
     });
     reportPreviewBtn?.addEventListener("click", openReportPreviewFromButton);
@@ -8255,6 +9181,26 @@
       };
     }
 
+    function resolveCurrentReportGenerator() {
+      const admin = getUser?.() || {};
+      const email = String(admin.email || "").trim();
+      const displayName = displayUserName(admin);
+      return {
+        generatedByUserId: String(admin.user_id || admin.id || "").trim(),
+        generatedByEmail: email,
+        generatedByDisplayName: displayName && displayName !== "Unknown user"
+          ? displayName
+          : (email || "Admin"),
+      };
+    }
+
+    function reportSubjectLine(report) {
+      const subject = String(report.reportSubjectDisplayName || "").trim();
+      if (!subject) return "";
+      if (subject === "All users") return "All users";
+      return `For ${subject}`;
+    }
+
     function humanizeReportFilename(fileName) {
       let base = String(fileName || "").replace(/\.(xlsx|pptx)$/i, "").trim();
       if (!base) return "Report";
@@ -8266,8 +9212,10 @@
     }
 
     function reportCardHeadline(report) {
-      const stored = (report.reportSubjectDisplayName || "").trim();
-      if (stored) return stored;
+      const generator = (report.generatedByDisplayName || "").trim();
+      if (generator) return generator;
+      const current = resolveCurrentReportGenerator().generatedByDisplayName;
+      if (current) return current;
       return humanizeReportFilename(report.fileName);
     }
 
@@ -8351,7 +9299,7 @@
       }
       if (reportExcelViewerMeta) reportExcelViewerMeta.textContent = report.fileName || "Generated workbook";
       if (reportExcelViewerBody) {
-        const headers = ["S.No", "Image", "Category", "Date", "Severity", "Tower", "Floor", "Flat", "Room", "Observation", "Recommendation"];
+        const headers = ["S.No", "Category", "Date", "Severity", "Tower", "Floor", "Flat", "Room", "Defect", "Image", "Observation", "Recommendation"];
         reportExcelViewerBody.innerHTML = `
           <table class="report-excel-table">
             <thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>
@@ -8361,7 +9309,6 @@
                 return `
                 <tr>
                   <td>${idx + 1}</td>
-                  <td>${imgSrc ? `<img class="report-excel-thumb" src="${escapeHtml(imgSrc)}" alt="Report image ${idx + 1}" loading="lazy">` : ""}</td>
                   <td>${escapeHtml(row.category || "Others")}</td>
                   <td>${escapeHtml(row.reporting_date || "")}</td>
                   <td>${escapeHtml(row.severity || "MEDIUM")}</td>
@@ -8369,6 +9316,8 @@
                   <td>${escapeHtml(row.floor || "")}</td>
                   <td>${escapeHtml(row.flat || "")}</td>
                   <td>${escapeHtml(row.room || "")}</td>
+                  <td>${escapeHtml(row.defect || "To be confirmed")}</td>
+                  <td>${imgSrc ? `<img class="report-excel-thumb" src="${escapeHtml(imgSrc)}" alt="Report image ${idx + 1}" loading="lazy">` : ""}</td>
                   <td>${escapeHtml(row.observation || "")}</td>
                   <td>${escapeHtml(row.recommendation || "")}</td>
                 </tr>
@@ -8448,6 +9397,7 @@
     syncReportsViewForViewport();
 
     function reportGeneratedCardHtml(report) {
+      const subject = reportSubjectLine(report);
       return `
         <div class="report-generated-card">
           <div class="report-generated-card__chrome">
@@ -8468,8 +9418,8 @@
                 </svg>
               </span>
               <div>
-                <p class="report-generated-card__name" title="${escapeHtml(report.fileName)}">${escapeHtml(reportCardHeadline(report))}</p>
-                <p class="report-generated-card__meta">Excel + PowerPoint · ${report.count} image${report.count !== 1 ? "s" : ""}</p>
+                <p class="report-generated-card__name" title="${escapeHtml(report.generatedByEmail || report.fileName || "")}">${escapeHtml(reportCardHeadline(report))}</p>
+                <p class="report-generated-card__meta">Excel + PowerPoint · ${report.count} image${report.count !== 1 ? "s" : ""}${subject ? ` · ${escapeHtml(subject)}` : ""}</p>
                 <p class="report-generated-card__time">Generated ${escapeHtml(report.generatedAtLabel)}</p>
               </div>
             </div>
@@ -8512,6 +9462,7 @@
       }
       html += `<span class="logs-pagination__info">${startIdx}–${endIdx} of ${total}</span>`;
       html += `<button type="button" class="logs-pagination__btn" id="reportsPgNext" ${reportsCurrentPage === totalPages ? "disabled" : ""} aria-label="Next page">&raquo;</button>`;
+      html += paginationJumpMarkup("reports", reportsCurrentPage, totalPages);
       container.innerHTML = html;
       container.querySelectorAll("[data-reports-page]").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -8530,6 +9481,10 @@
           reportsCurrentPage += 1;
           renderGeneratedReports();
         }
+      });
+      wirePaginationJump(container, "reports", totalPages, (page) => {
+        reportsCurrentPage = page;
+        renderGeneratedReports();
       });
     }
 
@@ -8571,6 +9526,13 @@
       renderReportsPagination(total);
     }
 
+    // How many images are analyzed in parallel during report generation. A single RTX 5090 running
+    // one ~27-31B vision model saturates at roughly 6-8 concurrent inferences, and each item issues
+    // up to 2 sequential vLLM calls (relevance classify + defect analyze). 4 keeps reports fast while
+    // leaving GPU/queue headroom for interactive users. Raise it only if the GPU has spare capacity;
+    // setting it very high will thrash the KV cache and make every request slower, not faster.
+    const REPORT_ANALYZE_CONCURRENCY = 4;
+
     async function runGenerateReportFlow() {
       const filtered = getReportSelectedUploads();
       if (!filtered.length) {
@@ -8580,28 +9542,48 @@
       reportGenerateBtn.disabled = true;
       setReportGenerateStatus(`Preparing analysis for ${filtered.length} image${filtered.length !== 1 ? "s" : ""}...`);
 
-      const analyzed = [];
+      const total = filtered.length;
+      // Results are placed by index so the report keeps the on-screen selection order regardless of
+      // the order the concurrent workers happen to finish in.
+      const previewRows = new Array(total);
+      const analyzedRows = new Array(total);
       lastReportPreviewRows = [];
       try {
-        for (let i = 0; i < filtered.length; i += 1) {
-          const item = filtered[i];
-          setReportGenerateStatus(`Analyzing image ${i + 1} of ${filtered.length}...`);
-          const aiRow = await analyzeReportItemWithRetry(item.id, 2);
-          lastReportPreviewRows.push({
-            ...aiRow,
-            image_path: aiRow.image_path || item.image_path || "",
-          });
-          analyzed.push({
-            defect_id: item.id,
-            observation: aiRow.observation || "",
-            recommendation: aiRow.recommendation || "",
-            severity: aiRow.severity || "MEDIUM",
-          });
+        let completed = 0;
+        let nextIndex = 0;
+        const concurrency = Math.max(1, Math.min(REPORT_ANALYZE_CONCURRENCY, total));
+        setReportGenerateStatus(`Analyzing 0 of ${total} image${total !== 1 ? "s" : ""}...`);
+
+        async function analyzeWorker() {
+          while (true) {
+            const i = nextIndex;
+            nextIndex += 1;
+            if (i >= total) return;
+            const item = filtered[i];
+            const aiRow = await analyzeReportItemWithRetry(item.id, 2);
+            previewRows[i] = {
+              ...aiRow,
+              image_path: aiRow.image_path || item.image_path || "",
+            };
+            analyzedRows[i] = {
+              defect_id: item.id,
+              defect: aiRow.defect || "",
+              observation: aiRow.observation || "",
+              recommendation: aiRow.recommendation || "",
+              severity: aiRow.severity || "MEDIUM",
+            };
+            completed += 1;
+            setReportGenerateStatus(`Analyzing ${completed} of ${total} image${total !== 1 ? "s" : ""}...`);
+          }
         }
+
+        await Promise.all(Array.from({ length: concurrency }, () => analyzeWorker()));
+        lastReportPreviewRows = previewRows;
+        const analyzed = analyzedRows;
 
         setReportGenerateStatus("Compiling Excel report...");
 
-        const reportPayload = { entries: analyzed, base_url: window.location.origin };
+        const reportPayload = { entries: analyzed, base_url: window.location.origin, project: (reportProject?.value || "").trim() };
         const res = await apiFetch("/api/admin/reports/generate-xlsx", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -8633,7 +9615,9 @@
         });
         const reportId = `report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const subjectMeta = resolveReportSubjectForCard(filtered, reportUser?.value || "");
+        const generatorMeta = resolveCurrentReportGenerator();
         const reportUserValue = (reportUser?.value || "").trim();
+        const reportProjectValue = (reportProject?.value || "").trim();
         const reportRecord = {
           id: reportId,
           fileName,
@@ -8645,6 +9629,8 @@
           generatedAtLabel,
           generatedAt: Date.now(),
           reportUserScope: reportUserValue === "all" ? "all" : reportUserValue,
+          reportProjectScope: reportProjectValue === "all" ? "all" : reportProjectValue,
+          ...generatorMeta,
           ...subjectMeta,
         };
         if (!reportHistoryLoaded) {
@@ -8776,8 +9762,9 @@
           <div class="upload-item">
             <img src="/${d.image_path}" alt="Defect" loading="lazy" />
             <div class="meta">
-              <strong>${d.tower}</strong> · Floor ${d.floor} · Flat ${d.flat}<br/>
-              ${d.room}<br/>
+              <strong class="upload-item__project">${escapeHtml(uploadProjectLabel(uploadProjectKey(d)))}</strong>
+              ${escapeHtml(d.tower || "")} · Floor ${escapeHtml(String(d.floor ?? ""))} · Flat ${escapeHtml(String(d.flat ?? ""))}<br/>
+              ${escapeHtml(d.room || "")}<br/>
               <small>${new Date(d.created_at).toLocaleString()}</small>
             </div>
           </div>`).join("")}</div>`;
@@ -8818,6 +9805,7 @@
       }
       html += `<span class="logs-pagination__info">${startIdx}–${endIdx} of ${total}</span>`;
       html += `<button type="button" class="logs-pagination__btn" id="logsPgNext" ${logsCurrentPage === totalPages ? "disabled" : ""} aria-label="Next page">&raquo;</button>`;
+      html += paginationJumpMarkup("logs", logsCurrentPage, totalPages);
 
       container.innerHTML = html;
 
@@ -8839,6 +9827,10 @@
           logsCurrentPage++;
           renderLogsPage();
         }
+      });
+      wirePaginationJump(container, "logs", totalPages, (page) => {
+        logsCurrentPage = page;
+        renderLogsPage();
       });
     }
 
@@ -8885,12 +9877,10 @@
       const params = new URLSearchParams();
       if (dateFrom) params.set("date_from", dateFrom);
       if (dateTo) params.set("date_to", dateTo);
-      const qs = params.toString();
+      if (dateFrom || dateTo) params.set("tz_offset", String(new Date().getTimezoneOffset()));
 
       try {
-        const res = await apiFetch(`/api/admin/logs${qs ? "?" + qs : ""}`);
-        if (!res) return;
-        const logs = await res.json();
+        const logs = await fetchAdminPagedArray("/api/admin/logs", Object.fromEntries(params));
 
         const syncKey = `${dateFrom || ""}\x1e${dateTo || ""}\x1e${logs.map((l) => l.id).join(",")}`;
         if (silent && syncKey === lastLogsSyncKey) return;

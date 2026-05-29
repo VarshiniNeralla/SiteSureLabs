@@ -90,7 +90,7 @@ export function mountDashboardNav(activeTab, options = {}) {
         <button type="button" class="mobile-hamburger" id="drawer-open-btn"
           aria-label="Open navigation menu" aria-expanded="false">${HAMBURGER_SVG}</button>
         <a href="/" class="logo-container logo-container--nav">
-          <img src="/assets/new_logo.png" alt="" width="36" height="36"
+          <img src="/assets/new_logo.png" alt="" width="40" height="40"
             class="logo-img" decoding="async">
           <span class="logo-text logo-text--dashboard">SiteSureLabs</span>
         </a>

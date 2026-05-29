@@ -35,6 +35,16 @@ async def get_current_user(
 
 
 async def require_admin(user: User = Depends(get_current_user)) -> User:
-    if user.role != "admin":
+    # Developers inherit all admin privileges (Developer → Admin → User hierarchy).
+    if user.role not in ("admin", "developer"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return user
+
+
+async def require_developer(user: User = Depends(get_current_user)) -> User:
+    if user.role != "developer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Developer access required",
+        )
     return user

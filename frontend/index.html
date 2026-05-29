@@ -108,7 +108,7 @@
                 <!-- Left Side -->
                 <div class="nav-dropdown__mega-left">
                   <h3 class="nav-dropdown__heading">Built for modern Quality<br>Inspection teams</h3>
-                  <a href="/dashboard/live/" class="nav-dropdown__cta">Explore platform</a>
+                  <a href="/#features" class="nav-dropdown__cta">Explore platform</a>
                 </div>
                 <!-- Right Side -->
                 <div class="nav-dropdown__mega-right">
@@ -230,6 +230,14 @@
         <div class="hero-content-shell">
           <div class="hero-content hero-content--landing">
             <!-- <img src="/assets/new_logo.png" alt="My Home Group logo" width="54" height="54" class="hero-brand-mark" decoding="async"> -->
+            <div class="brand-reveal" id="brand-reveal" role="img" aria-label="SiteSureLabs">
+              <span class="brand-reveal__words" aria-hidden="true">
+                <span class="brand-reveal__site">Site</span><span class="brand-reveal__sure"><span class="brand-reveal__sure-s">S</span>ureLabs</span>
+              </span>
+              <svg class="brand-reveal__svg" viewBox="0 0 56 80" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMid meet">
+                <path class="brand-reveal__svg-path" d="M47 19 C47 11, 39 5, 28 5 C17 5, 9 11, 9 21 C9 32, 21 36, 28 39 C35 42, 47 46, 47 58 C47 68, 39 75, 28 75 C17 75, 9 69, 9 60" />
+              </svg>
+            </div>
             <h1 class="hero-title hero-title--typewriter" aria-label="AI-Powered Construction Inspection">
               <span class="hero-typewriter-stack">
                 <span class="hero-typewriter-measure" aria-hidden="true">AI-Powered<br><span class="gradient-text hero-typewriter-line2">Construction Inspection</span></span>
@@ -268,6 +276,94 @@
             <span class="hero-scroll-hint__dot"></span>
           </span>
         </button>
+      </div>
+    </section>
+
+    <!-- ═══ Admin-only end-of-page closer (hidden for regular users) ═══ -->
+    <section id="admin-tip" class="landing-section landing-section--admin-only" aria-labelledby="admin-tip-heading">
+      <div class="admin-tip__wrap">
+        <div class="admin-tip-cards">
+          <div class="admin-tip-track" id="admin-tip-track">
+          <!-- 1. SEE — Stats / insights -->
+          <article class="admin-tip-card">
+            <div class="admin-tip-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 17 9 11 13 15 21 7"></polyline>
+                <polyline points="14 7 21 7 21 14"></polyline>
+              </svg>
+            </div>
+            <p class="admin-tip-card__eyebrow">Tip</p>
+            <h2 id="admin-tip-heading" class="admin-tip-card__title">See how your site is performing.</h2>
+            <p class="admin-tip-card__body">Live trends across uploads, defects, and team activity &mdash; refreshed every time you open the page.</p>
+            <a href="/admin/#stats" class="admin-tip-card__cta">
+              Open stats
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 5l7 7-7 7"></path>
+              </svg>
+            </a>
+          </article>
+
+          <!-- 2. SHARE — Reports -->
+          <article class="admin-tip-card">
+            <div class="admin-tip-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 3 14 8 19 8"></polyline>
+                <path d="M9 13h6M9 16h4"></path>
+              </svg>
+            </div>
+            <p class="admin-tip-card__eyebrow">Tip</p>
+            <h2 class="admin-tip-card__title">Share insights as polished reports.</h2>
+            <p class="admin-tip-card__body">Turn your latest site analyses into detailed PPT and Excel reports, ready to send to stakeholders in a click.</p>
+            <a href="/admin/#report" class="admin-tip-card__cta">
+              Generate report
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 5l7 7-7 7"></path>
+              </svg>
+            </a>
+          </article>
+
+          <!-- 3. AUDIT — Activity log -->
+          <article class="admin-tip-card">
+            <div class="admin-tip-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 8v4l3 2"></path>
+                <circle cx="12" cy="12" r="9"></circle>
+              </svg>
+            </div>
+            <p class="admin-tip-card__eyebrow">Tip</p>
+            <h2 class="admin-tip-card__title">Track everything that happens on your site.</h2>
+            <p class="admin-tip-card__body">Every upload, report, and user action is logged. Open the activity log to audit or replay what happened, any time.</p>
+            <a href="/admin/#logs" class="admin-tip-card__cta">
+              Open activity log
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 5l7 7-7 7"></path>
+              </svg>
+            </a>
+          </article>
+
+          <!-- 4. CONTROL — Users -->
+          <article class="admin-tip-card">
+            <div class="admin-tip-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="8.5" r="3.2"></circle>
+                <path d="M2.8 20v-0.5c0-2.6 2.8-4.5 6.2-4.5s6.2 1.9 6.2 4.5V20"></path>
+                <circle cx="17.5" cy="9.5" r="2.4"></circle>
+                <path d="M21.5 19.5v-0.5c0-1.7-1.3-2.9-3.2-3"></path>
+              </svg>
+            </div>
+            <p class="admin-tip-card__eyebrow">Tip</p>
+            <h2 class="admin-tip-card__title">Control who can access what.</h2>
+            <p class="admin-tip-card__body">Invite teammates, set roles, and revoke access. Permissions update instantly across the workspace.</p>
+            <a href="/admin/#users" class="admin-tip-card__cta">
+              Manage users
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 5l7 7-7 7"></path>
+              </svg>
+            </a>
+          </article>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -676,9 +772,9 @@
             <div class="site-footer__nav-group reveal-on-scroll" style="--reveal-i:1">
               <p class="site-footer__nav-heading">AI Services</p>
               <ul class="site-footer__nav-list">
+                <li><a href="/dashboard/live/">Live Inspection</a></li>
                 <li><a href="/dashboard/ai-analysis/">AI Analysis</a></li>
                 <li data-feature="image-analysis"><a href="/dashboard/image-analysis/">Image Analysis</a></li>
-                <li><a href="/dashboard/live/">Live Inspection</a></li>
               </ul>
             </div>
             <div class="site-footer__nav-group site-footer__nav-group--company reveal-on-scroll" style="--reveal-i:2">

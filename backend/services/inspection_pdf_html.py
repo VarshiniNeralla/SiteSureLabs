@@ -14,6 +14,10 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
+# Decompression-bomb guard: cap pixels so a tiny crafted file can't expand to gigabytes in memory.
+# PIL raises DecompressionBombError above 2x this, which the rasterize try/except handles gracefully.
+Image.MAX_IMAGE_PIXELS = 64_000_000  # 64 MP — generous for phone cameras, blocks bombs
+
 _MAX_IMAGE_BYTES = 25 * 1024 * 1024
 _MAX_RAW_DECODE = 30 * 1024 * 1024
 _JPEG_MAX_SIDE = 1920
@@ -44,6 +48,10 @@ def _parse_data_url(s: str) -> tuple[bytes, str] | None:
         return None
     mime_m = re.search(r"data:([^;\s]+)", header, re.I)
     mime = (mime_m.group(1).strip() if mime_m else "application/octet-stream").lower()
+    # Reject by ENCODED length before decoding — base64 expands ~4/3, so a too-large payload is
+    # caught without allocating a huge buffer just to measure it.
+    if len(b64) > (_MAX_RAW_DECODE // 3 + 1) * 4:
+        return None
     try:
         raw = base64.b64decode(b64, validate=False)
     except Exception:
@@ -78,6 +86,8 @@ def image_field_to_jpeg_data_url(image_field: str | None) -> str | None:
         # Raw base64 only (no data: prefix)
         cleaned = re.sub(r"\s+", "", s)
         if not re.fullmatch(r"[A-Za-z0-9+/=]+", cleaned) or len(cleaned) < 80:
+            return None
+        if len(cleaned) > (_MAX_IMAGE_BYTES // 3 + 1) * 4:
             return None
         try:
             raw = base64.b64decode(cleaned, validate=False)

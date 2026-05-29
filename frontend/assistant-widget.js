@@ -39,51 +39,118 @@ const DELIVERED_TICKS_SVG = `<svg class="ssl-assistant-double-tick" viewBox="0 0
   <path d="M5.5 6.5L8.5 9.5 18.5 1.5" fill="none" stroke="rgba(255,255,255,0.95)" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
-/** Cute girl peeking from behind the FAB — upper body only (legs hidden by the button). */
+/** Premium AI assistant doll — modern young professional with bob hair, raised waving hand. */
 const MASCOT_SVG = `
 <svg class="ssl-mascot__svg" viewBox="0 0 72 78" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <defs>
-    <linearGradient id="ssl-mascot-dress" x1="36" y1="48" x2="36" y2="78" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#60a5fa"/>
-      <stop offset="1" stop-color="#2563eb"/>
+    <linearGradient id="ssl-skin" x1="36" y1="16" x2="36" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fbdcb8"/>
+      <stop offset="1" stop-color="#e6b48a"/>
     </linearGradient>
-    <linearGradient id="ssl-mascot-hair" x1="36" y1="4" x2="36" y2="28" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#4a3728"/>
-      <stop offset="1" stop-color="#2c1f14"/>
+    <linearGradient id="ssl-hair" x1="36" y1="4" x2="36" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1f140d"/>
+      <stop offset="1" stop-color="#3a2418"/>
+    </linearGradient>
+    <linearGradient id="ssl-top" x1="36" y1="50" x2="36" y2="82" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1e293b"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="ssl-hair-shine" x1="36" y1="6" x2="36" y2="18" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5a3b2a" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#5a3b2a" stop-opacity="0"/>
     </linearGradient>
   </defs>
+
+  <!-- Body / blouse -->
   <g class="ssl-mascot__body">
-    <path d="M22 54c2 8 8 14 14 14s12-6 14-14c-2 4-8 8-14 8s-12-4-14-8z" fill="url(#ssl-mascot-dress)"/>
-    <path d="M28 56h16v4c0 2-3 4-8 4s-8-2-8-4v-4z" fill="rgba(255,255,255,0.9)"/>
-    <ellipse cx="36" cy="60" rx="2" ry="1.2" fill="#93c5fd" opacity="0.8"/>
+    <ellipse cx="36" cy="70" rx="22" ry="14" fill="url(#ssl-top)"/>
+    <!-- V-neck collar showing neck -->
+    <path d="M30 56 L36 64 L42 56 L42 60 Q36 65 30 60 Z" fill="url(#ssl-skin)"/>
+    <!-- Soft shoulder highlight -->
+    <path d="M18 64 Q26 60 36 60 Q46 60 54 64" stroke="rgba(255,255,255,0.06)" stroke-width="1.2" fill="none"/>
   </g>
+
+  <!-- Hidden arm (left, behind body — subtle peek) -->
   <g class="ssl-mascot__arm ssl-mascot__arm--peek">
-    <path d="M20 50c-4 4-6 10-5 16" stroke="#fde4d6" stroke-width="2.8" stroke-linecap="round"/>
-    <circle cx="15" cy="66" r="2.8" fill="#fde4d6"/>
+    <path d="M18 56 Q15 62 13 70" stroke="url(#ssl-skin)" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.5"/>
   </g>
+
+  <!-- Waving arm (raised up, pivots around shoulder ~52,46) -->
   <g class="ssl-mascot__arm ssl-mascot__arm--wave">
-    <path d="M52 46c6-2 12 2 14 10" stroke="#fde4d6" stroke-width="2.8" stroke-linecap="round"/>
-    <circle cx="66" cy="54" r="3" fill="#fde4d6"/>
+    <!-- Sleeve from shoulder going up -->
+    <path d="M52 50 Q55 40 56 32" stroke="url(#ssl-top)" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <!-- Forearm (skin) -->
+    <path d="M56 34 Q61 26 64 18" stroke="url(#ssl-skin)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <!-- Hand -->
+    <circle cx="64" cy="16" r="5.2" fill="url(#ssl-skin)"/>
+    <!-- Fingers (subtle premium detail) -->
+    <path d="M62 13 q2-1 4 0" stroke="#c89578" stroke-width="0.55" stroke-linecap="round" fill="none" opacity="0.55"/>
+    <path d="M62 15.5 q2-0.5 4 0" stroke="#c89578" stroke-width="0.55" stroke-linecap="round" fill="none" opacity="0.55"/>
+    <path d="M62 18 q2 0 4 0.5" stroke="#c89578" stroke-width="0.55" stroke-linecap="round" fill="none" opacity="0.55"/>
+    <!-- Wrist cuff hint -->
+    <ellipse cx="60" cy="22" rx="2.5" ry="1.4" fill="url(#ssl-top)" opacity="0.85"/>
   </g>
+
+  <!-- Head -->
   <g class="ssl-mascot__head">
-    <ellipse cx="36" cy="34" rx="14" ry="15" fill="#fde4d6"/>
-    <path class="ssl-mascot__hair-back" d="M22 28c0-12 6-20 14-20s14 8 14 20c-2-8-6-12-14-12s-12 4-14 12z" fill="url(#ssl-mascot-hair)"/>
-    <path class="ssl-mascot__pigtail ssl-mascot__pigtail--l" d="M22 26c-8 4-10 14-6 22" stroke="url(#ssl-mascot-hair)" stroke-width="5" stroke-linecap="round" fill="none"/>
-    <path class="ssl-mascot__pigtail ssl-mascot__pigtail--r" d="M50 26c8 4 10 14 6 22" stroke="url(#ssl-mascot-hair)" stroke-width="5" stroke-linecap="round" fill="none"/>
-    <path d="M24 18c2-6 8-10 12-10s10 4 12 10" fill="url(#ssl-mascot-hair)"/>
-    <circle cx="36" cy="16" r="3.5" fill="#f472b6" opacity="0.85"/>
+    <!-- Hair back silhouette (bob length, jaw-line) -->
+    <path d="M22 32
+             C 21 14, 30 6, 36 6
+             C 42 6, 51 14, 50 32
+             C 49 38, 49 44, 48 48
+             Q 44 46, 40 44
+             L 36 42 L 32 44
+             Q 28 46, 24 48
+             C 23 44, 22 38, 22 32 Z"
+          fill="url(#ssl-hair)"/>
+    <!-- Hair highlight (premium glossy touch) -->
+    <path d="M26 14 Q 31 9, 36 9 Q 41 9, 46 14 Q 42 11, 36 11 Q 30 11, 26 14 Z"
+          fill="url(#ssl-hair-shine)"/>
+
+    <!-- Ears -->
+    <ellipse cx="23" cy="33" rx="1.5" ry="2.6" fill="url(#ssl-skin)"/>
+    <ellipse cx="49" cy="33" rx="1.5" ry="2.6" fill="url(#ssl-skin)"/>
+
+    <!-- Earrings (gold studs — premium accent) -->
+    <circle cx="22.5" cy="36" r="0.95" fill="#fbbf24"/>
+    <circle cx="49.5" cy="36" r="0.95" fill="#fbbf24"/>
+    <circle cx="22.6" cy="35.8" r="0.32" fill="#fef3c7"/>
+    <circle cx="49.6" cy="35.8" r="0.32" fill="#fef3c7"/>
+
+    <!-- Face -->
+    <ellipse cx="36" cy="34" rx="11.5" ry="13" fill="url(#ssl-skin)"/>
+
+    <!-- Side-swept bangs / fringe -->
+    <path d="M25 23
+             Q 28 16, 36 16
+             Q 44 16, 47 23
+             Q 45 21, 42 21
+             L 40 25 L 36 23 L 32 25 L 30 21
+             Q 27 21, 25 23 Z"
+          fill="url(#ssl-hair)"/>
+
+    <!-- Face features -->
     <g class="ssl-mascot__face">
-      <ellipse class="ssl-mascot__eye ssl-mascot__eye--l" cx="30" cy="33" rx="2.4" ry="3" fill="#1e293b"/>
-      <ellipse class="ssl-mascot__eye ssl-mascot__eye--r" cx="42" cy="33" rx="2.4" ry="3" fill="#1e293b"/>
-      <circle class="ssl-mascot__eye-shine" cx="31" cy="31.5" r="0.9" fill="#fff"/>
-      <circle class="ssl-mascot__eye-shine" cx="43" cy="31.5" r="0.9" fill="#fff"/>
-      <circle cx="26" cy="37" r="2.2" fill="#fda4af" opacity="0.45"/>
-      <circle cx="46" cy="37" r="2.2" fill="#fda4af" opacity="0.45"/>
-      <path class="ssl-mascot__smile" d="M31 40c1.5 2.5 4.5 3.5 7 2.5" stroke="#d97706" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      <!-- Eyebrows -->
+      <path d="M27 28 Q30 26.6 33 28" stroke="url(#ssl-hair)" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+      <path d="M39 28 Q42 26.6 45 28" stroke="url(#ssl-hair)" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+      <!-- Eyes -->
+      <ellipse class="ssl-mascot__eye ssl-mascot__eye--l" cx="30" cy="33" rx="1.6" ry="2.4" fill="#1e293b"/>
+      <ellipse class="ssl-mascot__eye ssl-mascot__eye--r" cx="42" cy="33" rx="1.6" ry="2.4" fill="#1e293b"/>
+      <!-- Eye shine -->
+      <circle class="ssl-mascot__eye-shine" cx="30.5" cy="32" r="0.65" fill="#ffffff"/>
+      <circle class="ssl-mascot__eye-shine" cx="42.5" cy="32" r="0.65" fill="#ffffff"/>
+      <!-- Subtle blush -->
+      <ellipse cx="27" cy="39" r="2.2" fill="#f9a8a8" opacity="0.32"/>
+      <ellipse cx="45" cy="39" r="2.2" fill="#f9a8a8" opacity="0.32"/>
+      <!-- Confident smile -->
+      <path class="ssl-mascot__smile" d="M32 41 Q36 44 40 41" stroke="#a13a14" stroke-width="1.55" stroke-linecap="round" fill="none"/>
     </g>
+
+    <!-- Blink lids -->
     <g class="ssl-mascot__blink" aria-hidden="true">
-      <path class="ssl-mascot__lid ssl-mascot__lid--l" d="M27 33q3-3 6 0" stroke="#fde4d6" stroke-width="2.8" stroke-linecap="round" fill="none"/>
-      <path class="ssl-mascot__lid ssl-mascot__lid--r" d="M39 33q3-3 6 0" stroke="#fde4d6" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+      <path class="ssl-mascot__lid ssl-mascot__lid--l" d="M28 33 Q30 31 32 33" stroke="url(#ssl-skin)" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+      <path class="ssl-mascot__lid ssl-mascot__lid--r" d="M40 33 Q42 31 44 33" stroke="url(#ssl-skin)" stroke-width="2.6" stroke-linecap="round" fill="none"/>
     </g>
   </g>
 </svg>`;
@@ -95,6 +162,8 @@ const WELCOME_HTML = `
     <p style="margin-top:0.5em;margin-bottom:0">What would you like to know?</p>
   </div>
 </div>`;
+
+const MASCOT_HINT_LINES = ["Hi, this is Varnika👋", "Your AI Assistant."];
 
 function el(html) {
   const t = document.createElement("template");
@@ -172,7 +241,7 @@ export function mountLandingAssistant() {
   const tpl = document.createElement("template");
   tpl.innerHTML = `
       <div class="ass-ctl ssl-assistant-fab" id="ssl-assistant-fab">
-        <p class="ssl-mascot-hint" id="ssl-mascot-hint" aria-hidden="true">Hi</p>
+        <p class="ssl-mascot-hint" id="ssl-mascot-hint" aria-hidden="true" aria-label="${MASCOT_HINT_LINES.join(". ")}"></p>
         <figure class="ssl-mascot" id="ssl-mascot" aria-hidden="true">${MASCOT_SVG}</figure>
         <button type="button" class="ssl-assistant-launcher" id="ssl-assistant-launcher" aria-label="Open AI Assistant — your guide is here to help" aria-expanded="false" aria-controls="ssl-assistant-panel">
           <span class="ssl-assistant-launcher__ripple" aria-hidden="true"></span>
@@ -390,17 +459,44 @@ export function mountLandingAssistant() {
   const motionOk = () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let greetTimer = 0;
+  let greetTypeTimer = 0;
+  const setMascotHintText = (line1 = "", line2 = "") => {
+    if (!mascotHint) return;
+    mascotHint.innerHTML = `
+      <span class="ssl-mascot-hint__line">${escapeHtml(line1)}</span>
+      <span class="ssl-mascot-hint__line">${escapeHtml(line2)}</span>
+    `;
+  };
+
+  const streamMascotHint = () => {
+    if (!mascotHint) return;
+    window.clearInterval(greetTypeTimer);
+    const fullText = MASCOT_HINT_LINES.join("\n");
+    let idx = 0;
+    setMascotHintText();
+    greetTypeTimer = window.setInterval(() => {
+      idx += 1;
+      const [line1 = "", line2 = ""] = fullText.slice(0, idx).split("\n");
+      setMascotHintText(line1, line2);
+      if (idx >= fullText.length) window.clearInterval(greetTypeTimer);
+    }, 28);
+  };
+
   const playGreeting = () => {
     if (!fab || !motionOk() || panel?.classList.contains("is-open")) return;
     window.clearTimeout(greetTimer);
+    window.clearInterval(greetTypeTimer);
     fab.classList.remove("is-greeting");
     void fab.offsetWidth;
     fab.classList.add("is-greeting");
+    setMascotHintText();
     mascotHint?.classList.add("is-visible");
+    streamMascotHint();
     greetTimer = window.setTimeout(() => {
       fab.classList.remove("is-greeting");
       mascotHint?.classList.remove("is-visible");
-    }, 2400);
+      window.clearInterval(greetTypeTimer);
+    }, 3600);
   };
 
   const runMascotIntro = () => {

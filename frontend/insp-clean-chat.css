@@ -40,10 +40,7 @@ body.page--ai-chat.cht-ai-chat--unified-nav #navbar {
   display: none !important;
 }
 
-/* Compact dashboard chrome: segment stays viewport-centered (see dashboard-chrome.css). */
-.page--ai-chat #navbar .nav-container--compact {
-  padding-inline: clamp(12px, 2vw, var(--cht-workbench-gutter, 1.25rem));
-}
+/* Horizontal nav padding: dashboard-chrome.css (--dashboard-nav-padding-inline on .nav-container--compact). */
 
 /* Back-to-home is moved into the chat topbar on AI page */
 .page--ai-chat #navbar .nav-back-home {
