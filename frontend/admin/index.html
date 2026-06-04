@@ -45,6 +45,13 @@
       border-bottom: 1px solid rgba(148,163,184,.22);
       box-shadow: 0 1px 0 rgba(255,255,255,.78) inset, 0 8px 24px rgba(15,23,42,.055), 0 1px 6px rgba(148,163,184,.1);
     }
+    .admin-nav.admin-nav--scrolled {
+      background: rgba(255, 255, 255, 0.82);
+      border-bottom-color: rgba(15, 23, 42, 0.08);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+      backdrop-filter: saturate(180%) blur(18px);
+      -webkit-backdrop-filter: saturate(180%) blur(18px);
+    }
     .admin-nav__inner {
       display: flex;
       align-items: center;
@@ -55,6 +62,9 @@
       gap: 12px;
       width: 100%;
       box-sizing: border-box;
+    }
+    .admin-nav.admin-nav--scroll-compact .admin-nav__inner {
+      min-height: 46px;
     }
     .admin-nav__logo {
       display: inline-flex;
@@ -162,12 +172,14 @@
 
     /* ── Analytics workspace (minimal) ── */
     .workspace-dashboard {
-      --ws-accent: #0071e3;
-      --ws-ink: #1d1d1f;
-      --ws-muted: #86868b;
-      --ws-line: rgba(0, 0, 0, 0.06);
-      --ws-surface: #fafafa;
-      --ws-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+      /* Aliased to the canonical design system (tokens.css) so admin shares
+         the product's brand color and neutrals instead of its own palette. */
+      --ws-accent: var(--primary);
+      --ws-ink: var(--text);
+      --ws-muted: var(--text-muted);
+      --ws-line: var(--border);
+      --ws-surface: var(--bg);
+      --ws-ease: var(--ease-out);
       max-width: 52rem;
       margin: 0 auto;
       display: flex;
@@ -252,6 +264,8 @@
       width: 100%;
       height: 5.5rem;
       overflow: visible;
+      cursor: crosshair;
+      touch-action: none;
     }
     .ws-line-svg polyline {
       fill: none;
@@ -264,6 +278,47 @@
     .ws-line-svg .ws-line-area {
       fill: url(#wsLineFade);
       stroke: none;
+    }
+    .ws-line-guide {
+      stroke: rgba(0, 113, 227, 0.18);
+      stroke-width: 1;
+      stroke-dasharray: 3 3;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+    .ws-line-point {
+      fill: #fff;
+      stroke: var(--ws-accent);
+      stroke-width: 1.45;
+      filter: drop-shadow(0 1px 3px rgba(0, 113, 227, 0.2));
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+    .ws-line-tooltip {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform: translate(-50%, -120%);
+      min-width: 2rem;
+      padding: 0.24rem 0.42rem;
+      border-radius: 999px;
+      background: #0f172a;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      line-height: 1;
+      text-align: center;
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.18);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.1s ease;
+      z-index: 2;
+    }
+    .ws-line-tooltip.is-visible {
+      opacity: 1;
+    }
+    .ws-line-wrap.is-dragging .ws-line-svg {
+      cursor: grabbing;
     }
     .ws-line-labels {
       display: flex;
@@ -5156,18 +5211,6 @@
         <span class="workspace-dashboard__live" id="workspaceLiveText">Syncing…</span>
       </header>
 
-      <!-- BAND 1: Intelligence Banner -->
-      <div class="intel-banner" id="intelBanner">
-        <div class="intel-banner__score-wrap">
-          <div class="intel-banner__score" id="siteHealthScore">—</div>
-          <div class="intel-banner__score-label">Site Health</div>
-        </div>
-        <div class="intel-banner__body">
-          <p class="intel-banner__briefing" id="intelBriefing">Loading intelligence…</p>
-          <div class="intel-banner__chips" id="intelChips"></div>
-        </div>
-      </div>
-
       <!-- BAND 3: Intelligence Feed -->
       <section class="ws-section">
         <div class="ws-section__head">
@@ -5217,14 +5260,6 @@
         <div id="wsHeatmap"></div>
       </section>
 
-      <!-- BAND 7: Activity Timeline -->
-      <section class="ws-section">
-        <div class="ws-section__head">
-          <h3 class="ws-section__title">Recent Activity</h3>
-          <button class="ws-section__link" id="timelineViewAll">View all logs →</button>
-        </div>
-        <div class="activity-timeline" id="wsTimeline"></div>
-      </section>
     </div>
     </div>
 
@@ -5754,10 +5789,12 @@
     import { requireAdmin, apiFetch, getUser } from "/shared/auth.js";
     import { mountProfileNav } from "/shared/profile-nav.js";
     import { formatApiDetail } from "/shared/format-api-detail.js";
+    import { mountSmoothScroll } from "/shared/smooth-scroll.js";
 
     const token = requireAdmin();
     if (!token) throw new Error("redirect");
 
+    mountSmoothScroll();
     mountProfileNav(document.getElementById("admin-nav-actions"));
 
     /** Background sync: spaced timers avoid bursty API + DOM work; silent mode skips unchanged data. */
@@ -5982,7 +6019,37 @@
     /* ═══════════════════════════════════════════════
        Tabs
        ═══════════════════════════════════════════════ */
+    const ADMIN_ACTIVE_TAB_KEY = "defectra_admin_active_tab";
+    const ADMIN_TAB_NAMES = ["all-uploads", "stats", "users", "logs"];
+
+    function validAdminTabName(name) {
+      return ADMIN_TAB_NAMES.includes(name) ? name : "";
+    }
+
+    function savedAdminTabName() {
+      try {
+        return validAdminTabName(localStorage.getItem(ADMIN_ACTIVE_TAB_KEY) || "");
+      } catch {
+        return "";
+      }
+    }
+
+    function persistAdminTabName(name) {
+      if (!validAdminTabName(name)) return;
+      try {
+        localStorage.setItem(ADMIN_ACTIVE_TAB_KEY, name);
+      } catch {
+        /* localStorage unavailable */
+      }
+    }
+
+    function replaceAdminTabHash(name) {
+      if (!validAdminTabName(name)) return;
+      history.replaceState(null, "", `${location.pathname}${location.search}#${name}`);
+    }
+
     function activateAdminTab(name) {
+      if (!validAdminTabName(name)) return;
       const scrollX = window.scrollX;
       const scrollY = window.scrollY;
       document.querySelectorAll(".tab-btn").forEach((b) => {
@@ -6004,19 +6071,19 @@
         tabsEl.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
       }
       window.scrollTo(scrollX, scrollY);
+      persistAdminTabName(name);
     }
 
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        if (isAdminReportHash()) {
-          history.replaceState(null, "", location.pathname + location.search);
-        }
+        const tabName = validAdminTabName(btn.dataset.tab || "") || "all-uploads";
         showAdminDashboardView();
-        activateAdminTab(btn.dataset.tab);
-        if (btn.dataset.tab === "all-uploads") loadAllUploads();
-        else if (btn.dataset.tab === "stats") loadWorkspace();
-        else if (btn.dataset.tab === "users") loadUsers();
-        else if (btn.dataset.tab === "logs") {
+        activateAdminTab(tabName);
+        replaceAdminTabHash(tabName);
+        if (tabName === "all-uploads") loadAllUploads();
+        else if (tabName === "stats") loadWorkspace();
+        else if (tabName === "users") loadUsers();
+        else if (tabName === "logs") {
           loadLogs(
             document.getElementById("dateFrom").value,
             document.getElementById("dateTo").value,
@@ -6044,6 +6111,7 @@
       const valid = ["all-uploads", "stats", "users", "logs"];
       if (!valid.includes(name)) return;
       activateAdminTab(name);
+      replaceAdminTabHash(name);
       if (name === "all-uploads") loadAllUploads();
       else if (name === "stats") loadWorkspace();
       else if (name === "users") loadUsers();
@@ -6059,8 +6127,8 @@
 
     function analyticsAreaLabel(d) {
       const parts = [];
-      if (d.tower) parts.push(`Tower ${d.tower}`);
-      if (d.floor) parts.push(`Floor ${d.floor}`);
+      if (d.tower) parts.push(formatTowerLabel(d.tower));
+      if (d.floor) parts.push(formatFloorLabel(d.floor));
       if (d.flat) parts.push(`Flat ${d.flat}`);
       if (d.room) parts.push(d.room);
       return parts.length ? parts.join(" · ") : "Unknown area";
@@ -6339,11 +6407,22 @@
     }
 
     function wsTowerFloorLabel(tower, floor) {
-      const t = (tower || "").trim() || "Unknown area";
-      const f = (floor || "").trim();
+      const t = formatTowerLabel(tower) || "Unknown area";
+      const f = formatFloorLabel(floor);
       if (!f || f === "—" || f === "-") return t;
-      if (/^floor\b/i.test(f)) return `${t}, ${f}`;
-      return `${t}, Floor ${f}`;
+      return `${t}, ${f}`;
+    }
+
+    function formatTowerLabel(tower) {
+      const value = String(tower || "").trim();
+      if (!value || value === "—" || value === "-") return value;
+      return /^tower\b/i.test(value) ? value : `Tower ${value}`;
+    }
+
+    function formatFloorLabel(floor) {
+      const value = String(floor || "").trim();
+      if (!value || value === "—" || value === "-") return value;
+      return /^floor\b/i.test(value) ? value : `Floor ${value}`;
     }
 
     function wsFormatFloorAxis(floor) {
@@ -6379,6 +6458,7 @@
       });
       const linePts = pts.map((p) => p.join(",")).join(" ");
       const areaPts = `${padX},${h - padY} ${linePts} ${w - padX},${h - padY}`;
+      const activePoint = pts[pts.length - 1] || [padX, h - padY];
       const total = counts.reduce((s, c) => s + c, 0);
       const meta = document.getElementById("wsVolumeMeta");
       if (meta) meta.textContent = `${total} in 14 days`;
@@ -6396,8 +6476,82 @@
           </defs>
           <polygon class="ws-line-area" points="${areaPts}"/>
           <polyline points="${linePts}"/>
+          <line class="ws-line-guide" data-ws-line-guide x1="${activePoint[0]}" x2="${activePoint[0]}" y1="${padY}" y2="${h - padY}"/>
+          <circle class="ws-line-point" data-ws-line-point cx="${activePoint[0]}" cy="${activePoint[1]}" r="2.2"/>
         </svg>
+        <div class="ws-line-tooltip" data-ws-line-tooltip>${rows[rows.length - 1]?.count ?? 0}</div>
         <div class="ws-line-labels">${labels}</div>`;
+      const svg = container.querySelector(".ws-line-svg");
+      const point = container.querySelector("[data-ws-line-point]");
+      const guide = container.querySelector("[data-ws-line-guide]");
+      const tooltip = container.querySelector("[data-ws-line-tooltip]");
+
+      const ratioFromPointer = (event) => {
+        const rect = svg?.getBoundingClientRect();
+        if (!rect?.width) return 1;
+        return Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
+      };
+
+      const pointOnLine = (ratio) => {
+        if (pts.length <= 1) {
+          const [x = padX, y = h - padY] = pts[0] || [];
+          return { x, y, count: rows[0]?.count ?? 0 };
+        }
+        const scaled = Math.min(Math.max(ratio, 0), 1) * (pts.length - 1);
+        const left = Math.floor(scaled);
+        const right = Math.min(left + 1, pts.length - 1);
+        const t = scaled - left;
+        const [x1, y1] = pts[left];
+        const [x2, y2] = pts[right];
+        const nearest = Math.round(scaled);
+        return {
+          x: x1 + (x2 - x1) * t,
+          y: y1 + (y2 - y1) * t,
+          count: rows[nearest]?.count ?? 0,
+        };
+      };
+
+      const moveMarker = (ratio, visible = true) => {
+        const active = pointOnLine(ratio);
+        point?.setAttribute("cx", String(active.x));
+        point?.setAttribute("cy", String(active.y));
+        guide?.setAttribute("x1", String(active.x));
+        guide?.setAttribute("x2", String(active.x));
+        if (tooltip && svg) {
+          const rect = svg.getBoundingClientRect();
+          tooltip.textContent = String(active.count);
+          tooltip.style.left = `${(active.x / w) * rect.width}px`;
+          tooltip.style.top = `${(active.y / h) * rect.height}px`;
+          tooltip.classList.toggle("is-visible", visible);
+        }
+      };
+
+      const handlePointerMove = (event) => {
+        moveMarker(ratioFromPointer(event), true);
+      };
+
+      svg?.addEventListener("pointerenter", handlePointerMove);
+      svg?.addEventListener("pointermove", handlePointerMove);
+      svg?.addEventListener("pointerdown", (event) => {
+        container.classList.add("is-dragging");
+        svg.setPointerCapture?.(event.pointerId);
+        handlePointerMove(event);
+      });
+      svg?.addEventListener("pointerup", (event) => {
+        container.classList.remove("is-dragging");
+        svg.releasePointerCapture?.(event.pointerId);
+        handlePointerMove(event);
+      });
+      svg?.addEventListener("pointercancel", (event) => {
+        container.classList.remove("is-dragging");
+        svg.releasePointerCapture?.(event.pointerId);
+        moveMarker(1, false);
+      });
+      svg?.addEventListener("pointerleave", () => {
+        if (container.classList.contains("is-dragging")) return;
+        moveMarker(1, false);
+      });
+      requestAnimationFrame(() => moveMarker(1, false));
     }
 
     function wsRenderHeatmap(container, heatmap, gapSet) {
@@ -6458,7 +6612,7 @@
       const topTower = data.heatmap?.towers?.[0] ?? null;
       let text = `${uploads} upload${uploads !== 1 ? "s" : ""} this week`;
       if (topCat) text += ` — ${topCat} is the leading issue type`;
-      if (topTower && topTower !== "—") text += ` · Tower ${topTower} most active`;
+      if (topTower && topTower !== "—") text += ` · ${formatTowerLabel(topTower)} most active`;
       if (critical > 0) text += ` · ${critical} critical item${critical !== 1 ? "s" : ""} need${critical === 1 ? "s" : ""} attention`;
       return text + ".";
     }
@@ -6469,7 +6623,9 @@
         entries.push({ type: "critical", title: item.label || "Critical defect", sub: item.area || "", badge: "Critical", at: item.at });
       });
       (data.coverage_gaps || []).slice(0, 3).forEach(gap => {
-        const loc = gap.floor ? `Tower ${gap.tower}, Floor ${gap.floor}` : `Tower ${gap.tower}`;
+        const tower = formatTowerLabel(gap.tower);
+        const floor = formatFloorLabel(gap.floor);
+        const loc = floor ? `${tower}, ${floor}` : tower;
         entries.push({ type: "gap", title: "Inspection blind spot", sub: `${loc} — no uploads in 7 days`, badge: "Gap" });
       });
       (data.category_velocity || []).forEach(cat => {
@@ -6675,7 +6831,6 @@
 
     function renderWorkspaceDashboard(data) {
       const score = computeSiteHealthScore(data);
-      renderIntelBanner(data, score);
       const feedEntries = buildIntelligenceFeed(data);
       renderIntelFeed(feedEntries);
       renderDefectPatterns(data);
@@ -6683,7 +6838,6 @@
       wsRenderLineChart(document.getElementById("wsUploadTrend"), data.upload_trend_daily || []);
       renderTrendWoW(data);
       renderCoverageHeatmap(data, currentHeatmapMode);
-      renderActivityTimeline(data);
 
       document.getElementById("heatmapToggle")?.querySelectorAll(".heatmap-toggle__btn").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -6691,10 +6845,6 @@
           document.querySelectorAll(".heatmap-toggle__btn").forEach(b => b.classList.toggle("active", b === btn));
           renderCoverageHeatmap(data, currentHeatmapMode);
         });
-      });
-
-      document.getElementById("timelineViewAll")?.addEventListener("click", () => {
-        document.querySelector('[data-tab="logs"]')?.click();
       });
 
       const liveText = document.getElementById("workspaceLiveText");
@@ -7359,6 +7509,16 @@
 
     let allUploadsData = [];
     const ALL_UPLOADS_PROJECT_UNASSIGNED = "__unassigned__";
+    const REPORT_KNOWN_PROJECTS = [
+      "MyHome Grava",
+      "MyHome Apas",
+      "MyHome Vipina",
+      "MyHome Avali",
+      "MyHome Akrida",
+      "MyHome 99",
+      "MyHome Udyan",
+      "MyHome Vyoma",
+    ];
 
     let allUploadsFilters = {
       day: "all",
@@ -7376,6 +7536,18 @@
     function uploadProjectLabel(key) {
       if (key === ALL_UPLOADS_PROJECT_UNASSIGNED) return "Unassigned";
       return key;
+    }
+
+    function canonicalReportProjectKey(value) {
+      const raw = String(value || "").trim();
+      if (!raw || raw === ALL_UPLOADS_PROJECT_UNASSIGNED) return "";
+      const normalized = raw.toLowerCase().replace(/[^a-z0-9]+/g, "");
+      for (const project of REPORT_KNOWN_PROJECTS) {
+        const canonical = project.toLowerCase().replace(/[^a-z0-9]+/g, "");
+        const shortName = project.replace(/^MyHome\s*/i, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+        if (normalized === canonical || normalized === shortName) return project;
+      }
+      return /^myhome/i.test(normalized) ? raw : "";
     }
     const flaggedUploadIds = new Set();
 
@@ -8723,7 +8895,7 @@
       if (reportUser && user && optionExists(reportUser, user)) {
         reportUser.value = user;
       }
-      const project = String(saved.project ?? "").trim();
+      const project = canonicalReportProjectKey(saved.project);
       if (reportProject && project && optionExists(reportProject, project)) {
         reportProject.value = project;
       }
@@ -8731,12 +8903,15 @@
 
     function refreshReportProjectOptions(items) {
       if (!reportProject) return;
-      const keys = Array.from(new Set(items.map((d) => uploadProjectKey(d)))).sort((a, b) => {
-        if (a === ALL_UPLOADS_PROJECT_UNASSIGNED) return 1;
-        if (b === ALL_UPLOADS_PROJECT_UNASSIGNED) return -1;
+      const keys = Array.from(
+        new Set([
+          ...REPORT_KNOWN_PROJECTS,
+          ...items.map((d) => canonicalReportProjectKey(uploadProjectKey(d))),
+        ].filter(Boolean)),
+      ).sort((a, b) => {
         return a.localeCompare(b);
       });
-      const existing = reportProject.value || "";
+      const existing = canonicalReportProjectKey(reportProject.value) || reportProject.value || "";
       reportProject.innerHTML = `<option value="">Select project</option><option value="all">All Projects</option>${keys
         .map(
           (key) =>
@@ -8889,7 +9064,7 @@
         const dt = new Date(d.created_at);
         if (isNaN(dt.getTime())) return false;
         if (user !== "all" && (d.email || "") !== user) return false;
-        if (project !== "all" && uploadProjectKey(d) !== project) return false;
+        if (project !== "all" && canonicalReportProjectKey(uploadProjectKey(d)) !== project) return false;
         if (day === "today" && !isSameDate(dt, today)) return false;
         if (day === "yesterday" && !isSameDate(dt, yesterday)) return false;
         if (day === "last7") {
@@ -9583,7 +9758,7 @@
 
         setReportGenerateStatus("Compiling Excel report...");
 
-        const reportPayload = { entries: analyzed, base_url: window.location.origin, project: (reportProject?.value || "").trim() };
+        const reportPayload = { entries: analyzed, base_url: window.location.origin, project: (reportProject?.value || "").trim(), date_from: (reportDateFrom?.value || "").trim(), date_to: (reportDateTo?.value || "").trim() };
         const res = await apiFetch("/api/admin/reports/generate-xlsx", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -9999,8 +10174,19 @@
         openAdminTabFromHash();
         return;
       }
-      activateAdminTab("all-uploads");
-      await loadAllUploads();
+      const initialTab = savedAdminTabName() || "all-uploads";
+      activateAdminTab(initialTab);
+      replaceAdminTabHash(initialTab);
+      if (initialTab === "stats") await loadWorkspace();
+      else if (initialTab === "users") await loadUsers();
+      else if (initialTab === "logs") {
+        await loadLogs(
+          document.getElementById("dateFrom").value,
+          document.getElementById("dateTo").value,
+        );
+      } else {
+        await loadAllUploads();
+      }
     })();
 
     startBackgroundSync();

@@ -61,7 +61,6 @@ uvicorn main:app --host 127.0.0.1 --port 8010
 
 
 
-
 cd backend
 .venv/Scripts/activate
 python -m uvicorn main:app --reload --host 0.0.0.0 --port 8010
@@ -89,5 +88,6 @@ Verify MongoDB is actually usable
 
 docker exec -it defectra-mongo mongosh
 show dbs
+
 
 

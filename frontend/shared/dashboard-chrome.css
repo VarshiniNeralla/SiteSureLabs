@@ -251,6 +251,24 @@
 .live-collection-status__bucket-svg {
   display: block;
   overflow: visible;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.live-collection-status__lottie {
+  pointer-events: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  width: 42px;
+  height: 42px;
+  transform: translate(-50%, -52%);
+  filter: drop-shadow(0 8px 18px rgba(37, 99, 235, 0.18));
+}
+
+.live-collection-status--lottie-playing .live-collection-status__bucket-svg {
+  opacity: 0;
+  transform: scale(0.9);
 }
 
 .live-collection-status__bucket-lid {
@@ -509,6 +527,11 @@
     width: 24px;
     height: 24px;
   }
+
+  .live-collection-status__lottie {
+    width: 38px;
+    height: 38px;
+  }
 }
 
 @media (min-width: 768px) {
@@ -528,6 +551,7 @@
   .live-collection-status,
   .live-collection-status__bucket-lid,
   .live-collection-status__bucket-body,
+  .live-collection-status__bucket-svg,
   .live-collection-status__stack-thumb {
     transition: none !important;
   }
@@ -588,6 +612,106 @@ body.dashboard-page .glass-nav--dashboard.glass-nav--compact .nav-zone--end {
 /* Desktop: navbar carries workspace + profile; hide empty chat topbar */
 @media (min-width: 901px) {
   .page--ai-chat .cht-topbar {
+    display: none;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   Mobile bottom tab bar — primary navigation on phones (≤767px).
+   Injected by dashboard-nav.js on all dashboard pages. Replaces the
+   hamburger drawer for tool-switching; native, thumb-reachable.
+   ════════════════════════════════════════════════════════════ */
+.dashboard-tabbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  body.dashboard-page {
+    --tabbar-h: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .dashboard-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    align-items: stretch;
+    height: var(--tabbar-h);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: saturate(180%) blur(18px);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.05);
+    transition: transform 0.22s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+  }
+
+  /* Slide away while typing (keyboard up) so it never fights the composer. */
+  body.kbd-open .dashboard-tabbar {
+    transform: translateY(110%);
+  }
+
+  .dashboard-tabbar__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-height: var(--tap-target, 44px);
+    text-decoration: none;
+    color: var(--text-muted);
+    font-family: var(--font-sans, "Montserrat", system-ui, sans-serif);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+
+  .dashboard-tabbar__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dashboard-tabbar__icon svg {
+    width: 22px;
+    height: 22px;
+    display: block;
+  }
+
+  .dashboard-tabbar__item.is-active {
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .dashboard-tabbar__item:active {
+    background: rgba(15, 23, 42, 0.04);
+  }
+
+  /* Reserve space so the fixed bar never hides content on scroll pages.
+     (The AI chat page reserves via its own shell padding instead.) */
+  body.dashboard-page:not(.page--ai-chat) {
+    padding-bottom: var(--tabbar-h);
+  }
+
+  /* The tab bar replaces the hamburger drawer on the non-chat pages, so
+     hide the in-nav hamburger and surface the logo (home link) instead.
+     The chat page relocates the same button into its topbar (outside
+     .glass-nav), so it is unaffected by this rule. */
+  .glass-nav--compact .mobile-hamburger {
+    display: none;
+  }
+
+  body.dashboard-page:not(.page--ai-chat) .glass-nav--compact .logo-container--nav {
+    display: flex;
+  }
+
+  body.dashboard-page:not(.page--ai-chat) .glass-nav--compact .mobile-page-title {
     display: none;
   }
 }

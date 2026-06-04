@@ -100,6 +100,8 @@ class ReportGenerateXlsxBody(BaseModel):
     entries: list[ReportXlsxEntry]
     base_url: str = ""
     project: str = ""
+    date_from: str = ""
+    date_to: str = ""
 
 
 class BulkDeleteUploadsBody(BaseModel):
@@ -823,7 +825,460 @@ def _add_fitted_pptx_image(slide, path: Path, left, top, width, height) -> None:
     slide.shapes.add_picture(image_stream, img_left, img_top, width=actual_w, height=actual_h)
 
 
-def _build_report_presentation(*, rows: list[dict], project: str = "") -> BytesIO:
+# Maps a substring of the project name (lowercase) to the project's cover slide
+# PPTX in frontend/ppt_slides/individual_final_slides/. Matching is substring-based
+# against the lowercased project name, so each key must be a distinctive token
+# unlikely to appear in another project's name. Projects without a template here
+# (e.g. Avali, Vyoma) fall through to the no-cover fallback in _prepend_cover_slide.
+_COVER_SLIDE_MAP: dict[str, str] = {
+    "vipina": "Vipina_HQ.pptx",
+    "99": "99_HQ.pptx",
+    "apas": "Apas_HQ_1.pptx",
+    "akrida": "Akrida_HQ.pptx",
+    "udyan": "Udyan_HQ.pptx",
+    "grava": "GravaResidences.pptx",
+}
+
+_PPT_SLIDES_DIR = (
+    Path(__file__).resolve().parent.parent.parent
+    / "frontend" / "ppt_slides" / "individual_final_slides"
+)
+
+# India Standard Time (UTC+5:30, no DST). The cover's "Report Date" is the report
+# generation date in IST, since MyHome operates in India (a UTC clock can read a
+# day behind during the IST evening).
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def _report_generation_date_label() -> str:
+    """The cover's Report Date value: today's date in IST, e.g. '02 June 2026'."""
+    return datetime.now(_IST).strftime("%d %B %Y")
+
+# Separator between start and end dates in the cover's "Reporting period" field,
+# matching the em-dash (U+2014) style authored in the template.
+_COVER_PERIOD_SEP = " — "
+
+
+def _fmt_cover_day(value: str) -> str:
+    """Format an ISO date (YYYY-MM-DD) as DD-MM-YYYY; pass through if unparseable."""
+    try:
+        return datetime.strptime(value.strip(), "%Y-%m-%d").strftime("%d-%m-%Y")
+    except ValueError:
+        return value.strip()
+
+
+def _format_reporting_period(date_from: str, date_to: str) -> str:
+    """Return the 'Reporting period' value for the cover slide.
+
+    Two distinct dates -> "DD-MM-YYYY — DD-MM-YYYY".
+    A single date (only one given, or both equal) -> "DD-MM-YYYY".
+    Nothing available -> the original placeholder is left untouched (caller skips).
+    """
+    f = date_from.strip()
+    t = date_to.strip()
+    if f and t:
+        return _fmt_cover_day(f) if f == t else f"{_fmt_cover_day(f)}{_COVER_PERIOD_SEP}{_fmt_cover_day(t)}"
+    if f:
+        return _fmt_cover_day(f)
+    if t:
+        return _fmt_cover_day(t)
+    return ""
+
+
+def _derive_cover_date_range_from_rows(rows: list[dict]) -> tuple[str, str]:
+    """Use the included image dates as the report range when 'All days' is selected."""
+    dates: list[date] = []
+    for row in rows:
+        raw = str(row.get("reporting_date") or "").strip()
+        if not raw:
+            continue
+        try:
+            dates.append(date.fromisoformat(raw[:10]))
+        except ValueError:
+            continue
+    if not dates:
+        return "", ""
+    start = min(dates).isoformat()
+    end = max(dates).isoformat()
+    return start, end
+
+
+def _set_cover_period_text(slide, period_label: str) -> bool:
+    """Replace the cover's Report Period value with ``period_label``.
+
+    The value field is identified positionally: it is the text shape sitting
+    directly below the report period label (same left edge, just under it).
+    This is robust across templates whether the value currently holds the
+    "Period start — Period end" placeholder (MH Vipina) or a hard-coded date
+    (MH 99) — both are simply overwritten.
+
+    Falls back to matching a "Period start" placeholder paragraph if the
+    positional anchor can't be found. Replacement writes the new text on the
+    first run and blanks the rest, preserving the run's font/size/colour so the
+    slide's styling is never lost. Returns True if a field was replaced.
+    """
+    if not period_label:
+        return False
+
+    def overwrite(shape) -> bool:
+        if not shape.has_text_frame:
+            return False
+        para = shape.text_frame.paragraphs[0]
+        runs = para.runs
+        if not runs:
+            return False
+        runs[0].text = period_label
+        for extra in runs[1:]:
+            extra.text = ""
+        return True
+
+    # Primary strategy: find the report period label, then the value shape
+    # immediately beneath it at the same left position.
+    label = None
+    for shape in slide.shapes:
+        if (
+            shape.has_text_frame
+            and shape.text_frame.text.strip().upper() in {"REPORTING PERIOD", "REPORT PERIOD"}
+        ):
+            label = shape
+            break
+
+    if label is not None and label.left is not None and label.top is not None:
+        candidates = []
+        for shape in slide.shapes:
+            if shape is label or not shape.has_text_frame:
+                continue
+            if shape.left is None or shape.top is None:
+                continue
+            # Same column (left within ~0.15"), positioned below the label.
+            if abs(shape.left - label.left) <= Inches(0.15) and shape.top > label.top:
+                candidates.append(shape)
+        if candidates:
+            value_shape = min(candidates, key=lambda s: s.top)
+            if overwrite(value_shape):
+                return True
+
+    # Fallback: overwrite any paragraph that still holds the textual placeholder.
+    for shape in slide.shapes:
+        if shape.has_text_frame and "period start" in shape.text_frame.text.lower():
+            if overwrite(shape):
+                return True
+    return False
+
+
+def _set_shape_text(shape, text: str) -> bool:
+    """Overwrite a text shape while preserving the first run's existing style."""
+    if not shape.has_text_frame:
+        return False
+    tf = shape.text_frame
+    if not tf.paragraphs:
+        return False
+    para = tf.paragraphs[0]
+    if para.runs:
+        para.runs[0].text = text
+        for extra in para.runs[1:]:
+            extra.text = ""
+    else:
+        para.add_run().text = text
+    for extra_para in tf.paragraphs[1:]:
+        for run in extra_para.runs:
+            run.text = ""
+    return True
+
+
+def _update_cover_static_text(slide) -> None:
+    """Apply current cover copy to template text that is otherwise static."""
+    for shape in slide.shapes:
+        if not getattr(shape, "has_text_frame", False):
+            continue
+        text = " ".join(shape.text_frame.text.split()).strip().upper()
+        if text == "REPORTING PERIOD":
+            _set_shape_text(shape, "REPORT PERIOD")
+        elif text == "CONSTRUCTION QUALITY REVIEW":
+            _set_shape_text(shape, "")
+
+
+def _clone_slide_into(dest_prs, src_slide, dest_layout):
+    """Clone a slide from one presentation into another at the package level.
+
+    Copies the slide's shape XML and every related part (images, etc.) into the
+    destination package, remapping relationship IDs safely so the result is
+    valid OOXML that PowerPoint opens without a repair prompt.
+
+    Returns the newly created slide in dest_prs (appended at the end).
+    """
+    import copy
+
+    new_slide = dest_prs.slides.add_slide(dest_layout)
+
+    # Append a deep copy of every source shape into the new slide's existing
+    # spTree (rather than swapping the spTree element out — that would leave
+    # python-pptx's SlideShapes pointing at a stale, detached tree, so later
+    # edits like the date stamp would silently no-op). We keep the first two
+    # spTree children (nvGrpSpPr + grpSpPr, the group's own properties) and add
+    # the authored shapes after them.
+    dest_sp_tree = new_slide.shapes._spTree
+    for child in list(src_slide.shapes._spTree):
+        tag = child.tag
+        # Skip the source group's own property elements; the dest already has
+        # valid ones from its blank layout.
+        if tag.endswith("}nvGrpSpPr") or tag.endswith("}grpSpPr"):
+            continue
+        dest_sp_tree.append(copy.deepcopy(child))
+
+    # Copy the slide background, if the source defines one.
+    src_bg = src_slide._element.find(qn("p:cSld") + "/" + qn("p:bg"))
+    if src_bg is not None:
+        try:
+            dest_cSld = new_slide._element.find(qn("p:cSld"))
+            existing_bg = dest_cSld.find(qn("p:bg"))
+            new_bg = copy.deepcopy(src_bg)
+            if existing_bg is not None:
+                dest_cSld.replace(existing_bg, new_bg)
+            else:
+                dest_cSld.insert(0, new_bg)
+        except Exception:
+            pass
+
+    # Copy related image parts into the new slide part, then remap rIds.
+    #
+    # Critical: we must NOT reuse the source image parts directly via
+    # relate_to(). The cover's media is named e.g. /ppt/media/image2.jpg, which
+    # collides with the report's own /ppt/media/image2.jpg — producing TWO
+    # different parts with the SAME partname in the package. The resulting .pptx
+    # has a duplicate zip entry, so PowerPoint shows the wrong image (a report
+    # photo as the cover background) and pops the repair dialog.
+    #
+    # get_or_add_image_part() re-imports the bytes into the destination package
+    # with a guaranteed-unique partname (and dedupes by content hash), so no
+    # collision is possible. We then remap rIds with a two-pass sentinel swap to
+    # avoid clobbering an as-yet-unprocessed old rId during rename.
+    rid_map: dict[str, str] = {}
+    for rel in src_slide.part.rels.values():
+        if not rel.reltype.endswith("/image") or rel.is_external:
+            continue
+        try:
+            image_blob = rel.target_part.blob
+            image_part, new_rid = new_slide.part.get_or_add_image_part(
+                BytesIO(image_blob)
+            )
+            if new_rid != rel.rId:
+                rid_map[rel.rId] = new_rid
+        except Exception:
+            pass
+
+    if rid_map:
+        token_map = {old: f"__rid_token_{i}__" for i, old in enumerate(rid_map)}
+        for elem in dest_sp_tree.iter():
+            for attr_name, attr_val in list(elem.attrib.items()):
+                if attr_val in token_map:
+                    elem.set(attr_name, token_map[attr_val])
+        final_map = {token_map[old]: new for old, new in rid_map.items()}
+        for elem in dest_sp_tree.iter():
+            for attr_name, attr_val in list(elem.attrib.items()):
+                if attr_val in final_map:
+                    elem.set(attr_name, final_map[attr_val])
+
+    return new_slide
+
+
+def _set_cover_report_date(slide, date_label: str) -> bool:
+    """Stamp the cover's "Report Date" value with ``date_label``.
+
+    The value field is identified positionally: it is the text shape sitting
+    directly below the "REPORT DATE" label (same left edge, just under it),
+    matching the layout of the individual_final_slides templates. The new text
+    is written on the first run with the remaining runs blanked, so the run's
+    font, size and colour — and thus the template's branding — are preserved and
+    the deck stays fully editable. Returns True if the field was updated.
+    """
+    if not date_label:
+        return False
+
+    label = None
+    for shape in slide.shapes:
+        if shape.has_text_frame and shape.text_frame.text.strip().upper() == "REPORT DATE":
+            label = shape
+            break
+    if label is None or label.left is None or label.top is None:
+        return False
+
+    # The value shape is the one directly beneath the label, same left edge.
+    candidates = [
+        shape
+        for shape in slide.shapes
+        if shape is not label
+        and shape.has_text_frame
+        and shape.left is not None
+        and shape.top is not None
+        and abs(shape.left - label.left) <= Inches(0.15)
+        and shape.top > label.top
+    ]
+    if not candidates:
+        return False
+    value_shape = min(candidates, key=lambda s: s.top)
+    return _set_shape_text(value_shape, date_label)
+
+
+def _prepend_cover_slide(prs: "Presentation", project: str, report_date_label: str) -> None:
+    """Insert the project-specific cover slide as the first slide in prs.
+
+    Looks up the project's cover template in individual_final_slides/, clones its
+    single slide into ``prs`` at the package level (preserving images, theme
+    colours and fonts — nothing is rasterised), stamps the Report Date, scales it
+    to the report's 16:9 canvas if needed, then moves it to the front. If no
+    template matches the project (or the file is missing/empty) it logs a warning
+    and returns, leaving the report otherwise unchanged.
+    """
+    key = next((k for k in _COVER_SLIDE_MAP if k in project.lower()), None)
+    if not key:
+        logger.warning(
+            "No cover-slide template matches project %r; generating report without a cover slide.",
+            project,
+        )
+        return
+    cover_path = _PPT_SLIDES_DIR / _COVER_SLIDE_MAP[key]
+    if not cover_path.exists():
+        logger.warning(
+            "Cover-slide template %s not found at %s; generating report without a cover slide.",
+            _COVER_SLIDE_MAP[key],
+            cover_path,
+        )
+        return
+
+    cover_prs = Presentation(str(cover_path))
+    if not cover_prs.slides:
+        logger.warning(
+            "Cover-slide template %s has no slides; generating report without a cover slide.",
+            _COVER_SLIDE_MAP[key],
+        )
+        return
+
+    cover_slide = cover_prs.slides[0]
+
+    # Clone onto a blank layout so the cover keeps its own authored shapes.
+    blank_layout = prs.slide_layouts[6]
+    new_slide = _clone_slide_into(prs, cover_slide, blank_layout)
+
+    # Scale shapes if the cover canvas differs from the report canvas so the
+    # design fills the full 16:9 slide. The templates are already 13.333x7.5,
+    # so this is effectively a no-op for them, but it keeps the function correct
+    # if a differently-sized cover is ever added.
+    try:
+        sx = prs.slide_width / cover_prs.slide_width
+        sy = prs.slide_height / cover_prs.slide_height
+        if abs(sx - 1.0) > 1e-6 or abs(sy - 1.0) > 1e-6:
+            _scale_slide_shapes(new_slide, sx, sy)
+    except Exception:
+        pass
+
+    # Stamp the dynamic Report Date (after scaling so we operate on final runs).
+    if not _set_cover_report_date(new_slide, report_date_label):
+        logger.warning(
+            "Could not locate the 'Report Date' field on cover template %s; date not stamped.",
+            _COVER_SLIDE_MAP[key],
+        )
+
+    # Move the newly added slide (currently last) to position 0.
+    xml_slides = prs.slides._sldIdLst
+    last_entry = xml_slides[-1]
+    xml_slides.remove(last_entry)
+    xml_slides.insert(0, last_entry)
+
+
+def _move_cover_prepared_by_block_left(slide) -> None:
+    """Nudge the Prepared By metadata block closer to the Reporting Period block."""
+    move_left_by = Inches(0.75)
+    for shape in slide.shapes:
+        if not getattr(shape, "has_text_frame", False):
+            continue
+        text = " ".join(
+            "".join(run.text for run in para.runs).strip()
+            for para in shape.text_frame.paragraphs
+        ).strip().lower()
+        if text not in {"prepared by", "quality assurance cell"}:
+            continue
+        try:
+            shape.left = max(0, shape.left - move_left_by)
+        except Exception:
+            continue
+
+
+# AI disclaimer shown at the bottom of the cover slide.
+_COVER_DISCLAIMER_TEXT = (
+    "This report was generated by AI and human review is recommended."
+)
+
+
+def _add_cover_disclaimer(slide, slide_w, slide_h) -> None:
+    """Add the AI disclaimer as a subtle, right-aligned line at the bottom of the cover.
+
+    Styled to blend with the template (Poppins, small, muted grey) so it reads
+    as a footnote without competing with the title or report metadata.
+
+    Idempotent: if the template already includes a disclaimer (some covers ship
+    with one baked in), update that copy so we never stack a second disclaimer.
+    """
+    for shape in slide.shapes:
+        if not shape.has_text_frame:
+            continue
+        text = shape.text_frame.text.lower()
+        if (
+            "human review is required" in text
+            or "human review is recommended" in text
+        ):
+            tf = shape.text_frame
+            tf.clear()
+            para = tf.paragraphs[0]
+            para.alignment = PP_ALIGN.RIGHT
+            run = para.add_run()
+            run.text = _COVER_DISCLAIMER_TEXT
+            run.font.name = "Poppins Medium"
+            run.font.size = Pt(10)
+            run.font.italic = True
+            run.font.color.rgb = RGBColor(0x8F, 0xA0, 0xAC)
+            return
+
+    # A short band along the bottom edge of the slide, with a small margin.
+    margin = Inches(0.4)
+    height = Inches(0.32)
+    top = slide_h - height - Inches(0.18)
+    box = slide.shapes.add_textbox(margin, top, slide_w - margin * 2, height)
+    tf = box.text_frame
+    tf.word_wrap = True
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    tf.margin_left = 0
+    tf.margin_right = 0
+    tf.margin_top = 0
+    tf.margin_bottom = 0
+
+    para = tf.paragraphs[0]
+    para.alignment = PP_ALIGN.RIGHT
+    run = para.add_run()
+    run.text = _COVER_DISCLAIMER_TEXT
+    run.font.name = "Poppins Medium"
+    run.font.size = Pt(10)
+    run.font.italic = True
+    run.font.color.rgb = RGBColor(0x8F, 0xA0, 0xAC)  # muted slate, matches labels
+
+
+def _scale_slide_shapes(slide, sx: float, sy: float) -> None:
+    """Scale every shape's position and size by (sx, sy)."""
+    for shape in slide.shapes:
+        try:
+            if shape.left is not None:
+                shape.left = int(shape.left * sx)
+            if shape.top is not None:
+                shape.top = int(shape.top * sy)
+            if shape.width is not None:
+                shape.width = int(shape.width * sx)
+            if shape.height is not None:
+                shape.height = int(shape.height * sy)
+        except Exception:
+            continue
+
+
+def _build_report_presentation(*, rows: list[dict], project: str = "", date_from: str = "", date_to: str = "") -> BytesIO:
     prs = Presentation()
     prs.slide_width = Inches(13.333)
     prs.slide_height = Inches(7.5)
@@ -965,6 +1420,9 @@ def _build_report_presentation(*, rows: list[dict], project: str = "") -> BytesI
         footer_run.font.name = "Aptos"
         footer_run.font.size = Pt(7)
         footer_run.font.color.rgb = RGBColor(71, 85, 105)
+
+    if project:
+        _prepend_cover_slide(prs, project, _report_generation_date_label())
 
     output = BytesIO()
     prs.save(output)
@@ -1582,7 +2040,13 @@ async def generate_report_pptx(
     rows = await _collect_report_rows(body.entries)
     project = body.project.strip() if body.project.strip() else (rows[0].get("project", "") if rows else "")
     # Offload CPU-bound python-pptx + PIL work to a thread so it doesn't block the event loop.
-    presentation = await asyncio.to_thread(_build_report_presentation, rows=rows, project=project)
+    presentation = await asyncio.to_thread(
+        _build_report_presentation,
+        rows=rows,
+        project=project,
+        date_from=body.date_from.strip(),
+        date_to=body.date_to.strip(),
+    )
     filename = f"SiteSureLabs_Report_{datetime.now(timezone.utc).date().isoformat()}.pptx"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
 
@@ -1767,12 +2231,19 @@ def _parse_analytics_date_range(date: str, tz_offset: int) -> tuple[datetime, da
     return start, start + timedelta(days=1)
 
 
+def _prefixed_location_label(value: str, prefix: str) -> str:
+    text = (value or "").strip()
+    if not text or text in ("—", "-"):
+        return text
+    return text if text.lower().startswith(prefix.lower()) else f"{prefix} {text}"
+
+
 def _analytics_area_label(d: Defect) -> str:
     parts: list[str] = []
     if d.tower:
-        parts.append(f"Tower {d.tower}")
+        parts.append(_prefixed_location_label(d.tower, "Tower"))
     if d.floor:
-        parts.append(f"Floor {d.floor}")
+        parts.append(_prefixed_location_label(d.floor, "Floor"))
     if d.flat:
         parts.append(f"Flat {d.flat}")
     if d.room:
@@ -1782,13 +2253,11 @@ def _analytics_area_label(d: Defect) -> str:
 
 def _tower_floor_label(tower: str, floor: str) -> str:
     """Human-readable tower + floor, e.g. 'Tower C, Floor 15' (not 'Tower C · 15')."""
-    t = (tower or "").strip() or "Unknown area"
-    f = (floor or "").strip()
+    t = _prefixed_location_label(tower, "Tower") or "Unknown area"
+    f = _prefixed_location_label(floor, "Floor")
     if not f or f in ("—", "-"):
         return t
-    if f.lower().startswith("floor"):
-        return f"{t}, {f}"
-    return f"{t}, Floor {f}"
+    return f"{t}, {f}"
 
 
 def _analytics_category_label(d: Defect) -> str:
@@ -1864,7 +2333,7 @@ def _build_analytics_insight(
     if by_tower:
         top = by_tower[0]
         parts.append(
-            f"Tower {top['name']} showed the highest defect concentration ({top['count']})."
+            f"{_prefixed_location_label(top['name'], 'Tower')} showed the highest defect concentration ({top['count']})."
         )
     if by_area:
         top = by_area[0]

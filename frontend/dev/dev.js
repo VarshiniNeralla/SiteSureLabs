@@ -1,5 +1,6 @@
 // Developer Portal SPA controller.
 // Manages: login flow, RBAC gate, section navigation, and all /api/dev/* integrations.
+import { mountSmoothScroll } from "/shared/smooth-scroll.js";
 
 const TOKEN_KEY = "defectra_dev_token";
 const USER_KEY = "defectra_dev_user";
@@ -1134,6 +1135,7 @@ function wireEvents() {
 }
 
 // ───────── Bootstrap ─────────
+mountSmoothScroll();
 applyTheme(resolveInitialTheme());
 wireEvents();
 if (loadAuth()) {

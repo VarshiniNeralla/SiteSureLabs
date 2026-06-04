@@ -4,6 +4,88 @@ import { mountDashboardFooter } from "/shared/components/dashboard-footer.js";
 import { isHeicLike, normalizeImageFileForUpload } from "/heic-utils.js";
 import { optimizeImageForInspection, TARGET_UPLOAD_MAX_BYTES } from "/image-optimize.js";
 
+const CART_SUCCESS_LOTTIE_SRC = new URL("./animations/Order Complete.lottie", import.meta.url).href;
+const COLLECTION_SUCCESS_LOTTIE_SRC = new URL("./animations/result page success motion design.lottie", import.meta.url).href;
+let dotLottieWcPromise = null;
+
+function ensureDotLottieWc() {
+  if (customElements.get("dotlottie-wc")) return Promise.resolve(true);
+  if (dotLottieWcPromise) return dotLottieWcPromise;
+
+  dotLottieWcPromise = new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.type = "module";
+    script.src = "https://unpkg.com/@lottiefiles/dotlottie-wc@0.9.14/dist/dotlottie-wc.js";
+    script.onload = () => {
+      customElements.whenDefined("dotlottie-wc").then(() => resolve(true)).catch(() => resolve(false));
+    };
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+
+  return dotLottieWcPromise;
+}
+
+async function playCollectionCartLottie(targetBtn) {
+  if (!targetBtn || prefersReducedMotion()) return;
+  const host = targetBtn.querySelector(".live-collection-status__bucket");
+  if (!host) return;
+
+  const ready = await ensureDotLottieWc();
+  if (!ready) return;
+
+  host.querySelector(".live-collection-status__lottie")?.remove();
+  const player = document.createElement("dotlottie-wc");
+  player.className = "live-collection-status__lottie";
+  player.setAttribute("src", CART_SUCCESS_LOTTIE_SRC);
+  player.setAttribute("speed", "1.08");
+  player.setAttribute("autoplay", "");
+  player.setAttribute("aria-hidden", "true");
+
+  let cleanupTimer = 0;
+  const cleanup = () => {
+    window.clearTimeout(cleanupTimer);
+    targetBtn.classList.remove("live-collection-status--lottie-playing");
+    player.remove();
+  };
+
+  player.addEventListener("complete", cleanup, { once: true });
+  targetBtn.classList.add("live-collection-status--lottie-playing");
+  host.appendChild(player);
+  cleanupTimer = window.setTimeout(cleanup, 2200);
+  player.play?.();
+}
+
+async function playCollectionSuccessLottie(host) {
+  if (!host || prefersReducedMotion()) return false;
+
+  const ready = await ensureDotLottieWc();
+  if (!ready) return false;
+
+  host.replaceChildren();
+  const player = document.createElement("dotlottie-wc");
+  player.className = "collection-submit-feedback__lottie";
+  player.setAttribute("src", COLLECTION_SUCCESS_LOTTIE_SRC);
+  player.setAttribute("speed", "0.96");
+  player.setAttribute("autoplay", "");
+  player.setAttribute("aria-hidden", "true");
+  host.appendChild(player);
+  player.play?.();
+  return true;
+}
+
+function preloadCollectionCartLottie() {
+  if (prefersReducedMotion()) return;
+  const load = () => {
+    void ensureDotLottieWc();
+  };
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(load, { timeout: 2500 });
+  } else {
+    window.setTimeout(load, 1200);
+  }
+}
+
 function mountLiveCollectionIntoNav() {
   const source = document.getElementById("live-collection-mount");
   const slot = document.getElementById("dashboard-nav-trailing");
@@ -187,6 +269,7 @@ function flyThumbToCollection({ sourceEl, targetBtn, imageSrc, onAbsorb }) {
       targetBtn.classList.add("live-collection-status--bounce");
       targetBtn.classList.add("live-collection-status--ripple");
       pushBucketStackThumb(targetBtn, imageSrc);
+      void playCollectionCartLottie(targetBtn);
       try { onAbsorb?.(); } catch {}
     }, absorbAt);
 
@@ -213,6 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
   mountDashboardNav("live", { trailingMount: true });
   mountLiveCollectionIntoNav();
   attachMagneticHover(document.getElementById("btn-open-collection"));
+  preloadCollectionCartLottie();
   mountDashboardFooter();
 
   const token = getToken();
@@ -303,11 +387,19 @@ document.addEventListener("DOMContentLoaded", () => {
   const collectionChipBtn = document.getElementById("btn-open-collection");
   const collectionBackBtn = document.getElementById("btn-back-from-collection");
   const collectionBackLabel = document.getElementById("btn-back-from-collection-label");
+  const collectionPanelEl = document.querySelector(".collection-panel");
   const collectionCountBadgeEl = document.getElementById("collection-count-badge");
   const collectionListEl = document.getElementById("collection-list");
   const collectionEmptyEl = document.getElementById("collection-empty");
+  const collectionPagerEl = document.getElementById("collection-pager");
+  const collectionPagePrevBtn = document.getElementById("collection-page-prev");
+  const collectionPageNextBtn = document.getElementById("collection-page-next");
+  const collectionPageStatusEl = document.getElementById("collection-page-status");
+  const collectionSubmitSummaryEl = document.getElementById("collection-submit-summary");
   const submitAllBtn = document.getElementById("btn-submit-all");
   const collectionSubmitFeedback = document.getElementById("collection-submit-feedback");
+  const collectionSubmitMotion = document.getElementById("collection-submit-motion");
+  const collectionSubmitFallbackIcon = document.getElementById("collection-submit-fallback-icon");
   const collectionSubmitFeedbackTitle = document.getElementById("collection-submit-feedback-title");
   const collectionSubmitFeedbackText = document.getElementById("collection-submit-feedback-text");
   const clearCollectionBtn = document.getElementById("btn-clear-collection");
@@ -325,11 +417,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const collectionEditCategoryOtherWrap = document.getElementById("collection-edit-category-other-wrap");
   const collectionEditCategoryOther = document.getElementById("collection-edit-category-other");
   const collectionRemoveModal = document.getElementById("collection-remove-modal");
+  const collectionClearModal = document.getElementById("collection-clear-modal");
+  const collectionClearMessage = document.getElementById("collection-clear-message");
   const collectionDuplicateModal = document.getElementById("collection-duplicate-modal");
   const collectionDuplicateMessage = document.getElementById("collection-duplicate-message");
 
   let selectedFile = null;
   let previewUrl   = "";
+  let selectedFileSource = "";
   let allUploadItems = [];
   let desktopCameraStream = null;
   const LEGACY_COLLECTION_STORAGE_KEY = "liveInspectionCollectionV1";
@@ -345,6 +440,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const DRAFT_STORAGE_KEY = `liveInspectionDraftV2:${String(user?.user_id || user?.email || "anonymous").replace(/[^\w.-]/g, "_")}`;
   const PROJECT_STORAGE_KEY = `liveInspectionProject:${String(user?.user_id || user?.email || "anonymous").replace(/[^\w.-]/g, "_")}`;
   let collectionItems = [];
+  let collectionPageIndex = 0;
   let editingCollectionIdx = null;
   let pendingRemoveIdx = null;
   let collectionSuccessReturnTimer = 0;
@@ -728,7 +824,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function setCollectionSubmitFeedback({ visible, count = 0 } = {}) {
     if (!collectionSubmitFeedback) return;
     collectionSubmitFeedback.hidden = !visible;
-    if (!visible) return;
+    collectionPanelEl?.classList.toggle("collection-panel--submitted", visible);
+    collectionSubmitFeedback.classList.remove("collection-submit-feedback--motion-ready");
+    if (!visible) {
+      collectionSubmitMotion?.replaceChildren();
+      if (collectionSubmitFallbackIcon) collectionSubmitFallbackIcon.hidden = false;
+      return;
+    }
     if (collectionSubmitFeedbackTitle) {
       collectionSubmitFeedbackTitle.textContent = `Submitted successfully (${count})`;
     }
@@ -736,6 +838,11 @@ document.addEventListener("DOMContentLoaded", () => {
       collectionSubmitFeedbackText.textContent =
         "Your inspections were uploaded and moved to Past uploads.";
     }
+    void playCollectionSuccessLottie(collectionSubmitMotion).then((played) => {
+      if (!collectionSubmitFeedback || collectionSubmitFeedback.hidden) return;
+      collectionSubmitFeedback.classList.toggle("collection-submit-feedback--motion-ready", played);
+      if (collectionSubmitFallbackIcon) collectionSubmitFallbackIcon.hidden = played;
+    });
   }
 
   function scheduleReturnToCaptureAfterCollectionSuccess() {
@@ -743,7 +850,7 @@ document.addEventListener("DOMContentLoaded", () => {
     collectionSuccessReturnTimer = window.setTimeout(() => {
       setCollectionSubmitFeedback({ visible: false });
       goTo("step-capture");
-    }, 3000);
+    }, 4300);
   }
 
   async function fileToDataUrl(file) {
@@ -787,7 +894,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function loadCollectionFromServer() {
     try {
-      const res = await apiFetch("/api/defects/collection");
+      const res = await apiFetch("/api/defects/collection", { _skipAuthRedirect: true });
       if (!res || !res.ok) {
         collectionItems = [];
         return;
@@ -798,6 +905,53 @@ document.addEventListener("DOMContentLoaded", () => {
       collectionItems = [];
     }
   }
+
+  let _collectionSyncTimer = 0;
+  const COLLECTION_SYNC_INTERVAL_MS = 15_000;
+
+  async function syncCollectionInBackground() {
+    try {
+      const res = await apiFetch("/api/defects/collection", { _skipAuthRedirect: true });
+      if (!res || !res.ok) return;
+      const rows = await res.json();
+      const serverItems = Array.isArray(rows) ? rows.map(serverItemToClient) : [];
+      const currentIds = new Set(collectionItems.map((it) => it.id));
+      const serverIds = new Set(serverItems.map((it) => it.id));
+      const added = serverItems.filter((it) => !currentIds.has(it.id));
+      const removed = [...currentIds].filter((id) => !serverIds.has(id));
+      if (!added.length && !removed.length) return;
+      if (removed.length) {
+        collectionItems = collectionItems.filter((it) => serverIds.has(it.id));
+      }
+      if (added.length) {
+        collectionItems.push(...added);
+      }
+      renderCollectionList();
+    } catch {
+      /* silent — background sync must never disrupt the workflow */
+    }
+  }
+
+  function startCollectionSync() {
+    stopCollectionSync();
+    _collectionSyncTimer = window.setInterval(syncCollectionInBackground, COLLECTION_SYNC_INTERVAL_MS);
+  }
+
+  function stopCollectionSync() {
+    if (_collectionSyncTimer) {
+      window.clearInterval(_collectionSyncTimer);
+      _collectionSyncTimer = 0;
+    }
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      syncCollectionInBackground();
+      startCollectionSync();
+    } else {
+      stopCollectionSync();
+    }
+  });
 
   async function migrateLocalCollectionToServer() {
     try {
@@ -831,6 +985,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (res?.ok) {
           const saved = await res.json();
           collectionItems.unshift(serverItemToClient(saved));
+          collectionPageIndex = 0;
         }
       }
       localStorage.removeItem(COLLECTION_STORAGE_KEY);
@@ -1008,10 +1163,16 @@ document.addEventListener("DOMContentLoaded", () => {
     goTo(step);
     if (step === "step-form") validateForm();
     updateCollectionBackButton();
+
+    const draftAge = draft.updatedAt
+      ? Date.now() - new Date(draft.updatedAt).getTime()
+      : Infinity;
+    const isGenuineRestore = draftAge > 5000;
+
     const hasFormData = Boolean(
       draft.tower || draft.floor || draft.flat || draft.room || draft.category || draft.imageDataUrl,
     );
-    if (hasFormData || collectionItems.length > 0) {
+    if (isGenuineRestore && (hasFormData || collectionItems.length > 0)) {
       showCollectionToast("Restored your in-progress inspection", "success");
     }
     return true;
@@ -1024,7 +1185,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ═══════════════════════════════════════════════
      Step 1: Capture
      ═══════════════════════════════════════════════ */
-  async function processPickedFile(rawFile) {
+  async function processPickedFile(rawFile, source = "") {
     if (!rawFile) return;
     const mime = String(rawFile.type || "").toLowerCase();
     if (!mime.startsWith("image/") && !isHeicLike(rawFile)) {
@@ -1051,6 +1212,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       selectedFile = optimized;
+      selectedFileSource = source || selectedFileSource || "upload";
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       previewUrl = URL.createObjectURL(optimized);
       previewImg.src = previewUrl;
@@ -1199,7 +1361,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const file = new File([blob], `capture-${Date.now()}.jpg`, { type: "image/jpeg" });
     await closeDesktopCameraModal();
-    await processPickedFile(file);
+    await processPickedFile(file, "camera");
   }
 
   document.getElementById("btn-take-photo").addEventListener("click", () => {
@@ -1228,7 +1390,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const f = cameraIn.files && cameraIn.files[0];
     cameraIn.value = "";
     try {
-      await processPickedFile(f);
+      await processPickedFile(f, "camera");
     } catch {
       setCaptureError("Camera capture failed on this device. Use Upload Image as fallback.");
     }
@@ -1236,7 +1398,7 @@ document.addEventListener("DOMContentLoaded", () => {
   imageIn.addEventListener("change", async () => {
     const f = imageIn.files && imageIn.files[0];
     imageIn.value = "";
-    await processPickedFile(f);
+    await processPickedFile(f, "upload");
   });
 
   /* ═══════════════════════════════════════════════
@@ -1248,6 +1410,21 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("btn-retake").addEventListener("click", () => {
+    if (selectedFileSource === "upload") {
+      imageIn.removeAttribute("capture");
+      imageIn.click();
+      return;
+    }
+    if (selectedFileSource === "camera") {
+      if (isMobileLikeDevice()) {
+        cameraIn.setAttribute("accept", "image/jpeg,image/png,image/webp");
+        cameraIn.setAttribute("capture", "environment");
+        cameraIn.click();
+        return;
+      }
+      openDesktopCameraModal();
+      return;
+    }
     resetFile();
     goTo("step-capture");
     scheduleDraftSave();
@@ -1293,6 +1470,14 @@ document.addEventListener("DOMContentLoaded", () => {
   function showAlert(msg) {
     alertEl.textContent = msg;
     alertEl.className = "insp-alert insp-alert--error";
+    // The alert lives at the top of the form; on mobile the user is usually
+    // scrolled down at the submit button, so bring the message into view —
+    // otherwise a failed submit looks like "nothing happened".
+    try {
+      alertEl.scrollIntoView({ block: "center", behavior: "smooth" });
+    } catch {
+      alertEl.scrollIntoView();
+    }
   }
 
   function updateCollectionIndicator() {
@@ -1316,7 +1501,52 @@ document.addEventListener("DOMContentLoaded", () => {
       submitAllBtn.textContent = `Submit All (${n})`;
       submitAllBtn.disabled = n === 0;
     }
+    if (collectionSubmitSummaryEl) {
+      collectionSubmitSummaryEl.textContent = n === 1 ? "1 item ready" : `${n} items ready`;
+    }
     if (clearCollectionBtn) clearCollectionBtn.disabled = n === 0;
+  }
+
+  function isMobileCollectionView() {
+    return window.matchMedia?.("(max-width: 640px)").matches ?? false;
+  }
+
+  function getCollectionPageSize() {
+    return 6;
+  }
+
+  function getCollectionPageMeta() {
+    const pageSize = getCollectionPageSize();
+    const totalPages = Math.max(1, Math.ceil(collectionItems.length / pageSize));
+    collectionPageIndex = Math.min(Math.max(collectionPageIndex, 0), totalPages - 1);
+    const start = collectionPageIndex * pageSize;
+    const end = start + pageSize;
+    return { pageSize, totalPages, start, end };
+  }
+
+  function updateCollectionPager(meta) {
+    if (!collectionPagerEl) return;
+    const showPager = collectionItems.length > meta.pageSize;
+    collectionPagerEl.hidden = !showPager;
+    if (!showPager) return;
+
+    if (collectionPageStatusEl) {
+      const first = meta.start + 1;
+      const last = Math.min(meta.end, collectionItems.length);
+      collectionPageStatusEl.textContent = `${first}-${last} of ${collectionItems.length}`;
+    }
+    if (collectionPagePrevBtn) collectionPagePrevBtn.disabled = collectionPageIndex <= 0;
+    if (collectionPageNextBtn) collectionPageNextBtn.disabled = collectionPageIndex >= meta.totalPages - 1;
+  }
+
+  function setCollectionPage(nextPage) {
+    const pageSize = getCollectionPageSize();
+    const totalPages = Math.max(1, Math.ceil(collectionItems.length / pageSize));
+    const clamped = Math.min(Math.max(nextPage, 0), totalPages - 1);
+    if (clamped === collectionPageIndex) return;
+    collectionPageIndex = clamped;
+    renderCollectionList();
+    collectionListEl?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
   }
 
   /* Identify duplicate COPIES (every occurrence past the first for any
@@ -1389,37 +1619,89 @@ document.addEventListener("DOMContentLoaded", () => {
     if (closeBtn) closeBtn.disabled = false;
   }
 
+  /* Build a fresh, empty collection-item shell. Created once per item, on
+     first appearance; all data is filled in by updateCollectionItemNode so the
+     same node can be reused across re-renders. */
+  function renderCollectionItemNode() {
+    const article = document.createElement("article");
+    article.className = "collection-item";
+    article.innerHTML = `
+      <div class="collection-item__top">
+        <button type="button" class="collection-item__img-wrap">
+          <img class="collection-item__img" alt="">
+        </button>
+        <div class="collection-item__summary">
+          <div class="collection-item__meta">
+            <p class="collection-item__line collection-item__line--primary"></p>
+            <p class="collection-item__line"></p>
+          </div>
+          <div class="collection-item__actions">
+            <button type="button" class="collection-item__edit" aria-expanded="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h4.25L19.1 9.15a2.1 2.1 0 0 0 0-2.97L17.82 4.9a2.1 2.1 0 0 0-2.97 0L4 15.75V20Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m13.5 6.25 4.25 4.25" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              <span>Edit</span>
+            </button>
+            <button type="button" class="collection-item__remove">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10 11v6M14 11v6M6.5 7l.8 13h9.4l.8-13M9 7V4.75h6V7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Remove</span>
+            </button>
+          </div>
+        </div>
+      </div>`;
+    return article;
+  }
+
+  /* Update an existing node in place. Touches the <img src> only when it
+     actually changed, so unchanged thumbnails never reload/flash. The positional
+     data-* indices are re-stamped every render so the delegated click handler
+     and the edit/remove modals keep working against the current array order. */
+  function updateCollectionItemNode(article, item, idx) {
+    article.dataset.id = String(item.id);
+    article.dataset.idx = idx;
+    const img = article.querySelector(".collection-item__img");
+    const src = item.preview_url || item.image_data_url || "";
+    if (img.getAttribute("src") !== src) img.setAttribute("src", src);
+    img.alt = `Collection item ${idx + 1}`;
+    const lines = article.querySelectorAll(".collection-item__line");
+    lines[0].textContent = `${item.project || getSavedProject() || "—"} · ${item.tower || "—"} · Floor ${item.floor || "—"}`;
+    lines[1].textContent = `Flat ${item.flat || "—"} · ${formatRoomLabel(item.room, roomOtherDetail(item)) || "—"} · ${formatCategoryLabel(item.category, categoryOtherDetail(item)) || "—"}${item.subcategory ? ` · ${formatSubcategoryLabel(item.subcategory, subcategoryOtherDetail(item))}` : ""}`;
+    const wrap = article.querySelector(".collection-item__img-wrap");
+    wrap.setAttribute("data-preview", idx);
+    wrap.setAttribute("aria-label", `Preview collection image ${idx + 1}`);
+    const editBtn = article.querySelector(".collection-item__edit");
+    editBtn.setAttribute("data-edit", idx);
+    editBtn.setAttribute("aria-label", `Edit collection item ${idx + 1}`);
+    const removeBtn = article.querySelector(".collection-item__remove");
+    removeBtn.setAttribute("data-remove", idx);
+    removeBtn.setAttribute("aria-label", `Remove collection item ${idx + 1}`);
+  }
+
+  /* Reconcile the rendered list against collectionItems in place, keyed by item
+     id, instead of replacing the whole subtree. Unchanged items keep their exact
+     DOM node (and image), so background sync / edits / removes no longer reset
+     scroll, reload thumbnails, or drop focus. */
   function renderCollectionList() {
     if (!collectionListEl || !collectionEmptyEl) return;
     updateCollectionIndicator();
-    if (!collectionItems.length) {
-      collectionListEl.innerHTML = "";
-      collectionEmptyEl.hidden = false;
-      if (document.getElementById("step-success")?.classList.contains("step-panel--active")) {
-        updateCollectionBackButton();
-      }
-      return;
+    collectionEmptyEl.hidden = collectionItems.length > 0;
+    const meta = getCollectionPageMeta();
+    updateCollectionPager(meta);
+
+    const existing = new Map();
+    for (const node of Array.from(collectionListEl.children)) {
+      if (node.dataset?.id) existing.set(node.dataset.id, node);
     }
-    collectionEmptyEl.hidden = true;
-    collectionListEl.innerHTML = collectionItems.map((item, idx) => `
-      <article class="collection-item" data-idx="${idx}">
-        <div class="collection-item__top">
-          <button type="button" class="collection-item__img-wrap" data-preview="${idx}" aria-label="Preview collection image ${idx + 1}">
-            <img class="collection-item__img" src="${escapeHtml(item.preview_url || item.image_data_url || "")}" alt="Collection item ${idx + 1}">
-          </button>
-          <div class="collection-item__summary">
-            <div class="collection-item__meta">
-              <p class="collection-item__line collection-item__line--primary">${escapeHtml(item.project || getSavedProject() || "—")} · ${escapeHtml(item.tower || "—")} · Floor ${escapeHtml(item.floor || "—")}</p>
-              <p class="collection-item__line">Flat ${escapeHtml(item.flat || "—")} · ${escapeHtml(formatRoomLabel(item.room, roomOtherDetail(item)) || "—")} · ${escapeHtml(formatCategoryLabel(item.category, categoryOtherDetail(item)) || "—")}${item.subcategory ? ` · ${escapeHtml(formatSubcategoryLabel(item.subcategory, subcategoryOtherDetail(item)))}` : ""}</p>
-            </div>
-            <div class="collection-item__actions">
-              <button type="button" class="collection-item__edit" data-edit="${idx}" aria-expanded="false">Edit</button>
-              <button type="button" class="collection-item__remove" data-remove="${idx}" aria-label="Remove collection item ${idx + 1}">Remove</button>
-            </div>
-          </div>
-        </div>
-      </article>
-    `).join("");
+    collectionItems.slice(meta.start, meta.end).forEach((item, pageIdx) => {
+      const idx = meta.start + pageIdx;
+      const id = String(item.id);
+      let node = existing.get(id);
+      if (node) existing.delete(id);
+      else node = renderCollectionItemNode();
+      updateCollectionItemNode(node, item, idx);
+      const atIdx = collectionListEl.children[pageIdx];
+      if (atIdx !== node) collectionListEl.insertBefore(node, atIdx || null);
+    });
+    for (const stale of existing.values()) stale.remove();
+
     if (document.getElementById("step-success")?.classList.contains("step-panel--active")) {
       updateCollectionBackButton();
     }
@@ -1522,6 +1804,66 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.style.overflow = "";
   }
 
+  function openClearCollectionModal() {
+    if (!collectionItems.length || !collectionClearModal) return;
+    if (collectionClearMessage) {
+      const count = collectionItems.length;
+      collectionClearMessage.textContent = count === 1
+        ? "This will remove 1 image currently waiting in your collection."
+        : `This will remove all ${count} images currently waiting in your collection.`;
+    }
+    collectionClearModal.classList.add("collection-modal--open");
+    document.body.style.overflow = "hidden";
+    window.setTimeout(() => document.getElementById("collection-clear-confirm")?.focus(), 0);
+  }
+
+  function closeClearCollectionModal() {
+    collectionClearModal?.classList.remove("collection-modal--open");
+    document.body.style.overflow = "";
+  }
+
+  async function confirmClearCollection() {
+    if (!collectionItems.length) {
+      closeClearCollectionModal();
+      return;
+    }
+    const confirmBtn = document.getElementById("collection-clear-confirm");
+    const cancelBtn = document.getElementById("collection-clear-cancel");
+    const closeBtn = document.getElementById("collection-clear-close");
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="btn-spinner"></span> Clearing...';
+    }
+    if (cancelBtn) cancelBtn.disabled = true;
+    if (closeBtn) closeBtn.disabled = true;
+
+    window.clearTimeout(collectionSuccessReturnTimer);
+    setCollectionSubmitFeedback({ visible: false });
+    const res = await apiFetch("/api/defects/collection", { method: "DELETE" });
+    if (!res || !res.ok) {
+      showAlert("Could not clear collection.");
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = "Clear collection";
+      }
+      if (cancelBtn) cancelBtn.disabled = false;
+      if (closeBtn) closeBtn.disabled = false;
+      closeClearCollectionModal();
+      return;
+    }
+
+    collectionItems = [];
+    collectionPageIndex = 0;
+    renderCollectionList();
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Clear collection";
+    }
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (closeBtn) closeBtn.disabled = false;
+    closeClearCollectionModal();
+  }
+
   async function confirmRemoveCollectionItem() {
     if (!Number.isInteger(pendingRemoveIdx) || !collectionItems[pendingRemoveIdx]) return;
     const item = collectionItems[pendingRemoveIdx];
@@ -1595,6 +1937,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
       if (!saved) return;
       collectionItems.unshift(saved);
+      collectionPageIndex = 0;
       const flightSrc =
         (formThumb && formThumb.src) ||
         previewUrl ||
@@ -1610,6 +1953,11 @@ document.addEventListener("DOMContentLoaded", () => {
       renderCollectionList();
       fullReset();
       goTo("step-capture");
+    } catch (err) {
+      // Network/unexpected failure (apiFetch throws on a dropped connection).
+      // Without this, the submit failed silently and looked like a dead button.
+      console.error("Add to collection failed:", err);
+      showAlert("Could not add to collection. Check your connection and try again.");
     } finally {
       submitText.textContent = "Add to Collection";
       validateForm();
@@ -1669,6 +2017,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       const submittedCount = Number(data.success_count || 0);
       collectionItems = [];
+      collectionPageIndex = 0;
       renderCollectionList();
       fullReset();
       collectionBackTargetsDetails = false;
@@ -1778,16 +2127,20 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   clearCollectionBtn?.addEventListener("click", async () => {
     if (!collectionItems.length) return;
-    window.clearTimeout(collectionSuccessReturnTimer);
-    setCollectionSubmitFeedback({ visible: false });
-    const res = await apiFetch("/api/defects/collection", { method: "DELETE" });
-    if (!res || !res.ok) {
-      showAlert("Could not clear collection.");
-      return;
-    }
-    collectionItems = [];
-    renderCollectionList();
+    openClearCollectionModal();
   });
+  collectionPagePrevBtn?.addEventListener("click", () => setCollectionPage(collectionPageIndex - 1));
+  collectionPageNextBtn?.addEventListener("click", () => setCollectionPage(collectionPageIndex + 1));
+  let collectionResizeFrame = 0;
+  window.addEventListener("resize", () => {
+    if (collectionResizeFrame) return;
+    collectionResizeFrame = requestAnimationFrame(() => {
+      collectionResizeFrame = 0;
+      if (document.getElementById("step-success")?.classList.contains("step-panel--active")) {
+        renderCollectionList();
+      }
+    });
+  }, { passive: true });
   submitAllBtn?.addEventListener("click", submitCollectionBatch);
   document.getElementById("collection-edit-close")?.addEventListener("click", closeCollectionEditModal);
   document.getElementById("collection-edit-cancel")?.addEventListener("click", closeCollectionEditModal);
@@ -1800,6 +2153,12 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("collection-remove-confirm")?.addEventListener("click", confirmRemoveCollectionItem);
   collectionRemoveModal?.addEventListener("click", (e) => {
     if (e.target === collectionRemoveModal) closeRemoveConfirmModal();
+  });
+  document.getElementById("collection-clear-close")?.addEventListener("click", closeClearCollectionModal);
+  document.getElementById("collection-clear-cancel")?.addEventListener("click", closeClearCollectionModal);
+  document.getElementById("collection-clear-confirm")?.addEventListener("click", confirmClearCollection);
+  collectionClearModal?.addEventListener("click", (e) => {
+    if (e.target === collectionClearModal) closeClearCollectionModal();
   });
   document.getElementById("collection-duplicate-close")?.addEventListener("click", closeDuplicateConfirmModal);
   document.getElementById("collection-duplicate-cancel")?.addEventListener("click", closeDuplicateConfirmModal);
@@ -1815,6 +2174,7 @@ document.addEventListener("DOMContentLoaded", () => {
      ═══════════════════════════════════════════════ */
   function resetFile() {
     selectedFile = null;
+    selectedFileSource = "";
     cameraIn.value = "";
     imageIn.value = "";
     resetStatus();
@@ -1874,6 +2234,10 @@ document.addEventListener("DOMContentLoaded", () => {
       closeRemoveConfirmModal();
       return;
     }
+    if (e.key === "Escape" && collectionClearModal?.classList.contains("collection-modal--open")) {
+      closeClearCollectionModal();
+      return;
+    }
     if (e.key === "Escape" && collectionDuplicateModal?.classList.contains("collection-modal--open")) {
       closeDuplicateConfirmModal();
       return;
@@ -1895,9 +2259,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function normalizeImageSrc(path) {
-    if (!path) return "";
-    if (/^https?:\/\//i.test(path)) return path;
-    return path.startsWith("/") ? path : `/${path}`;
+    const normalized = String(path || "").trim().replace(/\\/g, "/");
+    if (!normalized) return "";
+    if (/^https?:\/\//i.test(normalized)) return normalized;
+    return normalized.startsWith("/") ? normalized : `/${normalized}`;
   }
 
   /* ═══════════════════════════════════════════════
@@ -1912,6 +2277,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const pastUploadsCountEl = document.getElementById("past-uploads-count");
   const uploadsGrid   = document.getElementById("uploads-grid");
   let recentVisible   = false;
+  const pastUploadImageCache = new Map();
+  let missingUploadImageCount = 0;
 
   function syncPastUploadsChrome() {
     document.body.classList.toggle("live-past-uploads-open", recentVisible);
@@ -1957,6 +2324,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (allUploadItems.length === 0) {
+      if (missingUploadImageCount > 0) {
+        activityText.innerHTML = `<strong>${missingUploadImageCount}</strong> upload record${missingUploadImageCount !== 1 ? "s" : ""} found, but image files are missing`;
+        activityThumbs.innerHTML = "";
+        updatePastUploadsHeaderCount(missingUploadImageCount);
+        activityBar.style.display = recentVisible ? "none" : "flex";
+        recentSection.style.display = recentVisible ? "flex" : "none";
+        syncPastUploadsChrome();
+        if (recentVisible) {
+          grid.innerHTML = "";
+          empty.style.display = "block";
+          empty.textContent = "Upload records exist, but the image files are missing from the server uploads folder.";
+          toggleBtn.style.display = "inline";
+          toggleBtn.textContent = "Hide";
+        }
+        return;
+      }
       setPastUploadsOpen(false);
       activityBar.style.display = "none";
       recentSection.style.display = "none";
@@ -1985,7 +2368,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!recentVisible) return;
 
     empty.style.display = "none";
-    grid.innerHTML = allUploadItems.map((d) => {
+    const eagerImageLimit = window.matchMedia("(max-width: 340px)").matches ? 10 : 18;
+    grid.innerHTML = allUploadItems.map((d, index) => {
       const locationLine = [
         d.project ? escapeHtml(d.project) : "",
         escapeHtml(d.tower || "—"),
@@ -1995,10 +2379,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const categoryLine = d.category ? `Category: ${escapeHtml(d.category)}` : "";
       const descriptionLine = d.description ? escapeHtml(d.description) : "";
       const when = new Date(d.created_at).toLocaleString();
+      const imageSrc = escapeHtml(normalizeImageSrc(d.image_path));
+      const loadingMode = index < eagerImageLimit ? "eager" : "lazy";
+      const fetchPriority = index < 9 ? "high" : "auto";
       return `
-      <div class="insp-item">
+      <div class="insp-item" data-image-state="loading">
         <div class="insp-item__media">
-          <img src="${normalizeImageSrc(d.image_path)}" alt="Defect upload preview" loading="lazy">
+          <img src="${imageSrc}" data-src="${imageSrc}" alt="Defect upload preview" loading="${loadingMode}" decoding="async" fetchpriority="${fetchPriority}">
         </div>
         <div class="meta">
           <p class="meta-line meta-line--primary">${locationLine}</p>
@@ -2010,10 +2397,124 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>`;
     }).join("");
 
+    primePastUploadImages(grid);
     wireGridLightbox(grid);
 
     toggleBtn.style.display = "inline";
     toggleBtn.textContent = "Hide";
+  }
+
+  async function loadPastUploadImage(img) {
+    const rawSrc = img?.dataset?.src || "";
+    if (!img || !rawSrc) return false;
+
+    const cached = pastUploadImageCache.get(rawSrc);
+    if (cached) {
+      img.src = cached;
+      return true;
+    }
+
+    try {
+      const res = await fetch(rawSrc, {
+        headers: {
+          Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+          // Required when the app is viewed through ngrok-free.dev. <img> tags
+          // cannot send this header, but fetch() can, so static uploads do not
+          // get replaced by ngrok's HTML browser-warning page.
+          "ngrok-skip-browser-warning": "true",
+        },
+        cache: "force-cache",
+      });
+
+      if (!res.ok) throw new Error(`Image request failed: ${res.status}`);
+
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType && !contentType.toLowerCase().startsWith("image/")) {
+        throw new Error(`Expected image response, got ${contentType}`);
+      }
+
+      const blob = await res.blob();
+      if (!blob.type.startsWith("image/")) {
+        throw new Error(`Expected image blob, got ${blob.type || "unknown"}`);
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      pastUploadImageCache.set(rawSrc, objectUrl);
+      img.src = objectUrl;
+      return true;
+    } catch (err) {
+      console.warn("Failed to load past upload image:", rawSrc, err);
+      return false;
+    }
+  }
+
+  function primePastUploadImages(grid) {
+    if (!grid) return;
+    const images = Array.from(grid.querySelectorAll(".insp-item__media img"));
+    if (!images.length) return;
+
+    const markLoaded = (img) => {
+      const item = img.closest(".insp-item");
+      if (item) item.dataset.imageState = "loaded";
+    };
+    const markError = (img) => {
+      const item = img.closest(".insp-item");
+      if (item) item.dataset.imageState = "error";
+    };
+    const requestImage = (img) => {
+      img.loading = "eager";
+      if ("fetchPriority" in img) img.fetchPriority = "high";
+      if (img.complete) {
+        if (img.naturalWidth > 0) markLoaded(img);
+        else {
+          loadPastUploadImage(img)
+            .then((loaded) => {
+              if (loaded) markLoaded(img);
+              else markError(img);
+            })
+            .catch(() => markError(img));
+        }
+        return;
+      }
+    };
+
+    images.forEach((img) => {
+      img.addEventListener("load", () => markLoaded(img), { once: true });
+      img.addEventListener("error", () => {
+        loadPastUploadImage(img)
+          .then((loaded) => {
+            if (loaded) markLoaded(img);
+            else markError(img);
+          })
+          .catch(() => markError(img));
+      }, { once: true });
+    });
+
+    // Native lazy-loading can fail to start promptly for images inserted into a
+    // previously hidden fixed sheet with its own scroll container. Prime the
+    // visible rows immediately, then use the sheet itself as the observer root
+    // so later rows load just before they enter view.
+    images.slice(0, window.matchMedia("(max-width: 340px)").matches ? 10 : 18).forEach(requestImage);
+
+    if (!("IntersectionObserver" in window)) {
+      images.forEach(requestImage);
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const img = entry.target;
+        requestImage(img);
+        observer.unobserve(img);
+      });
+    }, {
+      root: grid,
+      rootMargin: "420px 0px",
+      threshold: 0.01,
+    });
+
+    images.forEach((img) => observer.observe(img));
   }
 
   activityBar.addEventListener("click", () => {
@@ -2049,6 +2550,7 @@ document.addEventListener("DOMContentLoaded", () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
+      missingUploadImageCount = Number.parseInt(res.headers.get("X-Missing-Image-Count") || "0", 10) || 0;
       allUploadItems = await res.json();
       renderUploads();
     } catch (err) { console.error("Failed to load uploads:", err); }
@@ -2064,6 +2566,7 @@ document.addEventListener("DOMContentLoaded", () => {
       goTo("step-success");
       updateCollectionBackButton();
     }
+    startCollectionSync();
   })();
   loadUploads();
 });

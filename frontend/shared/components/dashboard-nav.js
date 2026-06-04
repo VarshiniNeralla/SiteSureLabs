@@ -14,6 +14,7 @@
  */
 import { mountProfileNav } from "/shared/profile-nav.js";
 import { SHOW_IMAGE_ANALYSIS } from "/shared/feature-flags.js";
+import { mountSmoothScroll } from "/shared/smooth-scroll.js";
 
 const TABS = [
   { id: "live",           label: "Live Inspection", shortLabel: "Live", href: "/dashboard/live/",
@@ -53,6 +54,7 @@ const HOME_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"
  * @returns {HTMLElement | null} Trailing slot when trailingMount is true
  */
 export function mountDashboardNav(activeTab, options = {}) {
+  mountSmoothScroll();
   const tabs = visibleTabs();
   const activeLabel = tabs.find((t) => t.id === activeTab)?.label || "Dashboard";
   const segmentCount = tabs.length;
@@ -180,5 +182,51 @@ export function mountDashboardNav(activeTab, options = {}) {
     if (e.key === "Escape" && isOpen) closeDrawer();
   });
 
+  /* ── Mobile bottom tab bar (primary navigation on phones) ──
+     Replaces the hamburger drawer for tool-switching on ≤767px.
+     The drawer button is kept because the AI chat page relocates it
+     into its own topbar as the conversation-history toggle. */
+  mountDashboardTabbar(tabs, activeTab);
+
   return options.trailingMount ? document.getElementById("dashboard-nav-trailing") : null;
+}
+
+const TYPING_SELECTOR =
+  "input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=reset]), textarea, [contenteditable=''], [contenteditable=true]";
+
+function mountDashboardTabbar(tabs, activeTab) {
+  document.getElementById("dashboard-tabbar")?.remove();
+
+  const tabbar = document.createElement("nav");
+  tabbar.id = "dashboard-tabbar";
+  tabbar.className = "dashboard-tabbar";
+  tabbar.setAttribute("role", "tablist");
+  tabbar.setAttribute("aria-label", "Primary");
+  tabbar.innerHTML = tabs
+    .map(({ id, label, shortLabel, href, icon }) => {
+      const active = id === activeTab;
+      return `<a href="${href}" class="dashboard-tabbar__item${active ? " is-active" : ""}"
+        role="tab" aria-selected="${active}" ${active ? 'aria-current="page"' : ""} aria-label="${label}">
+        <span class="dashboard-tabbar__icon">${icon}</span>
+        <span class="dashboard-tabbar__label">${shortLabel || label}</span>
+      </a>`;
+    })
+    .join("");
+  document.body.appendChild(tabbar);
+
+  /* Hide the bar while a text field is focused so it never fights the
+     on-screen keyboard or the chat composer. Defer the hide-removal so
+     focus moving between fields does not flicker the bar. */
+  if (!document.body.dataset.tabbarKbdBound) {
+    document.body.dataset.tabbarKbdBound = "1";
+    const isTyping = (el) => !!(el && el.matches && el.matches(TYPING_SELECTOR));
+    document.addEventListener("focusin", (e) => {
+      if (isTyping(e.target)) document.body.classList.add("kbd-open");
+    });
+    document.addEventListener("focusout", () => {
+      setTimeout(() => {
+        if (!isTyping(document.activeElement)) document.body.classList.remove("kbd-open");
+      }, 60);
+    });
+  }
 }

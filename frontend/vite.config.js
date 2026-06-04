@@ -61,8 +61,14 @@ export default defineConfig(({ mode }) => {
 
   return {
     envDir: repoRoot,
+    resolve: {
+      alias: [
+        { find: /^lenis$/, replacement: resolve(__dirname, "shared/vendor/lenis.mjs") },
+        { find: /^lenis\/dist\/lenis\.css$/, replacement: resolve(__dirname, "shared/vendor/lenis.css") },
+      ],
+    },
     optimizeDeps: {
-      include: ["heic2any"],
+      include: ["heic2any", "lenis"],
     },
     plugins: [mpaTrailingSlashRedirect()],
     appType: "mpa",

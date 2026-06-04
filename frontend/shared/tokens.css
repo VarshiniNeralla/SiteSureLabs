@@ -1,0 +1,187 @@
+/* ============================================================
+   SiteSureLabs — Canonical Design Tokens + Global Mobile Baseline
+   ------------------------------------------------------------
+   SINGLE SOURCE OF TRUTH for color, type, spacing, radius, shadow.
+   Imported at the top of the three "hub" stylesheets so it reaches
+   every page:
+     shared/styles.css  -> auth, admin, landing, live, register
+     style.css          -> landing, ai-analysis, image-analysis, live, remote
+     dev/dev.css        -> dev portal
+
+   Island token namespaces (--ws-*, --live-*, --dev-*, --ass-*) ALIAS
+   into the variables defined here, so the whole product shares one
+   brand color, one radius rhythm, and one shadow family.
+
+   Mobile-first: values below are the PHONE baseline. Scale up at
+   --bp-tablet (640px) / --bp-desktop (1024px) only.
+   ============================================================ */
+
+:root {
+  /* ---------- Brand / accent (canonical #2563eb) ---------- */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-active: #1e40af;
+  --primary-gradient: linear-gradient(135deg, #2563eb 0%, #1a56db 100%);
+  --primary-soft: rgba(37, 99, 235, 0.10); /* tinted backgrounds */
+  --primary-ring: rgba(37, 99, 235, 0.16); /* focus rings */
+
+  /* ---------- Neutrals / surfaces ---------- */
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+
+  /* ---------- Semantic ---------- */
+  --success: #16a34a;
+  --success-bg: #f0fdf4;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --warning: #d97706;
+  --warning-bg: #fffbeb;
+
+  /* ---------- Fonts ---------- */
+  --font-brand: "Google Sans Flex", "Google Sans", Inter, Roboto, sans-serif;
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* ---------- Type scale (7 roles, mobile-first) ----------
+     Body is 16px on purpose: it is also the iOS no-zoom floor. */
+  --text-display: clamp(2rem, 7vw, 3rem); /* hero / marquee */
+  --text-page-title: 1.5rem;   /* 24 — one per screen */
+  --text-section: 1.25rem;     /* 20 — section headers */
+  --text-card-title: 1.0625rem;/* 17 — card / list headers */
+  --text-body: 1rem;           /* 16 — default reading size */
+  --text-secondary: 0.875rem;  /* 14 — supporting text */
+  --text-caption: 0.75rem;     /* 12 — labels / meta (floor) */
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --tracking-tight: -0.02em;
+
+  /* ---------- Spacing scale (4 / 8 / 12 / 16 / 24 / 32 / 48) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* ---------- Radius scale (8 / 12 / 16 / 20 + full) ----------
+     sm  -> inputs, buttons, badges, chips
+     md  -> cards, list items, alerts  (also the legacy --radius)
+     lg  -> large panels, modals, sheets
+     xl  -> hero / feature containers, chat panel
+     full-> pills, avatars, FAB */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+  --radius: 12px; /* legacy alias — keeps existing var(--radius) callers valid */
+
+  /* ---------- Shadow scale (consolidated from 35+ to 4) ---------- */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 10px rgba(15, 23, 42, 0.06);
+  --shadow-xl: 0 24px 60px rgba(15, 23, 42, 0.18), 0 8px 20px rgba(15, 23, 42, 0.08);
+  --shadow: var(--shadow-sm);  /* legacy alias */
+  --shadow-btn: 0 4px 14px rgba(37, 99, 235, 0.32); /* primary button glow */
+
+  /* ---------- Breakpoints (reference only — for authoring discipline) ----------
+     base = phone   tablet >= 640px   desktop >= 1024px */
+  --bp-tablet: 640px;
+  --bp-desktop: 1024px;
+
+  /* ---------- Motion ---------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ---------- Layout ---------- */
+  --tap-target: 44px; /* minimum comfortable touch target */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+/* ============================================================
+   GLOBAL MOBILE BASELINE  (loads first, so pages can override)
+   Conservative on purpose — only the rules that are safe app-wide.
+   ============================================================ */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Overflow guard: media can never force horizontal scroll on a phone.
+   max-width only (NOT height:auto) so fixed object-fit heights survive. */
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+/* iOS zooms the viewport when a focused control's font-size < 16px.
+   That is a hard platform constraint, so this is the one place a
+   !important min font-size is warranted. Scoped to phone widths. */
+@media (max-width: 639.98px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* ============================================================
+   TYPOGRAPHY UTILITIES  (the 7 canonical roles, ready to apply)
+   New class names — inert until used, so adding this is zero-risk.
+   ============================================================ */
+.t-display {
+  font-size: var(--text-display);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  font-weight: 700;
+}
+.t-page-title {
+  font-size: var(--text-page-title);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-tight);
+  font-weight: 700;
+}
+.t-section {
+  font-size: var(--text-section);
+  line-height: var(--leading-snug);
+  font-weight: 600;
+}
+.t-card-title {
+  font-size: var(--text-card-title);
+  line-height: var(--leading-snug);
+  font-weight: 600;
+}
+.t-body {
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+  font-weight: 400;
+}
+.t-secondary {
+  font-size: var(--text-secondary);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+}
+.t-caption {
+  font-size: var(--text-caption);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+}
+
+/* Helper: guarantee a 44px touch target without changing visual size. */
+.tap-44 {
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
+}

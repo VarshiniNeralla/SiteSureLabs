@@ -254,9 +254,22 @@ async def my_defects(
         .limit(limit)
         .to_list()
     )
+    visible_defects = []
+    missing_images = 0
+    for defect in defects:
+        image_path = str(defect.image_path or "").replace("\\", "/")
+        if image_path.startswith("missing/"):
+            missing_images += 1
+            continue
+        if not image_path or not (REPO_ROOT / image_path).exists():
+            missing_images += 1
+            continue
+        visible_defects.append(defect)
     response.headers["X-Total-Count"] = str(total)
     response.headers["X-Page"] = str(page)
     response.headers["X-Limit"] = str(limit)
+    response.headers["X-Visible-Image-Count"] = str(len(visible_defects))
+    response.headers["X-Missing-Image-Count"] = str(missing_images)
     return [
         {
             "id": str(d.id),
@@ -270,7 +283,7 @@ async def my_defects(
             "description": d.description,
             "created_at": d.created_at.isoformat(),
         }
-        for d in defects
+        for d in visible_defects
     ]
 
 

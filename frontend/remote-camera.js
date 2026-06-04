@@ -1,4 +1,7 @@
+import { mountSmoothScroll } from "/shared/smooth-scroll.js";
+
 document.addEventListener("DOMContentLoaded", () => {
+  mountSmoothScroll();
   const stateConnecting = document.getElementById("state-connecting");
   const statePermission = document.getElementById("state-permission");
   const stateStreaming = document.getElementById("state-streaming");

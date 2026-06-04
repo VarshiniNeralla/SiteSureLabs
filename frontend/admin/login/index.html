@@ -52,6 +52,9 @@
     import { saveAuth, getUser, markAdminLoginSession } from "/shared/auth.js";
     import { wirePasswordToggle } from "/shared/password-toggle.js";
     import { formatApiDetail } from "/shared/format-api-detail.js";
+    import { mountSmoothScroll } from "/shared/smooth-scroll.js";
+
+    mountSmoothScroll();
 
     const user = getUser();
     if (user && user.role === "admin") {

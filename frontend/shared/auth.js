@@ -53,16 +53,28 @@ export function requireAdmin() {
   return requireAuth();
 }
 
+let _pendingAuthRedirect = 0;
+
 export async function apiFetch(url, options = {}) {
   const token = getToken();
   const headers = { ...(options.headers || {}) };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  const res = await fetch(url, { ...options, headers });
+  const skipRedirect = options._skipAuthRedirect === true;
+  const fetchOpts = { ...options, headers };
+  delete fetchOpts._skipAuthRedirect;
+
+  const res = await fetch(url, fetchOpts);
   if (res.status === 401) {
+    if (skipRedirect) return null;
     clearAuth();
-    window.location.href = "/";
+    if (!_pendingAuthRedirect) {
+      _pendingAuthRedirect = window.setTimeout(() => {
+        _pendingAuthRedirect = 0;
+        if (!getToken()) window.location.href = "/";
+      }, 300);
+    }
     return null;
   }
   return res;

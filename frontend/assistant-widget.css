@@ -835,23 +835,6 @@
   }
 }
 
-/* Mobile: edge-to-edge panel */
-@media (max-width: 520px) {
-  .ssl-assistant-panel {
-    right: max(12px, env(safe-area-inset-right, 0px));
-    left: max(12px, env(safe-area-inset-left, 0px));
-    width: auto;
-    bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--ass-launcher-stack) + 10px);
-    max-height: min(72dvh, 520px);
-    border-radius: 18px;
-  }
-
-  .ssl-assistant-fab {
-    right: max(12px, env(safe-area-inset-right, 0px));
-    bottom: max(12px, env(safe-area-inset-bottom, 0px));
-  }
-}
-
 @media (max-width: 820px) {
   .ssl-assistant-fab {
     width: 72px;
@@ -885,6 +868,181 @@
   #ssl-assistant-root {
     --ass-launcher-stack: 84px;
     --ass-fab-size: 48px;
+  }
+}
+
+/* Mobile: compact native-feeling chat sheet */
+@media (max-width: 520px) {
+  #ssl-assistant-root {
+    --ass-launcher-stack: 66px;
+    --ass-fab-size: 44px;
+    --ass-radius: 18px;
+  }
+
+  .ssl-assistant-fab {
+    width: 60px;
+    height: var(--ass-launcher-stack);
+    right: max(10px, env(safe-area-inset-right, 0px));
+    bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .ssl-mascot {
+    width: 48px;
+    height: 53px;
+    bottom: calc(var(--ass-fab-size) * 0.34);
+  }
+
+  .ssl-mascot-hint {
+    right: 2px;
+    bottom: calc(var(--ass-fab-size) + 22px);
+    min-width: 148px;
+    padding: 6px 10px;
+    font-size: 11px;
+    border-radius: 11px;
+  }
+
+  .ssl-assistant-launcher {
+    width: var(--ass-fab-size);
+    min-width: var(--ass-fab-size);
+    height: var(--ass-fab-size);
+    min-height: var(--ass-fab-size);
+    border-radius: 50%;
+  }
+
+  .ssl-assistant-launcher__glyph {
+    width: 18px;
+    height: 18px;
+  }
+
+  .ssl-assistant-panel {
+    right: max(10px, env(safe-area-inset-right, 0px));
+    left: max(10px, env(safe-area-inset-left, 0px));
+    width: auto;
+    height: min(70dvh, 520px);
+    max-height: calc(100dvh - max(92px, calc(var(--ass-launcher-stack) + 26px + env(safe-area-inset-bottom, 0px))));
+    bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + var(--ass-launcher-stack) + 6px);
+    border-radius: var(--ass-radius);
+    box-shadow: 0 16px 44px rgba(15, 23, 42, 0.22), 0 4px 12px rgba(15, 23, 42, 0.1);
+  }
+
+  .ssl-assistant-panel__header {
+    min-height: 48px;
+    gap: 8px;
+    padding: 9px 11px 8px 13px;
+  }
+
+  .ssl-assistant-panel__title {
+    font-size: 14px;
+    line-height: 1.15;
+  }
+
+  .ssl-assistant-panel__status {
+    gap: 5px;
+    margin-top: 1px;
+    font-size: 11px;
+  }
+
+  .ssl-assistant-panel__status-dot {
+    width: 6px;
+    height: 6px;
+    box-shadow: 0 0 0 2px rgba(var(--ass-brand-rgb), 0.24);
+  }
+
+  .ssl-assistant-panel__icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+
+  .ssl-assistant-messages {
+    padding: 10px 10px 8px;
+    scroll-behavior: smooth;
+  }
+
+  .ssl-assistant-row {
+    margin-bottom: 8px;
+  }
+
+  .ssl-assistant-bubble {
+    max-width: 90%;
+    padding: 8px 10px;
+    border-radius: 15px;
+    font-size: 13px;
+    line-height: 1.42;
+  }
+
+  .ssl-assistant-bubble--user {
+    gap: 6px;
+    padding: 8px 8px 8px 11px;
+    border-bottom-right-radius: 5px;
+  }
+
+  .ssl-assistant-bubble--assistant {
+    border-radius: 15px;
+  }
+
+  .ssl-assistant-bubble--assistant p {
+    margin-bottom: 0.42em;
+  }
+
+  .ssl-assistant-bubble--assistant ul,
+  .ssl-assistant-bubble--assistant ol {
+    margin: 0.28em 0;
+    padding-left: 1.05em;
+  }
+
+  .ssl-assistant-typing {
+    padding: 6px 12px 8px;
+  }
+
+  .ssl-assistant-error {
+    margin: 6px 10px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .ssl-assistant-composer {
+    position: sticky;
+    bottom: 0;
+    padding: 7px 9px max(8px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .ssl-assistant-composer__wrap {
+    gap: 6px;
+    padding: 4px 5px 4px 9px;
+    border-radius: 17px;
+  }
+
+  .ssl-assistant-input {
+    min-height: 34px;
+    max-height: 84px;
+    padding: 6px 4px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .ssl-assistant-send {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .ssl-assistant-send svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@media (max-width: 360px) {
+  .ssl-assistant-panel {
+    height: 68dvh;
+    right: max(8px, env(safe-area-inset-right, 0px));
+    left: max(8px, env(safe-area-inset-left, 0px));
+  }
+
+  .ssl-assistant-bubble {
+    max-width: 92%;
+    font-size: 12.5px;
   }
 }
 

@@ -1,5 +1,6 @@
 /* SiteSureLabs — glassmorphism + landing polish */
 @import url("https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Tangerine:wght@400;700&display=swap");
+@import "./shared/tokens.css"; /* canonical design tokens + global mobile baseline */
 /* Fonts: Montserrat via <link> in each HTML page (preconnect + Google Fonts) */
 
 * {
@@ -168,7 +169,13 @@ a {
   top: 0;
   z-index: 50;
   background: #ffffff;
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    min-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    backdrop-filter 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-nav.nav-hidden {
@@ -1030,88 +1037,6 @@ a {
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0);
-  }
-}
-
-/* ───────────────────────────────────────────────────────────────
-   Brand Reveal — clean Material-style wordmark intro.
-   The motion is intentionally quiet: a soft fade / settle instead of a
-   decorative letter-draw sequence.
-   ─────────────────────────────────────────────────────────────── */
-.brand-reveal {
-  position: relative;
-  display: block;
-  margin: 0 auto clamp(0.75rem, 2vh, 1.35rem);
-  padding: 0;
-  font-family: "Google Sans Flex", "Google Sans", Inter, Roboto, system-ui, sans-serif;
-  font-size: clamp(1.55rem, 1vw + 1.15rem, 2.35rem);
-  font-weight: 500;
-  letter-spacing: -0.035em;
-  line-height: 1;
-  color: #0f172a;
-  text-align: center;
-  user-select: none;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  contain: layout style;
-  transform-origin: center center;
-  will-change: transform;
-}
-
-/* Pre-animation gate: keep brand-reveal invisible until JS applies the
-   initial animation state. Mirrors the existing hero typewriter gate. */
-.hero-section--landing:not(.is-brand-ready) .brand-reveal {
-  visibility: hidden;
-}
-
-.brand-reveal__words {
-  position: relative;
-  display: inline-flex;
-  align-items: baseline;
-  white-space: nowrap;
-  z-index: 1;
-  text-rendering: geometricPrecision;
-}
-
-.brand-reveal__site,
-.brand-reveal__sure {
-  display: inline-block;
-  will-change: transform, opacity;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-.brand-reveal__sure-s {
-  display: inline-block;
-  will-change: opacity;
-}
-
-.brand-reveal__svg {
-  position: absolute;
-  pointer-events: none;
-  opacity: 0;
-  will-change: opacity, transform;
-  transform: translateZ(0);
-  /* left / top / width / height set by landing.js after measuring the S glyph. */
-}
-
-.brand-reveal__svg-path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-  /* stroke-dasharray / stroke-dashoffset set by landing.js. */
-}
-
-/* Reduced motion: skip all motion, render the typographic wordmark only. */
-@media (prefers-reduced-motion: reduce) {
-  .hero-section--landing:not(.is-brand-ready) .brand-reveal {
-    visibility: visible;
-  }
-  .brand-reveal__svg {
-    display: none;
   }
 }
 
@@ -2134,16 +2059,17 @@ body.landing-page--admin #nav-cta.landing-cta {
 /* Generic landing reveal animation */
 .reveal-on-scroll {
   opacity: 0;
-  transform: translateY(18px);
+  transform: translate3d(0, 30px, 0);
   transition:
-    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
   transition-delay: calc(var(--reveal-i, 0) * 0.1s);
+  will-change: opacity, transform;
 }
 
 .reveal-on-scroll.is-visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
 }
 
 .benefits-grid {
@@ -2966,14 +2892,17 @@ body.landing-page--admin #nav-cta.landing-cta {
 
 .benefit-card--reveal {
   opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.45s ease, transform 0.45s ease;
+  transform: translate3d(0, 30px, 0);
+  transition:
+    opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
   transition-delay: calc(var(--reveal-i, 0) * 0.1s);
+  will-change: opacity, transform;
 }
 
 .benefit-card--reveal.is-visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
 }
 
 /* ── FAQ Section ── */
@@ -3193,16 +3122,17 @@ body.landing-page--admin #nav-cta.landing-cta {
 
 .m-stepper__step--reveal {
   opacity: 0;
-  transform: translateY(24px);
+  transform: translate3d(0, 30px, 0);
   transition:
-    opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
   transition-delay: calc(var(--reveal-i, 0) * 0.18s);
+  will-change: opacity, transform;
 }
 
 .m-stepper__step--reveal.is-visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
 }
 
 @media (max-width: 600px) {
@@ -3989,6 +3919,10 @@ body.landing-page--admin #nav-cta.landing-cta {
 
   .landing-section {
     padding: 28px 0;
+  }
+
+  #features {
+    padding-top: 8px;
   }
 
   .landing-page .landing-section > .container {
@@ -7599,6 +7533,15 @@ main.dashboard-main--ai-analysis .ai-live-main-actions {
 
   .landing-page .landing-section {
     padding: 32px 0;
+  }
+
+  #features.cv-auto {
+    content-visibility: visible;
+    contain-intrinsic-size: auto;
+  }
+
+  #features {
+    padding-top: clamp(6px, 1.8vh, 14px);
   }
 
   .landing-section-header {
